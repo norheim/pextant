@@ -109,6 +109,66 @@
 </dd></dl>
 
 </div>
+<div class="section" id="explorermodel-objects">
+<h2><a class="reference internal" href="#ExplorerModel" title="ExplorerModel"><tt class="xref py py-class docutils literal"><span class="pre">ExplorerModel</span></tt></a> Objects<a class="headerlink" href="#explorermodel-objects" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="ExplorerModel">
+<em class="property">class </em><tt class="descname">ExplorerModel</tt><big>(</big><em>mass</em>, <em>gravity</em><span class="optional">[</span>, <em>parameters = None</em><span class="optional">]</span><big>)</big><a class="headerlink" href="#ExplorerModel" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize an object representing an explorer. Note that energy and time cost functions are missing</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>mass</strong> (<em>float</em>) &#8211; The mass of the explorer</li>
+<li><strong>gravity</strong> (<em>float</em>) &#8211; The gravity of the planet</li>
+<li><strong>parameters</strong> &#8211; A parameters object. Currently serves no function</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="Rover">
+<em class="property">class </em><tt class="descname">Rover</tt><big>(</big><em>mass</em>, <em>gravity</em><span class="optional">[</span>, <em>parameters = None</em>, <em>constant_speed = 15</em>, <em>additional_energy = 1500</em><span class="optional">]</span><big>)</big><a class="headerlink" href="#Rover" title="Permalink to this definition">¶</a></dt>
+<dd><p>An instance of ExplorerModel representing a Rover. Contains all instance variables of ExplorerModel as well as:</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>speed</strong> (<em>float</em>) &#8211; The constant speed that the rover moves at</li>
+<li><strong>P_e</strong> (<em>float</em>) &#8211; The collection of all additional electronic components on the rover, estimated to be 1500W</li>
+<li><strong>type</strong> &#8211; Set to &#8216;Rover&#8217;</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="Astronaut">
+<em class="property">class </em><tt class="descname">Astronaut</tt><big>(</big><em>mass</em>, <em>gravity</em><span class="optional">[</span>, <em>parameters = None</em>, <em>constant_speed = 15</em>, <em>additional_energy = 1500</em><span class="optional">]</span><big>)</big><a class="headerlink" href="#Astronaut" title="Permalink to this definition">¶</a></dt>
+<dd><p>An instance of ExplorerModel representing a lunar Astronaut. Contains all instance variables of ExplorerModel as well as:</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>speed</strong> (<em>float</em>) &#8211; The constant speed that the rover moves at</li>
+<li><strong>P_e</strong> (<em>float</em>) &#8211; The collection of all additional electronic components on the rover, estimated to be 1500W</li>
+<li><strong>type</strong> &#8211; Set to &#8216;Rover&#8217;</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
 </div>
 
 
@@ -121,6 +181,7 @@
   <ul>
 <li><a class="reference internal" href="#">API Documentation</a><ul>
 <li><a class="reference internal" href="#environmentalmodel-objects"><tt class="docutils literal"><span class="pre">EnvironmentalModel</span></tt> Objects</a></li>
+<li><a class="reference internal" href="#explorermodel-objects"><tt class="docutils literal"><span class="pre">ExplorerModel</span></tt> Objects</a></li>
 </ul>
 </li>
 </ul>
