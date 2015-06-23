@@ -31,9 +31,17 @@ class Pathfinder:
 		self.numCols = environmental_model.numCols
 	
 	def _goalTest(self, Node, endNode):
+		'''
+		Determines the criteria for "reaching" a node. Could potentially be modified to something like
+		return distance < 5
+		'''
 		return Node.state == endNode.state # this should be the same no matter what value we are optimizing on
 	
 	def _costFunction(self, start_state, end_state, optimize_on):
+		'''
+		Given the start and end states, returns the cost of travelling between them.
+		Allows for states which are not adjacent to each other.
+		'''
 		R = self.map.resolution
 		startRow, startCol = start_state
 		endRow, endCol = end_state
@@ -53,6 +61,9 @@ class Pathfinder:
 			return None
 	
 	def _heuristic(self, state, endNode, optimize_on):
+		'''
+		A basic heuristic to speed up the search
+		'''
 		startRow, startCol = state
 		endRow, endCol = endNode.state
 		h_diagonal = min(abs(startRow-endRow), abs(startCol-endCol)) # max number of diagonal steps that can be taken
@@ -93,19 +104,21 @@ class Pathfinder:
 		return [_SearchNode(state, searchNode, searchNode.cost + self._costFunction(searchNode.state, state, optimize_on)) for state in valid_children]
 	
 	def _aStarSearch(self, startNode, endNode, optimize_on):
-		# returns the path (as a list of coordinates), followed by the number of
-		# states expanded, followed by the total cost
+		'''
+		returns the path (as a list of coordinates), followed by the number of
+		states expanded, followed by the total cost
 	
-		# this function will return a list of states between two waypoints
-		# to get the full path between all waypoints, we will basically just use
-		# this function multiple times with each set
-		# as long as the number of waypoints is reasonable we should be fine
+		this function will return a list of states between two waypoints
+		to get the full path between all waypoints, we will basically just use
+		this function multiple times with each set
+		as long as the number of waypoints is reasonable we should be fine
 		
-		# costFunction can have three possible values: 'Energy', 'Time', or 'Distance'
-		# As of right now 'Energy' just refers to metabolic energy. It would be useful
-		# to calculate energy caused by shadowing but that is actually beyond the original
-		# functionalities of SEXTANT. A useful addition once most of the original
-		# capabilities are added
+		costFunction can have three possible values: 'Energy', 'Time', or 'Distance'
+		As of right now 'Energy' just refers to metabolic energy. It would be useful
+		to calculate energy caused by shadowing but that is actually beyond the original
+		functionalities of SEXTANT. A useful addition once most of the original
+		capabilities are added
+		'''
 		if self._goalTest(startNode, endNode):
 			return startNode.getPath()
 		agenda = []
@@ -196,7 +209,7 @@ class Pathfinder:
 				sequence.append(element)
 		return sequence
 	
-	def analyzePath(self, path, factor = 'Energy'):
+	def analysePath(self, path, factor = 'Energy'):
 		#coordPath = self.map.latLongToCoordinates(path)
 		coordPath = path
 		data = [0]

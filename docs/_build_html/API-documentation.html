@@ -58,7 +58,7 @@
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>elevation_map</strong> &#8211; A two-dimensional numpy array representing the elevation at each point.</li>
+<li><strong>elevations</strong> &#8211; A two-dimensional numpy array representing the elevation at each point.</li>
 <li><strong>resolution</strong> (<em>float</em>) &#8211; The resolution of our map</li>
 <li><strong>maximum_slope</strong> (<em>float</em>) &#8211; The maximum traversable slope</li>
 <li><strong>planet</strong> (<em>string</em>) &#8211; Can be set to &#8220;Earth&#8221;, &#8220;Mars&#8221;, or &#8220;Moon&#8221;. Will only be set to &#8220;Earth&#8221; for BASALT</li>
@@ -68,6 +68,47 @@
 </tr>
 </tbody>
 </table>
+</dd></dl>
+
+<dl class="method">
+<dt id="setMaxSlope">
+<tt class="descname">setMaxSlope</tt><big>(</big><em>slope</em><big>)</big><a class="headerlink" href="#setMaxSlope" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sets the maximum traversable slope. All points with a higher slope are marked as impassable obstacles.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>slope</strong> (<em>float</em>) &#8211; The maximum allowed slope</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="setObstacle">
+<tt class="descname">setObstacle</tt><big>(</big><em>coordinates</em><big>)</big><a class="headerlink" href="#setObstacle" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sets an obstacle at the location designated by the coordinates</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>coordinates</strong> &#8211; Can be a UTMCoord, LatLongCoord, or tuple. SEXTANT will assume a tuple represents a row</td>
+</tr>
+</tbody>
+</table>
+<p>and column in the elevations matrix</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="eraseObstacle">
+<tt class="descname">eraseObstacle</tt><big>(</big><em>coordinates</em><big>)</big><a class="headerlink" href="#eraseObstacle" title="Permalink to this definition">¶</a></dt>
+<dd><p>Erases an obstacle at the location designated by the coordinates</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="getElevation">
+<tt class="descname">getElevation</tt><big>(</big><em>coordinates</em><big>)</big><a class="headerlink" href="#getElevation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Retrieve the elevation at the location designated by the coordinates</p>
 </dd></dl>
 
 <dl class="class">
@@ -109,8 +150,9 @@
 </dd></dl>
 
 </div>
-<div class="section" id="explorermodel-objects">
-<h2><a class="reference internal" href="#ExplorerModel" title="ExplorerModel"><tt class="xref py py-class docutils literal"><span class="pre">ExplorerModel</span></tt></a> Objects<a class="headerlink" href="#explorermodel-objects" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="explorermodel">
+<h2><a class="reference internal" href="#ExplorerModel" title="ExplorerModel"><tt class="xref py py-class docutils literal"><span class="pre">ExplorerModel</span></tt></a><a class="headerlink" href="#explorermodel" title="Permalink to this headline">¶</a></h2>
+<p>The classes Rover and Astronaut inherit basic features of the ExplorerModel class</p>
 <dl class="class">
 <dt id="ExplorerModel">
 <em class="property">class </em><tt class="descname">ExplorerModel</tt><big>(</big><em>mass</em>, <em>gravity</em><span class="optional">[</span>, <em>parameters = None</em><span class="optional">]</span><big>)</big><a class="headerlink" href="#ExplorerModel" title="Permalink to this definition">¶</a></dt>
@@ -130,10 +172,41 @@
 </table>
 </dd></dl>
 
+<dl class="method">
+<dt id="distance">
+<tt class="descname">distance</tt><big>(</big><em>path_length</em><big>)</big><a class="headerlink" href="#distance" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the distance given a path length</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="velocity">
+<tt class="descname">velocity</tt><big>(</big><em>slope</em><big>)</big><a class="headerlink" href="#velocity" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the velocity given the slope of the surface.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="time">
+<tt class="descname">time</tt><big>(</big><em>path_length</em>, <em>slope</em><big>)</big><a class="headerlink" href="#time" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the amount of time it takes to cross a path given the path length and slope. Calculated by dividing distance by velocity.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="energyRate">
+<tt class="descname">energyRate</tt><big>(</big><em>slope</em><big>)</big><a class="headerlink" href="#energyRate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the rate of energy expenditure based on the slope of the ground</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="energy">
+<tt class="descname">energy</tt><big>(</big><em>path_length</em>, <em>slope</em><big>)</big><a class="headerlink" href="#energy" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the amount of energy it takes to cross a path given the path length and slope. Calculated by multiplying energyRate by time.</p>
+</dd></dl>
+
 <dl class="class">
 <dt id="Rover">
 <em class="property">class </em><tt class="descname">Rover</tt><big>(</big><em>mass</em>, <em>gravity</em><span class="optional">[</span>, <em>parameters = None</em>, <em>constant_speed = 15</em>, <em>additional_energy = 1500</em><span class="optional">]</span><big>)</big><a class="headerlink" href="#Rover" title="Permalink to this definition">¶</a></dt>
-<dd><p>An instance of ExplorerModel representing a Rover. Contains all instance variables of ExplorerModel as well as:</p>
+<dd><p>An instance of ExplorerModel representing a Rover. Contains all instance variables of ExplorerModel as well as:
+Includes specialized cost functions from Carr 2001.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -151,18 +224,122 @@
 
 <dl class="class">
 <dt id="Astronaut">
-<em class="property">class </em><tt class="descname">Astronaut</tt><big>(</big><em>mass</em>, <em>gravity</em><span class="optional">[</span>, <em>parameters = None</em>, <em>constant_speed = 15</em>, <em>additional_energy = 1500</em><span class="optional">]</span><big>)</big><a class="headerlink" href="#Astronaut" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><tt class="descname">Astronaut</tt><big>(</big><em>mass</em>, <em>gravity</em><span class="optional">[</span>, <em>parameters = None</em><span class="optional">]</span><big>)</big><a class="headerlink" href="#Astronaut" title="Permalink to this definition">¶</a></dt>
 <dd><p>An instance of ExplorerModel representing a lunar Astronaut. Contains all instance variables of ExplorerModel as well as:</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>type</strong> &#8211; Set to &#8216;Astronaut&#8217;</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="activitypoint">
+<h2><a class="reference internal" href="#ActivityPoint" title="ActivityPoint"><tt class="xref py py-class docutils literal"><span class="pre">ActivityPoint</span></tt></a><a class="headerlink" href="#activitypoint" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="ActivityPoint">
+<em class="property">class </em><tt class="descname">ActivityPoint</tt><big>(</big><em>coordinates</em><span class="optional">[</span>, <em>duration = 0</em>, <em>information</em><span class="optional">]</span><big>)</big><a class="headerlink" href="#ActivityPoint" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize an ActivityPoint representing a waypoint.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>speed</strong> (<em>float</em>) &#8211; The constant speed that the rover moves at</li>
-<li><strong>P_e</strong> (<em>float</em>) &#8211; The collection of all additional electronic components on the rover, estimated to be 1500W</li>
-<li><strong>type</strong> &#8211; Set to &#8216;Rover&#8217;</li>
+<li><strong>coordinates</strong> &#8211; A tuple representing the row and column of the waypoint</li>
+<li><strong>duration</strong> (<em>float</em>) &#8211; The amount of time spent at the ActivityPoint</li>
+<li><strong>information</strong> (<em>dict</em>) &#8211; A dictionary containing information that would be written into a JSON file.</li>
 </ul>
 </td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="setCoordinates">
+<tt class="descname">setCoordinates</tt><big>(</big><em>coordinates</em><big>)</big><a class="headerlink" href="#setCoordinates" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sets the coordinates of the ActivityPoint to a new value. Must be a row/column tuple pair.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="setDuration">
+<tt class="descname">setDuration</tt><big>(</big><em>duration</em><big>)</big><a class="headerlink" href="#setDuration" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sets the duration of the activityPoint</p>
+</dd></dl>
+
+</div>
+<div class="section" id="pathfinder">
+<h2><a class="reference internal" href="#PathFinder" title="PathFinder"><tt class="xref py py-class docutils literal"><span class="pre">PathFinder</span></tt></a><a class="headerlink" href="#pathfinder" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="PathFinder">
+<em class="property">class </em><tt class="descname">PathFinder</tt><big>(</big><em>explorer_model</em>, <em>environmental_model</em>, <em>exploration_objectives</em><big>)</big><a class="headerlink" href="#PathFinder" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize a PathFinder Object used to calculate and analyse paths.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>explorer_model</strong> &#8211; An ExplorerModel object representing the explorer</li>
+<li><strong>environmental_model</strong> &#8211; An EnvironmentalModel object representing the map</li>
+<li><strong>exploration_objectives</strong> &#8211; A list of ActivityPoint objects representing, in order, the waypoints</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="completePath">
+<tt class="descname">completePath</tt><big>(</big><em>optimize_on</em><big>)</big><a class="headerlink" href="#completePath" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns a path through all of the ActivityPoint objects in exploration_objectives in order. The path takes the form
+of a long list of row/column tuples.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>optimize_on</strong> &#8211; Determine what factor to optimize on (can be &#8220;Energy&#8221;, &#8220;Time&#8221;, or &#8220;Distance&#8221;)</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="toJSON">
+<tt class="descname">toJSON</tt><big>(</big><em>optimize_on</em><big>)</big><a class="headerlink" href="#toJSON" title="Permalink to this definition">¶</a></dt>
+<dd><p>Same as above, but instead returns a list that is similar to a JSON file in xGDS</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="analysePath">
+<tt class="descname">analysePath</tt><big>(</big><em>path</em><span class="optional">[</span>, <em>factor = &quot;Energy&quot;</em><span class="optional">]</span><big>)</big><a class="headerlink" href="#analysePath" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>path</strong> &#8211; A path like the one returned by completePath</li>
+<li><strong>factor</strong> &#8211; Determines what to analyse. Currently can be set to &#8220;Energy&#8221;, &#8220;Time&#8221;, &#8220;Distance&#8221;,
+&#8220;CumulativeEnergy&#8221;, &#8220;CumulativeTime&#8221;, &#8220;CumulativeDistance&#8221;</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="loadElevationMap">
+<tt class="descname">loadElevationMap</tt><big>(</big><em>file</em><span class="optional">[</span>, <em>maxSlope = 15</em>, <em>planet = &quot;Earth&quot;</em><span class="optional">]</span><big>)</big><a class="headerlink" href="#loadElevationMap" title="Permalink to this definition">¶</a></dt>
+<dd><p>Loads an EnvironmentalModel object from a geoTIFF or text file.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>file</strong> &#8211; A file location of a geoTIFF or a text file representing an elevation map.</td>
 </tr>
 </tbody>
 </table>
@@ -181,7 +358,9 @@
   <ul>
 <li><a class="reference internal" href="#">API Documentation</a><ul>
 <li><a class="reference internal" href="#environmentalmodel-objects"><tt class="docutils literal"><span class="pre">EnvironmentalModel</span></tt> Objects</a></li>
-<li><a class="reference internal" href="#explorermodel-objects"><tt class="docutils literal"><span class="pre">ExplorerModel</span></tt> Objects</a></li>
+<li><a class="reference internal" href="#explorermodel"><tt class="docutils literal"><span class="pre">ExplorerModel</span></tt></a></li>
+<li><a class="reference internal" href="#activitypoint"><tt class="docutils literal"><span class="pre">ActivityPoint</span></tt></a></li>
+<li><a class="reference internal" href="#pathfinder"><tt class="docutils literal"><span class="pre">PathFinder</span></tt></a></li>
 </ul>
 </li>
 </ul>
