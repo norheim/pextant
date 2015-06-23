@@ -24,7 +24,7 @@
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="top" title="SEXTANT 0.0 documentation" href="index.html" />
-    <link rel="prev" title="Welcome to SEXTANT’s documentation!" href="index.html" /> 
+    <link rel="prev" title="SEXTANT 0.0" href="index.html" /> 
   </head>
   <body>
     <div class="related">
@@ -34,7 +34,7 @@
           <a href="genindex.html" title="General Index"
              accesskey="I">index</a></li>
         <li class="right" >
-          <a href="index.html" title="Welcome to SEXTANT’s documentation!"
+          <a href="index.html" title="SEXTANT 0.0"
              accesskey="P">previous</a> |</li>
         <li><a href="index.html">SEXTANT 0.0 documentation</a> &raquo;</li> 
       </ul>
@@ -62,7 +62,45 @@
 <li><strong>resolution</strong> (<em>float</em>) &#8211; The resolution of our map</li>
 <li><strong>maximum_slope</strong> (<em>float</em>) &#8211; The maximum traversable slope</li>
 <li><strong>planet</strong> (<em>string</em>) &#8211; Can be set to &#8220;Earth&#8221;, &#8220;Mars&#8221;, or &#8220;Moon&#8221;. Will only be set to &#8220;Earth&#8221; for BASALT</li>
-<li><strong>NW_UTM</strong> &#8211; A <tt class="xref py py-class docutils literal"><span class="pre">UTMCoord</span></tt> object representing the North-western most corner of the map</li>
+<li><strong>NW_UTM</strong> &#8211; A <a class="reference internal" href="#UTMCoord" title="UTMCoord"><tt class="xref py py-class docutils literal"><span class="pre">UTMCoord</span></tt></a> object representing the North-western most corner of the map</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="UTMCoord">
+<em class="property">class </em><tt class="descname">UTMCoord</tt><big>(</big><em>easting</em>, <em>northing</em>, <em>zone_number</em>, <em>zone_letter</em><big>)</big><a class="headerlink" href="#UTMCoord" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initializes an object representing UTM coordinates of a point</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>easting</strong> (<em>float</em>) &#8211; Easting value of the coordinate</li>
+<li><strong>northing</strong> (<em>float</em>) &#8211; Northing value of the coordinate</li>
+<li><strong>zone</strong> (<em>int</em>) &#8211; The zone number of the coordinate</li>
+<li><strong>zone_letter</strong> &#8211; The zone letter of the coordinate (future versions may accept &#8220;North&#8221; or &#8220;South&#8221; as well)</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="LatLongCoord">
+<em class="property">class </em><tt class="descname">LatLongCoord</tt><big>(</big><em>lat</em>, <em>long</em><big>)</big><a class="headerlink" href="#LatLongCoord" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initializes an object representing a point by latitude and longitude</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>latitude</strong> (<em>float</em>) &#8211; Latitude value (values north of the equator are positive, values south are negative)</li>
+<li><strong>longitude</strong> (<em>float</em>) &#8211; Longitude value (values east of the prime meridian are positive, values west are negative)</li>
 </ul>
 </td>
 </tr>
@@ -89,7 +127,7 @@
 
   <h4>Previous topic</h4>
   <p class="topless"><a href="index.html"
-                        title="previous chapter">Welcome to SEXTANT&#8217;s documentation!</a></p>
+                        title="previous chapter">SEXTANT 0.0</a></p>
   <h3>This Page</h3>
   <ul class="this-page-menu">
     <li><a href="_sources/API-documentation.txt"
@@ -119,7 +157,7 @@
           <a href="genindex.html" title="General Index"
              >index</a></li>
         <li class="right" >
-          <a href="index.html" title="Welcome to SEXTANT’s documentation!"
+          <a href="index.html" title="SEXTANT 0.0"
              >previous</a> |</li>
         <li><a href="index.html">SEXTANT 0.0 documentation</a> &raquo;</li> 
       </ul>

@@ -14,3 +14,19 @@ API Documentation
 	:param float maximum_slope: The maximum traversable slope
 	:param string planet: Can be set to "Earth", "Mars", or "Moon". Will only be set to "Earth" for BASALT
 	:param NW_UTM: A :py:class:`UTMCoord` object representing the North-western most corner of the map
+	
+.. py:class:: UTMCoord(easting, northing, zone_number, zone_letter)
+
+	Initializes an object representing UTM coordinates of a point
+
+	:param float easting: Easting value of the coordinate
+	:param float northing: Northing value of the coordinate
+	:param int zone: The zone number of the coordinate
+	:param zone_letter: The zone letter of the coordinate (future versions may accept "North" or "South" as well)
+	
+.. py:class:: LatLongCoord(lat, long)
+
+	Initializes an object representing a point by latitude and longitude
+
+	:param float latitude: Latitude value (values north of the equator are positive, values south are negative)
+	:param float longitude: Longitude value (values east of the prime meridian are positive, values west are negative)
