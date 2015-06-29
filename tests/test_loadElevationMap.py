@@ -1,4 +1,4 @@
-from sextant.api import *
+from sextant import *
 
 import numpy as np
 import math

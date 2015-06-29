@@ -235,8 +235,19 @@ class EnvironmentalModel:
 				left = self.convertToUTM(NWCorner.easting)
 				right = self.convertToUTM(SECorner.easting)
 				
+				if bot > top or left > right:
+					print "ERROR with NWCorner and SECorner"
+					print "NWCorner: " + str(NWCorner) + " SWCorner: " + str(SECorner)
+					return 0
+				
 				if left < NWeasting:
-					left = NWeasting				
+					left = NWeasting
+				if right > NWeasting + datasetInfo[1] * (dataset.RasterXSize - 1):
+					right = NWeasting + datasetInfo[1] * (dataset.RasterXSize - 1)
+				if top > NWnorthing:
+					top = NWnorthing
+				if bot < NWnorthing + datasetInfo[5] * (dataset.RasterYSize - 1):
+					bot = NWnorthing + datasetInfo[5] * (dataset.RasterYSize - 1)
 				
 				x_offset = int((left - NWeasting)/resolution)
 				x_size = int((right - NWeasting)/resolution) + 1 - x_offset
