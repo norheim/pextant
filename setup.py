@@ -9,7 +9,7 @@ setup(
     url='http://pypi.python.org/pypi/Pextant/',
     license='The MIT License: http://www.opensource.org/licenses/mit-license.php',
     description='Python version of SEXTANT pathfinding tool',
-    long_description=open('README.md').read(),
+    long_description=open('README.txt').read(),
     install_requires=[
         'numpy >= 1.9',
 		'utm >= 0.4'
