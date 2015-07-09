@@ -1,6 +1,6 @@
 import numpy as np
 import math
-import utm
+import transform
 from osgeo import gdal, osr
 
 class UTMCoord(object):
@@ -15,7 +15,7 @@ class UTMCoord(object):
 									 # 'Q' is the zone letter of Hawaii
 									 
 	def __str__(self):
-		return "UTM Coordinate", self.easting, "E,",self.northing,"N, zone", self.zone, self.zoneLetter
+		return "UTM Coordinate "+str(self.easting)+"E,"+str(self.northing)+"N, zone"+str(self.zone)+self.zoneLetter+'\n'
 
 class LatLongCoord(object):
 	'''
@@ -26,7 +26,7 @@ class LatLongCoord(object):
 		self.longitude = long
 	
 	def __str__(self):
-		return "LatLongCoord", self.latitude, ',', self.longitude
+		return "LatLong Coordinate "+str(self.latitude)+','+str(self.longitude)+'\n'
 	
 class EnvironmentalModel(object):
 	'''
@@ -53,17 +53,24 @@ class EnvironmentalModel(object):
 		self.numCols = int(np.shape(elevation_map)[1]) # casted to int; doesn't make much sense to have them as longs
 		self.planet = planet
 		self.NW_UTM = self.convertToUTM(NW_Coord) # a UTMCoord object, default set to Boston
+		self.special_obstacles = set() # a list of coordinates of obstacles are not identified by the slope
 
 	def setMaxSlope(self, maxSlope):
 		self.obstacles = self.slopes <= maxSlope
+		for obstacle in self.special_obstacles:
+			self.setObstacle(obstacle) # "special obstacles" still should not be traversable
 	
 	def setObstacle(self, coordinates):
 		row, col = self.convertToRowCol(coordinates) # of the form (row, column)
 		self.obstacles[row][col] = False
+		if coordinates not in self.special_obstacles:
+			self.special_obstacles.add(coordinates)
 	
 	def eraseObstacle(self, coordinates):
 		row, col = self.convertToRowCol(coordinates)
 		self.obstacles[row][col] = True
+		if coordinates in self.special_obstacles:
+			self.special_obstacles.remove(coordinates)
 	
 	def getElevation(self, coordinates):
 		row, col = self.convertToRowCol(coordinates)
@@ -97,8 +104,8 @@ class EnvironmentalModel(object):
 		Eventually for completeness sake this should probably be changed
 		'''
 		if UTM.zone == self.NW_UTM.zone:
-			row = round((self.NW_UTM.y - UTM.y)/self.resolution)
-			col = round((UTM.x - self.NW_UTM.x)/self.resolution)
+			row = round((self.NW_UTM.northing - UTM.northing)/self.resolution)
+			col = round((UTM.easting - self.NW_UTM.easting)/self.resolution)
 			return row, col
 		else:
 			print "WARNING: map is in UTM zone " + repr(self.NW_UTM.zone)
@@ -125,7 +132,7 @@ class EnvironmentalModel(object):
 		if type(position) is UTMCoord:
 			return self._UTMtoRowCol(position)
 		elif type(position) is LatLongCoord:
-			easting, northing, zoneNumber, zoneLetter = utm.from_latlon(position.latitude, position.longitude)
+			easting, northing, zoneNumber, zoneLetter = transform.latLongToUTM(position)
 			return self._UTMtoRowCol(UTMCoord(easting, northing, zoneNumber, zoneLetter))
 		elif type(position) is tuple:
 			return position
@@ -139,15 +146,13 @@ class EnvironmentalModel(object):
 		Converts a row/column or UTM coordinate into a LatLongCoord
 		'''
 		if type(position) is UTMCoord:
-			easting, northing, zoneNumber, zoneLetter = position.easting, position.northing, position.zone, position.zoneLetter
-			lat, long = utm.to_latlon(easting, northing, zoneNumber, zoneLetter)
+			lat, long = transform.UTMToLatLong(position)
 			return LatLongCoord(lat, long)
 		elif type(position) is LatLongCoord:
 			return position
 		elif type(position) is tuple:
 			UTM = self._rowColToUTM(position)
-			easting, northing, zoneNumber, zoneLetter = UTM.easting, UTM.northing, UTM.zone, UTM.zoneLetter
-			lat, long = utm.to_latlon(easting, northing, zoneNumber, zoneLetter)
+			lat, long = transform.UTMToLatLong(UTM)
 			return LatLongCoord(lat, long)
 		else:
 			print "ERROR: only accepts UTMCoord, LatLongCoord, and tuple objects"
@@ -161,8 +166,8 @@ class EnvironmentalModel(object):
 		if type(position) is UTMCoord:
 			return position
 		elif type(position) is LatLongCoord:
-			easting, northing, zoneNumber, zoneLetter = utm.fromLatLong(position.latitude, position.longitude)
-			return UTMCoord(easting, northing, zoneNumber, zoneHemisphere)
+			easting, northing, zoneNumber, zoneLetter = transform.latLongToUTM(position)
+			return UTMCoord(easting, northing, zoneNumber, zoneLetter)
 		elif type(position) is tuple:
 			return self._rowColToUTM(position)
 		else:
