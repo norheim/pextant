@@ -1,1 +1,4 @@
 v0.1.0, July 6, 2015 -- Initial Release
+
+v0.1.1, July 9, 2015 -- Fixed several bugs in EnvironmentalModel
+Now uses Pyproj instead of utm - this results in sub milimeter precision in conversions

@@ -59,23 +59,36 @@ class TestEnvironmentalModelMethods(unittest.TestCase):
 		LL1 = self.EM.convertToLatLong(UTMCo)
 		UTMCo2 = self.EM.convertToUTM(LL1)
 		
-		print UTMCo
-		print LL1
-		print UTMCo2
-		
 		self.assertEqual(UTMCo.zone, UTMCo2.zone)
 		self.assertEqual(UTMCo.zoneLetter, UTMCo2.zoneLetter)
 		self.assertAlmostEqual(UTMCo.easting, UTMCo2.easting, 3)
 		self.assertAlmostEqual(UTMCo.northing, UTMCo2.northing, 3) # This guarantees millimeter precision
 
 class TestLatLong(unittest.TestCase):
-	pass
+	def setUp(self):
+		self.coord = LatLongCoord(45, 30)
+		
+	def testInit(self):
+		self.assertEqual(self.coord.latitude, 45)
+		self.assertEqual(self.coord.longitude, 30)
 
 
 class TestUTMCoord(unittest.TestCase):
-	pass
+	def setUp(self):
+		self.coord = UTMCoord(332107.99, 4692261.58, 19, 'T')
+	
+	def testInit(self):
+		self.assertEqual(self.coord.easting, 332107.99)
+		self.assertEqual(self.coord.northing, 4692261.58)
+		self.assertEqual(self.coord.zone, 19)
+		self.assertEqual(self.coord.zoneLetter, 'T')
 
 
 if __name__ == "__main__":
-	suite = unittest.TestLoader().loadTestsFromTestCase(TestEnvironmentalModelMethods)
+	suite1 = unittest.TestLoader().loadTestsFromTestCase(TestEnvironmentalModelMethods)
+	suite2 = unittest.TestLoader().loadTestsFromTestCase(TestLatLong)
+	suite3 = unittest.TestLoader().loadTestsFromTestCase(TestUTMCoord)
+
+	suite = unittest.TestSuite([suite1, suite2, suite3])
+	
 	unittest.TextTestRunner(verbosity=2).run(suite)

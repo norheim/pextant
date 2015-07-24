@@ -2,9 +2,9 @@ from distutils.core import setup
 
 setup(
 	name='Pextant',
-    version='0.1.0',
+    version='0.1.1',
     author='Kevin Lu',
-    author_email='jrh@example.com',
+    author_email='kezilu@mit.edu',
     packages=['pextant'],
     url='http://pypi.python.org/pypi/Pextant/',
     license='The MIT License: http://www.opensource.org/licenses/mit-license.php',
@@ -12,6 +12,7 @@ setup(
     long_description=open('README.txt').read(),
     install_requires=[
         'numpy >= 1.9',
-		'utm >= 0.4'
+		'osgeo >= 2.0.0',
+		'pyproj >= 1.9'
     ],
 )

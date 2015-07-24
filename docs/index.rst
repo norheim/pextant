@@ -4,10 +4,12 @@
    contain the root `toctree` directive.
 
 ===================================
-SEXTANT |release|
+PEXTANT |release|
 ===================================
 
-SEXTANT is a tool for path planning and analysis. It is a portion of the MINERVA suite for the BASALT project.
+PEXTANT, short for python-SEXTANT, is a tool for path planning and analysis.
+It is intended to be integrated with the MINERVA suite for the BASALT project
+and is based off of SEXTANT from MIT's Man Vehicle Laboratory.
 
 Contents:
 
@@ -20,6 +22,7 @@ Contents:
 Important links
 ===============
 
+* Pypi page: http://pypi.python.org/pypi/Pextant
 * Documentation: http://sextant.rtfd.org/
 * Repository: https://github.com/kezilu/sextant
 * Issues: https://github.com/kezilu/sextant/issues
