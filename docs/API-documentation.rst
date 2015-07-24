@@ -7,7 +7,7 @@ API Documentation
 
 An EnvironmentalModel essentially contains an elevation map and information about which 
 
-.. py:class:: EnvironmentalModel(elevation_map, resolution, maximum_slope, [planet="Earth", [NW_UTM]])
+.. py:class:: EnvironmentalModel(elevation_map, resolution, maximum_slope, planet="Earth", NW_UTM)
 
 	Initialize an EnvironmentalModel object with an elevation map and obstacle information.
 
@@ -69,7 +69,7 @@ An EnvironmentalModel essentially contains an elevation map and information abou
 
 	Converts any type of coordinates (UTMCoord, LatLongCoord, tuple) into a LatLongCoord object
 
-.. py:method:: loadElevationMap(file, [maxSlope = 15, planet = "Earth"])
+.. py:method:: loadElevationMap(file, maxSlope = 15, planet = "Earth")
 
 	Returns an EnvironmentalModel object given a geoTIFF or text file. Currently only reliably works with NAD83
 	and files using UTM rather than lat/long. 
@@ -109,7 +109,7 @@ A few assumptions are made:
 * The velocity and metabolic rate of an explorer is solely a function of slope
 * The explorer will not become "tired" as time goes on
 
-.. py:class:: ExplorerModel(mass, gravity, [parameters = None])
+.. py:class:: ExplorerModel(mass, gravity, parameters = None)
 
 	Initialize an object representing an explorer. Note that energy and time cost functions are missing
 
@@ -148,7 +148,7 @@ A few assumptions are made:
 
 	Includes specialized metabolic cost functions from Carr 2001.
 
-.. py:class:: Astronaut(mass, gravity, [parameters = None])
+.. py:class:: Astronaut(mass, gravity, parameters = None)
 
 	An instance of ExplorerModel representing a lunar Astronaut. Contains all instance variables of ExplorerModel as well as:
 
@@ -157,7 +157,7 @@ A few assumptions are made:
 	Includes metabolic cost functions from Santee 2001, as well as a velocity function from Marquez 2007 (based on
 	data from Waligoria and Horrigan 1975).
 	
-.. py:class:: BASALTExplorer(mass, gravity, [parameters = None])
+.. py:class:: BASALTExplorer(mass, gravity, parameters = None)
 	
 	An instance of ExplorerModel representing a BASALT scientist. Currently empty; will be completed after an analysis
 		of data from the August COTM missing, in order to derive a velocity function.
@@ -169,7 +169,7 @@ The ActivityPoint object represents points of interest for the explorer, likely 
 for observation or data collection. It's possible that future versions of Pextant may
 have extensions of ActivityPoint.
 
-.. py:class:: ActivityPoint(coordinates, [duration = 0, information])
+.. py:class:: ActivityPoint(coordinates, duration = 0, information = {})
 
 	Initialize an ActivityPoint representing a waypoint.
 
@@ -208,7 +208,7 @@ have extensions of ActivityPoint.
 	Same as above, but instead returns a list in a JSON-style format. I tried to mimic the style of the JSON
 	files that were used in xGDS.
 	
-.. py:method:: analysePath(path, [factor = "Energy"])
+.. py:method:: analysePath(path, factor = "Energy")
 
 	Provides a lot of information about a particular path, depending on what factor is set to.
 
