@@ -7,3 +7,5 @@ import math
 import json
 from osgeo import gdal, osr
 
+class TestLoadElevationMap(unittest.TestCase):
+	pass

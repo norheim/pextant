@@ -11,3 +11,4 @@ pextant\ExplorationObjective.py
 pextant\ExplorerModel.py
 pextant\__init__.py
 pextant\api.py
+pextant\transform.py
