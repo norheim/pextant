@@ -24,6 +24,6 @@ Important links
 
 * Pypi page: http://pypi.python.org/pypi/Pextant
 * Documentation: http://sextant.rtfd.org/
-* Repository: https://github.com/kezilu/sextant
-* Issues: https://github.com/kezilu/sextant/issues
+* Repository: https://github.com/kezilu/pextant
+* Issues: https://github.com/kezilu/pextant/issues
 * BASALT website: http://spacescience.arc.nasa.gov/basalt/
