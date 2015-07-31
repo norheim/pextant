@@ -196,21 +196,40 @@ have extensions of ActivityPoint.
 	:param environmental_model: An EnvironmentalModel object representing the map
 	:param exploration_objectives: A list of ActivityPoint objects representing, in order, the waypoints
 	
+.. py:method:: aStarSearch(start, end, optimize_on)
+	
+	Returns a path through the start node and the end node using the A* search algorithm.
+	
+	:param start: An ActivityPoint object, and the starting point of the search.
+	:param end: Also an ActivityPoint object
+	:param optimize_on: A string denoting what factor to optimize on, such as "Energy" or "Time"
+	
+.. py:method:: fieldDStarSearch(start, end, optimize_on, numTestPoints = 10)
+
+	Returns a path through the start node and the end node using the Field D* algorithm.
+	Longer processing time than A*, but allows for more than the 8 cardinal directions, resulting in
+	more "fluid" paths.
+
+	:param start: An ActivityPoint object, and the starting point of the search.
+	:param end: Also an ActivityPoint object
+	:param optimize_on: A string denoting what factor to optimize on, such as "Energy" or "Time"
+	:param int numTestPoints: A number used in the costFunction calculations. Higher values will involve more accuracy but increased time.
+	
 .. py:method:: completePath(optimize_on)
 	
 	Returns a path through all of the ActivityPoint objects in exploration_objectives in order. The path takes the form
-	of a long list of row/column tuples.
+	of a long list of row/column tuples. Currently runs with the A* search algorithm.
 	
 	:param optimize_on: Determine what factor to optimize on (can be "Energy", "Time", or "Distance")
 	
 .. py:method:: toJSON(optimize_on)
 
 	Same as above, but instead returns a list in a JSON-style format. I tried to mimic the style of the JSON
-	files that were used in xGDS.
+	files that were used in xGDS. No longer exists in version 1.2.0
 	
 .. py:method:: analysePath(path, factor = "Energy")
 
-	Provides a lot of information about a particular path, depending on what factor is set to.
+	Provides a information about a particular path, depending on what factor is set to.
 
 	:param path: A path like the one returned by completePath
 	:param factor: Determines what to analyse. Currently can be set to "Energy", "Time", "Distance",
