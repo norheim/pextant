@@ -5,11 +5,10 @@ class Explorer:
 	This class is a model for an arbitrary explorer model. It is very easily
 	extensible (in fact, this is what we do for the astronaut and rover)
 	'''
-	def __init__(self, mass, gravity, parameters = None): # we initialize with mass and gravity
+	def __init__(self, mass, uuid, parameters = None): # we initialize with mass only
+		# There used to be a gravity parameter, but it makes more sense to put it into EnvironmentalModel
 		self.mass = mass
-		self.gravity = gravity # for basically any kind of (reasonable) explorer,
-							   # mass and gravity stay constant and it makes sense
-							   # to save them here
+		self.UUID = uuid # A type of ID system for every explorer
 		self.parameters = parameters # parameters object, used for shadowing
 	
 	def distance(self, path_length):
@@ -20,18 +19,20 @@ class Explorer:
 			 # a function of slope
 	
 	def time(self, path_length, slope):
-		return self.distance(path_length)/self.velocity(slope)
+		if self.velocity(slope) != 0:
+			return self.distance(path_length)/self.velocity(slope)
+		else:
+			return float('inf') # Infinite time if zero velocity
 		
-	def energyRate(self, path_length, slope):
+	def energyRate(self, path_length, slope, g):
 		pass # this depends on velocity, time
 	
-	def energyCost(self, path_length, slope):
-		return self.energyRate(path_length, slope)*self.time(path_length, slope)
-
+	def energyCost(self, path_length, slope, g):
+		return self.energyRate(path_length, slope, g)*self.time(path_length, slope)
 
 class Astronaut(Explorer): #Astronaut extends Explorer
-	def __init__(self, mass, gravity = 9.81, parameters = None):
-		Explorer.__init__(self, mass, gravity, parameters)
+	def __init__(self, mass, parameters = None):
+		Explorer.__init__(self, mass, parameters)
 		self.type = 'Astronaut'
 		
 	def velocity(self, slope): #slope is in degrees
@@ -52,16 +53,17 @@ class Astronaut(Explorer): #Astronaut extends Explorer
 		elif slope > -10:
 			return 0.06 * slope + 1.6
 		else:
-			return 0.095 * alope + 1.95
+			return 0.095 * slope + 1.95
 			
-	def energyRate(self, path_length, slope):
+	def energyRate(self, path_length, slope, g):
 		'''
 		Metabolic Rate Equations for a Suited Astronaut
 		From Santee, 2001
 		Literature review may be helpful?
+		
+		g is gravity
 		'''
 		m = self.mass
-		g = self.gravity
 		v = self.velocity(slope)
 		w_level = (3.28 * m + 71.1) * (0.661 * v * math.cos(math.radians(slope)) + 0.115)
 		if slope == 0:
@@ -73,8 +75,8 @@ class Astronaut(Explorer): #Astronaut extends Explorer
 		return w_level + w_slope
 		
 class Rover(Explorer): #Rover also extends explorer
-	def __init__(self, mass, gravity = 9.81, parameters = None, constant_speed = 15, additional_energy = 1500):
-		Explorer.__init__(mass, gravity, parameters)
+	def __init__(self, mass, parameters = None, constant_speed = 15, additional_energy = 1500):
+		Explorer.__init__(self, mass, parameters)
 		self.speed = constant_speed
 		self.P_e = additional_energy # The collection of all additional electronic components on the rover
 									 # Modelled as a constant, estimated to be 1500 W
@@ -85,14 +87,13 @@ class Rover(Explorer): #Rover also extends explorer
 	def velocity(self, slope = 0):
 		return self.speed #we assume constant velocity for the rover
 		
-	def energyRate(self, path_length, slope):
+	def energyRate(self, path_length, slope, g):
 		'''
 		Equations from Carr, 2001
 		Equations developed from historical data
 		Are all normalized to lunar gravity
 		'''
 		m = self.mass
-		g = self.gravity
 		v = self.velocity(slope)
 		P_e = self.P_e
 		w_level = 0.216 * m * v
@@ -103,12 +104,43 @@ class Rover(Explorer): #Rover also extends explorer
 		elif slope < 0:
 			w_slope = -0.007884 * m * slope * (g / 1.62) * v
 		return w_level + w_slope + P_e
+
+class BASALTExplorer(Explorer):
+	'''
+	Represents an explorer in the BASALT fields. Needs some data for the velocity function.
+	energyRate should be the same as the Astronaut.
+	'''
+	def __init__(self, mass, parameters = None):
+		Explorer.__init__(self, mass, parameters)
+		self.type = 'BASALTExplorer'
+	
+	def velocity(self, slope = 0):
+		# Hopefully we can get this data after the first deployment
+		pass
+		
+	def energyRate(self, path_length, slope, g):
+		'''
+		Metabolic Rate Equations for a Suited Astronaut
+		From Santee, 2001
+		Literature review may be helpful?
+		'''
+		m = self.mass
+		v = self.velocity(slope)
+		w_level = (3.28 * m + 71.1) * (0.661 * v * math.cos(math.radians(slope)) + 0.115)
+		if slope == 0:
+			w_slope = 0
+		elif slope > 0:
+			w_slope = 3.5 * m * g * v * math.sin(math.radians(slope)) # math.sin and math.cos are meant for radian measures!
+		else:
+			w_slope = 2.4 * m * g * v * math.sin(math.radians(slope)) * (0.3 ** (abs(slope) / 7.65))
+		return w_level + w_slope
+
 		
 class explorerParameters:
 	'''
-	So I'm not sure if this is the best way to do things, but
-	this class is basically purely for containing all of the
-	parameters of a certain explorer, which is used in shadowing
+	NOTE: This will not be used at all for BASALT/MINERVA. It is
+	information that will be important for shadowing, which is likely
+	beyond the scope of the project.
 	
 	This may eventually become incorporated into a different type of
 	energy cost function, especially for the rover. Currently the optimization
