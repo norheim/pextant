@@ -48,13 +48,16 @@ class EnvironmentalModel(object):
 		self.slopes = np.degrees(np.arctan(np.sqrt(np.add(np.square(gx),np.square(gy))))) # I think this syntax is correct
 																						  # we want atan(sqrt(gx^2+gy^2)) in degrees
 		self.obstacles = self.slopes <= maxSlope # obstacles is basically an "isPassable" function
-		
-		self.numRows = int(np.shape(elevation_map)[0])
-		self.numCols = int(np.shape(elevation_map)[1]) # casted to int; doesn't make much sense to have them as longs
 		self.planet = planet
 		self.NW_UTM = self.convertToUTM(NW_Coord) # a UTMCoord object, default set to Boston
 		self.special_obstacles = set() # a list of coordinates of obstacles are not identified by the slope
 
+	def getGravity(self):
+		if self.planet == 'Earth':
+			return 9.81
+		elif self.planet == 'Moon':
+			return 1.622
+		
 	def setMaxSlope(self, maxSlope):
 		self.obstacles = self.slopes <= maxSlope
 		for obstacle in self.special_obstacles:
@@ -80,12 +83,12 @@ class EnvironmentalModel(object):
 		row, col = self.convertToRowCol(coordinates)
 		return self.slopes[row][col]
 	
-	def _inBounds(self, state):
+	def _inBounds(self, coordinates):
 		# determines if a state is within the boundaries of the environmental model
 		# a state is a tuple of the form (row, column)
-		row = state[0]
-		col = state[1]
-		return (row in range(self.numRows)) and (col in range(self.numCols))
+		row = coordinates[0]
+		col = coordinates[1]
+		return (row in range(int(np.shape(self.elevations)[0]))) and (col in range(int(np.shape(self.elevations)[1])))
 	
 	def isPassable(self, coordinates):
 		# determines if coordinates can be passed through
@@ -209,14 +212,14 @@ class EnvironmentalModel(object):
 			# NOTE: Currently, SEXTANT only supports geoTIFF files that use the UTM projection and have "north up"
 			gdal.UseExceptions()
 			
-			# I don't actually understand how this code works I'm just copying people on stackexchange
+			# copied from stackexchange
 			dataset = gdal.Open(file)
 			band = dataset.GetRasterBand(1)
 			proj = dataset.GetProjection()
 			
 			srs = osr.SpatialReference(wkt=proj)
 			projcs = srs.GetAttrValue('projcs') # This will be a string that looks something like
-												# "NAD83 / UTM zone 5N"
+												# "NAD83 / UTM zone 5N"...hopefully
 			
 			if projcs: # projcs is not None for the government Hawaii data
 				zone = projcs.split(' ')[-1][0:-1]
