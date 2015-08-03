@@ -109,12 +109,11 @@ A few assumptions are made:
 * The velocity and metabolic rate of an explorer is solely a function of slope
 * The explorer will not become "tired" as time goes on
 
-.. py:class:: ExplorerModel(mass, gravity, parameters = None)
+.. py:class:: ExplorerModel(mass, parameters = None)
 
 	Initialize an object representing an explorer. Note that energy and time cost functions are missing
 
 	:param float mass: The mass of the explorer
-	:param float gravity: The gravity of the planet
 	:param parameters: A parameters object which can be used to calculate shadowing. As the current
 		version of Pextant does not support shadowing this currently has no purpose.
 	
@@ -130,15 +129,15 @@ A few assumptions are made:
 
 	Returns the amount of time it takes to cross a path given the path length and slope. Calculated by dividing distance by velocity.
 
-.. py:method:: energyRate(slope)
+.. py:method:: energyRate(slope, gravity)
 
 	Returns the rate of energy expenditure based on the slope of the ground
 
-.. py:method:: energy(path_length, slope)
+.. py:method:: energy(path_length, slope, gravity)
 
 	Returns the amount of energy it takes to cross a path given the path length and slope. Calculated by multiplying energyRate by time.
 	
-.. py:class:: Rover(mass, gravity, [parameters = None, constant_speed = 15, additional_energy = 1500])
+.. py:class:: Rover(mass, [parameters = None, constant_speed = 15, additional_energy = 1500])
 
 	An instance of ExplorerModel representing a Rover. Contains all instance variables of ExplorerModel as well as:
 	
@@ -148,7 +147,7 @@ A few assumptions are made:
 
 	Includes specialized metabolic cost functions from Carr 2001.
 
-.. py:class:: Astronaut(mass, gravity, parameters = None)
+.. py:class:: Astronaut(mass, parameters = None)
 
 	An instance of ExplorerModel representing a lunar Astronaut. Contains all instance variables of ExplorerModel as well as:
 
@@ -157,7 +156,7 @@ A few assumptions are made:
 	Includes metabolic cost functions from Santee 2001, as well as a velocity function from Marquez 2007 (based on
 	data from Waligoria and Horrigan 1975).
 	
-.. py:class:: BASALTExplorer(mass, gravity, parameters = None)
+.. py:class:: BASALTExplorer(mass, parameters = None)
 	
 	An instance of ExplorerModel representing a BASALT scientist. Currently empty; will be completed after an analysis
 		of data from the August COTM missing, in order to derive a velocity function.
@@ -169,13 +168,12 @@ The ActivityPoint object represents points of interest for the explorer, likely 
 for observation or data collection. It's possible that future versions of Pextant may
 have extensions of ActivityPoint.
 
-.. py:class:: ActivityPoint(coordinates, duration = 0, information = {})
+.. py:class:: ActivityPoint(coordinates, duration = 0)
 
 	Initialize an ActivityPoint representing a waypoint.
 
 	:param coordinates: A tuple representing the location of the waypoint
 	:param float duration: The amount of time spent at the ActivityPoint, in seconds.
-	:param dict information: A dictionary containing information that would be written into a JSON file.
 
 .. py:method:: setCoordinates(coordinates)
 
@@ -188,13 +186,12 @@ have extensions of ActivityPoint.
 :class:`PathFinder`
 ------------------------------------
 
-.. py:class:: PathFinder(explorer_model, environmental_model, exploration_objectives)
+.. py:class:: PathFinder(explorer_model, environmental_model)
 
 	Initialize a PathFinder Object used to calculate and analyse paths.
 	
 	:param explorer_model: An ExplorerModel object representing the explorer
 	:param environmental_model: An EnvironmentalModel object representing the map
-	:param exploration_objectives: A list of ActivityPoint objects representing, in order, the waypoints
 	
 .. py:method:: aStarSearch(start, end, optimize_on)
 	
@@ -215,23 +212,12 @@ have extensions of ActivityPoint.
 	:param optimize_on: A string denoting what factor to optimize on, such as "Energy" or "Time"
 	:param int numTestPoints: A number used in the costFunction calculations. Higher values will involve more accuracy but increased time.
 	
-.. py:method:: completePath(optimize_on)
+.. py:method:: completePath(optimize_on, activityPoints, returnType = "JSON", fileName = None)
 	
 	Returns a path through all of the ActivityPoint objects in exploration_objectives in order. The path takes the form
 	of a long list of row/column tuples. Currently runs with the A* search algorithm.
 	
 	:param optimize_on: Determine what factor to optimize on (can be "Energy", "Time", or "Distance")
-	
-.. py:method:: toJSON(optimize_on)
-
-	Same as above, but instead returns a list in a JSON-style format. I tried to mimic the style of the JSON
-	files that were used in xGDS. No longer exists in version 1.2.0
-	
-.. py:method:: analysePath(path, factor = "Energy")
-
-	Provides a information about a particular path, depending on what factor is set to.
-
-	:param path: A path like the one returned by completePath
-	:param factor: Determines what to analyse. Currently can be set to "Energy", "Time", "Distance",
-					"CumulativeEnergy", "CumulativeTime", "CumulativeDistance"
-					
+	:param activityPoitns: A list of activityPoint objects representing the places to visit, in order
+	:param returnType: A string representing the format of the path to be returned. Options are 'tuple', 'JSON', and 'csv'
+	:param fileName: The optional name of the file to be written to
