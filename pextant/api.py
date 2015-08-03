@@ -34,12 +34,15 @@ class Pathfinder:
 		'''
 		return Node.state == endNode.state # this should be the same no matter what value we are optimizing on
 	
-	def _aStarCostFunction(self, start_state, end_state, optimize_on):
+	def _aStarCostFunction(self, start_state, end_state, optimize_vector):
 		'''
 		Given the start and end states, returns the cost of travelling between them.
 		Allows for states which are not adjacent to each other.
 		
 		Note that this uses start and end coordinates rather than nodes.
+		
+		optimize_vector is a list or tuple of length 3, representing the weights of
+		Distance, Time, and Energy
 		'''
 		R = self.map.resolution
 		startRow, startCol = start_state
@@ -49,15 +52,11 @@ class Pathfinder:
 		path_length = R * math.sqrt((startRow-endRow)**2 + (startCol-endCol)**2)
 		slope = math.degrees(math.atan((startElev - endElev) / path_length))
 		
-		if optimize_on == 'Distance':
-			return self.explorer.distance(path_length)
-		elif optimize_on == 'Time':
-			return self.explorer.time(path_length, slope)
-		elif optimize_on == 'Energy':
-			return self.explorer.energyCost(path_length, slope, self.map.getGravity())
-		else:
-			print "ERROR with optimize_on. Current value is " + optimize_on
-			return None
+		distWeight = self.explorer.distance(path_length)*optimize_vector[0]
+		timeWeight = self.explorer.time(path_length, slope)*optimize_vector[1]
+		energyWeight = self.explorer.energyCost(path_length, slope, self.map.getGravity())*optimize_vector[2]
+		
+		return distWeight + timeWeight + energyWeight
 	
 	def _heuristic(self, currentNode, endNode, optimize_on, search_algorithm):
 		'''
@@ -183,29 +182,6 @@ class Pathfinder:
 						writer.writerow(row)
 			return sequence
 		
-	def analysePath(self, path, factor = 'Energy'):
-		
-		coordPath = path
-		data = [0]
-		
-		for i in range(len(coordPath)-1):
-			pair = (coordPath[i], coordPath[i+1])
-			if pair[0] != pair[1]:
-				if factor == 'Energy':
-					data.append(self._aStarCostFunction(coordPath[i], coordPath[i+1], 'Energy'))
-				elif factor == 'Time':
-					data.append(self._aStarCostFunction(coordPath[i], coordPath[i+1], 'Time'))
-				elif factor == 'Distance':
-					data.append(self._aStarCostFunction(coordPath[i], coordPath[i+1], 'Distance'))
-				elif factor == 'CumulativeEnergy':
-					data.append(self._aStarCostFunction(coordPath[i], coordPath[i+1], 'Energy') + data[-1])
-				elif factor == 'CumulativeTime':
-					data.append(self._aStarCostFunction(coordPath[i], coordPath[i+1], 'Time') + data[-1])
-				elif factor == 'CumulativeDistance':
-					data.append(self._aStarCostFunction(coordPath[i], coordPath[i+1], 'Distance') + data[-1])
-				else:
-					print "Error: unknown factor " +repr(factor) + " in analyzePath"
-		return data
 #########################################################################################
 # Above is A*; below is field D* (see Ferguson and Stentz 2005)							#
 #########################################################################################
@@ -399,9 +375,9 @@ class Pathfinder:
 				pass
 			else: # Otherwise we need to add a segment
 				startState, endState = path[i], path[i+1]
-				distance = self._aStarCostFunction(startState, endState, "Distance")
-				energy = self._aStarCostFunction(startState, endState, "Energy")
-				time = self._aStarCostFunction(startState, endState, "Time")
+				distance = self._aStarCostFunction(startState, endState, [1, 0, 0]) # distance
+				energy = self._aStarCostFunction(startState, endState, [0, 0, 1]) # energy
+				time = self._aStarCostFunction(startState, endState, [0, 1, 0]) # time
 				
 				velocity = distance/time
 				energyRate = energy/time
@@ -448,9 +424,9 @@ class Pathfinder:
 				pass # We add nothing to the csv
 			else: # Otherwise we need to add a segment
 				startState, endState = path[i], path[i+1]
-				distance = self._aStarCostFunction(startState, endState, "Distance")
-				energy = self._aStarCostFunction(startState, endState, "Energy")
-				time = self._aStarCostFunction(startState, endState, "Time")
+				distance = self._aStarCostFunction(startState, endState, [1, 0, 0])
+				energy = self._aStarCostFunction(startState, endState, [0, 0, 1])
+				time = self._aStarCostFunction(startState, endState, [1, 0, 1])
 
 				row += [distance, energy, time]
 				
