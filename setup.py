@@ -2,7 +2,7 @@ from distutils.core import setup
 
 setup(
 	name='Pextant',
-    version='0.1.1',
+    version='0.2.0',
     author='Kevin Lu',
     author_email='kezilu@mit.edu',
     packages=['pextant'],
