@@ -27,6 +27,9 @@ class LatLongCoord(object):
 	
 	def __str__(self):
 		return "LatLong Coordinate "+str(self.latitude)+','+str(self.longitude)+'\n'
+		
+	def latLongList(self):
+		return [self.latitude, self.longitude]
 	
 class EnvironmentalModel(object):
 	'''
