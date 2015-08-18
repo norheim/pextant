@@ -39,10 +39,8 @@ class Astronaut(Explorer): #Astronaut extends Explorer
 							   #this is from Marquez 2008
 							   #NOT the same slope as the one found in the slopes map
 		if slope > 20:
-			print "CAREFUL - slope is larger than 20 deg; velocity set to 0"
 			return 0
 		elif slope < -20:
-			print "CAREFUL - slope is less than -20 deg; velocity set to 0"
 			return 0
 		elif slope > 15:
 			return 0.05

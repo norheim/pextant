@@ -85,7 +85,7 @@ class EnvironmentalModel(object):
 	def getSlope(self, coordinates):
 		row, col = self.convertToRowCol(coordinates)
 		return self.slopes[row][col]
-	
+			
 	def _inBounds(self, coordinates):
 		# determines if a state is within the boundaries of the environmental model
 		# a state is a tuple of the form (row, column)
