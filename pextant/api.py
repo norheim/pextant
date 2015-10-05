@@ -1,17 +1,19 @@
-from EnvironmentalModel import UTMCoord, LatLongCoord, EnvironmentalModel
+from EnvironmentalModel import UTMCoord, LatLongCoord, EnvironmentalModel, loadElevationMap
 from ExplorationObjective import ActivityPoint
 from ExplorerModel import Explorer, Rover, Astronaut
 import convenience
 
-import sys
+import logging
 import csv
 import heapq
 import numpy as np
 import math
 import json
-from scipy.optimize import minimize
+from scipy.optimize import fmin_slsqp
 
 from osgeo import gdal, osr
+
+logger = logging.getLogger()
 
 class Pathfinder:
 	'''
@@ -139,11 +141,9 @@ class Pathfinder:
 		this function multiple times with each set
 		as long as the number of waypoints is reasonable we should be fine
 		
-		costFunction can have three possible values: 'Energy', 'Time', or 'Distance'
-		As of right now 'Energy' just refers to metabolic energy. It would be useful
-		to calculate energy caused by shadowing but that is actually beyond the original
-		functionalities of SEXTANT. A useful addition once most of the original
-		capabilities are added
+		costFunction supports a vector costFunction, with the
+		three vector elements representing: 'Energy', 'Time', or 'Distance'
+		As of right now 'Energy' just refers to metabolic energy.
 		'''
 		if self._goalTest(startNode, endNode):
 			return startNode.getPath()
@@ -162,7 +162,7 @@ class Pathfinder:
 						heapq.heappush(agenda,((child.cost+self._heuristic(child, endNode, optimize_on, "A*"), child)))
 		return (None, len(expanded), node.cost)
 
-	def completePath(self, optimize_on, waypoints, returnType = "JSON", fileName = None):
+	def aStarCompletePath(self, optimize_on, waypoints, returnType = "JSON", fileName = None):
 		'''
 		Returns a tuple representing the path and the total cost of the path.
 		The path will be a list. All activity points will be duplicated in
@@ -181,7 +181,9 @@ class Pathfinder:
 		
 			node1 = aStarSearchNode(self.map.convertToRowCol(waypoints[i].coordinates), None, 0)
 			node2 = aStarSearchNode(self.map.convertToRowCol(waypoints[i+1].coordinates), None, 0)
-			path, expanded, cost = self.aStarSearch(node1, node2, optimize_vector)
+			partialPath = self.aStarSearch(node1, node2, optimize_vector)
+						
+			path, expanded, cost = partialPath
 			
 			finalPath += path # for now I'm not going to bother with deleting the duplicates
 							  # that will occur at every activity point. I think it might end up being useful
@@ -206,7 +208,19 @@ class Pathfinder:
 					for row in sequence:
 						writer.writerow(row)
 			return sequence
-		
+
+	def completeSearchFromJSON(self, optimize_on, json, returnType = "JSON", fileName = None, algorithm = "A*", numTestPoints = 0):
+		parsed_json = json.loads(json)
+		waypoints = []
+		for element in parsed_json:
+			if element["type"] == "Station":
+				long, lat = element["geometry"]["coordinates"]
+				waypoints.append(LatLongCoordinate(lat, long))
+		if algorithm == "A*":
+			return aStarCompletePath(self, optimze_on, waypoints, returnType, fileName)
+		elif algorithm == "Field D*":
+			return fieldDStarCompletePath(self, optimize_on, waypoints, returnType, fileName, numTestPoints)
+			
 #########################################################################################
 # Above is A*; below is field D* (see Ferguson and Stentz 2005)							#
 #########################################################################################
@@ -242,8 +256,9 @@ class Pathfinder:
 		# neighbor_a and neighbor_b must be nodes, not coordinates
 		# This function returns a tuple - the point on the edge that is intersected, and the cost
 		# Check the documentation for more information about the Compute Cost function
-		R = self.map.resolution
+		optimize_vector = self._vectorize(optimize_on)
 		
+		R = self.map.resolution
 		row, col = 	node.coordinates
 		# s_1 is the horizontal neighbor, s_2 is the diagonal neighbor
 		if neighbor_a.coordinates[0] == row or neighbor_a.coordinates[1] == col:
@@ -262,9 +277,9 @@ class Pathfinder:
 		# This takes care of the cases where c_1 or c_2 are infinite
 		# In one of these is infinite, we simply take the other path
 		if (c_1 == float('inf')) and (c_2 != float('inf')):
-			return (s_2.coordinates, self._aStarCostFunction(node.coordinates, s_2.coordinates, optimize_on) + s_2.cost)
+			return (s_2.coordinates, self._aStarCostFunction(node.coordinates, s_2.coordinates, optimize_vector) + s_2.cost)
 		elif (c_2 == float('inf')) and (c_1 != float('inf')):
-			return (s_1.coordinates, self._aStarCostFunction(node.coordinates, s_1.coordinates, optimize_on) + s_1.cost)
+			return (s_1.coordinates, self._aStarCostFunction(node.coordinates, s_1.coordinates, optimize_vector) + s_1.cost)
 		elif (c_1 == float('inf')) and (c_2 == float('inf')):
 			return (s_1.coordinates, float('inf'))
 					
@@ -276,16 +291,23 @@ class Pathfinder:
 			height = y*h_2 + (1-y)*h_1
 			dist = math.sqrt(1+y**2)*R
 			slope = math.degrees(math.atan((height - h) / (dist)))
-							
-			if optimize_on == 'Time':
-				return prevCost + self.explorer.time(dist, slope)
-			elif optimize_on == 'Energy':
-				return prevCost + self.explorer.energyCost(dist, slope, self.map.getGravity())
-			else:
-				d = self.explorer.distance(dist)
-				t = self.explorer.time(dist, slope)
-				e = self.explorer.energyCost(dist, slope, self.map.getGravity())
-				return prevCost + d*optimize_on[0] + t*optimize_on[1] + e*optimize_on[2]
+			
+			d = self.explorer.distance(dist)
+			t = self.explorer.time(dist, slope)
+			e = self.explorer.energyCost(dist, slope, self.map.getGravity())
+			
+			# This stuff is mostly just here because unfortunately inf*0 = nan
+			# and nan is really hard to deal with and causes a lot of bugs
+			totalCost = prevCost
+			
+			if optimize_vector[0] != 0:
+				totalCost += d*optimize_vector[0]
+			if optimize_vector[1] != 0:
+				totalCost += t*optimize_vector[1]
+			if optimize_vector[2] != 0:
+				totalCost += e*optimize_vector[2]
+			
+			return totalCost
 		
 		step = 1.0/(numTestPoints-1)
 		# evenly spread test points
@@ -296,14 +318,15 @@ class Pathfinder:
 		startPoint = testPoints[np.argmin(funcPoints)]
 		
 		# Not too sure if SLSQP is the best choice. I chose it because it allows me to set bounds.
-		min = float(minimize(f, startPoint, method = 'SLSQP', bounds = [(0, 1)]).x)
+		min = fmin_slsqp(f, startPoint, bounds = [(0, 1)], iprint = 0)[0]
 		
 		# point is the point that is corresponds by the minimum value
 		point = ((1-min)*s_1.coordinates[0] + min*s_2.coordinates[0], (1-min)*s_1.coordinates[1] + min*s_2.coordinates[1])
 		
-		return (point, f(min) + min*c_2 + (1-min)*c_1)
+		return (point, f(min))
 		
 	def _fieldDStarGetKey(self, nodeDict, coordinates, start_node, optimize_on):
+		# if never visited before, add it to nodeDict
 		if coordinates not in nodeDict.keys():
 			nodeDict[coordinates] = FieldDStarNode(coordinates, float('inf'), float('inf'))
 		
@@ -312,10 +335,13 @@ class Pathfinder:
 		return (min(node.cost, node.rhs) + self._heuristic(node, start_node, optimize_on, "Field D*"), min(node.cost, node.rhs))
 		
 	def _fieldDStarUpdateState(self, nodeDict, open, startNode, coordinates, endCoordinates, optimize_on):
+		# print "State being updated: ", coordinates
+		
 		# If node was never previously visited, cost = infinity, mark it as visited
 		if coordinates not in nodeDict.keys():
 			nodeDict[coordinates] = FieldDStarNode(coordinates, float('inf'), float('inf'))
 			node = nodeDict[coordinates]
+			logger.info('Added coordinate ', coordinates, ' to the nodeDict')
 		else:
 			node = nodeDict[coordinates]
 		
@@ -353,9 +379,20 @@ class Pathfinder:
 	
 	def _fieldDStarComputeShortestPath(self, nodeDict, startCoordinates, endCoordinates, open, optimize_on):
 		startNode = nodeDict[startCoordinates]
+		past_100_coordinates = [None] * 100
+		
 		while (open[0][0] < self._fieldDStarGetKey(nodeDict, startCoordinates, startNode, optimize_on)) or (startNode.cost != startNode.rhs):
 			key, coordinates = heapq.heappop(open)
+			# if the coordinate appeared more than 20 times in the past 100 coordinates
+			# we skip it and move on to the next thing in open
+			if past_100_coordinates.count(coordinates) > 20: 
+				key, coordinates = heapq.heappop(open)
 			node = nodeDict[coordinates]
+			
+			past_100_coordinates.pop(0)
+			past_100_coordinates.append(coordinates)
+			
+			# print key, coordinates
 			
 			if node.cost > node.rhs:
 				node.cost = node.rhs
@@ -364,10 +401,11 @@ class Pathfinder:
 					self._fieldDStarUpdateState(nodeDict, open, nodeDict[startCoordinates], neighbor, endCoordinates, optimize_on)
 			else:
 				node.cost = float('inf')
+				nodeDict[coordinates] = node
 				for neighbor in self._fieldDStarGetNeighbors(node) + [node.coordinates]:
 					self._fieldDStarUpdateState(nodeDict, open, nodeDict[startCoordinates], neighbor, endCoordinates, optimize_on)
 					
-	def _fieldDStarExtractPath(self, nodeDict, startCoordinates, endCoordinates, optimize_on, numTestPoints = 10):
+	def _fieldDStarExtractPath(self, nodeDict, startCoordinates, endCoordinates, optimize_on, numTestPoints = 11):
 		coordinates = startCoordinates
 		path = [startCoordinates]
 		optimize_vector = self._vectorize(optimize_on)
@@ -448,33 +486,44 @@ class Pathfinder:
 					def f(y):
 						# This is the function to be minimized
 						
-						if y == 0:
-							prevCost = c_1
-						elif y == 1:
-							prevCost = c_2
-						else:
-							prevCost = (1-y)*c_1 + y*c_2
+						prevCost = (1-y)*c_1 + y*c_2
 						
-						p = ((1-y)*pair[0][0] + y*pair[1][0], (1-y)*pair[0][1] + y*pair[1][1])
+						coord1, coord2 = pair
+						x1, y1 = coord1
+						x2, y2 = coord2
+						
+						if x1 == x2:
+							p = (x1, y1*(1-y) + y2*y)
+						else:
+							p = (x1*(1-y) + x2*y, y2)
+						
 						h = (1-y)*h_1 + y*h_2
 						
-						path_length = math.sqrt((p[0]-coordinates[0])**2 + (p[1]-coordinates[1])**2) * self.map.resolution
+						path_length = math.sqrt(((p[0]-coordinates[0])**2) + ((p[1]-coordinates[1])**2)) * self.map.resolution
 						slope = math.degrees(math.atan((height - h) / path_length))
-						grav = self.map.getGravity
+						grav = self.map.getGravity()
 						
-						distWeight = self.explorer.distance(path_length)*optimize_vector[0]
-						timeWeight = self.explorer.time(path_length, slope)*optimize_vector[1]
-						energyWeight = self.explorer.energyCost(path_length, slope, self.map.getGravity())*optimize_vector[2]
+						result = prevCost - currentCost
 						
-						return abs(prevCost + distWeight + timeWeight + energyWeight - currentCost)
+						# This stuff is necessary to avoid some annoying inf*0 = nan thing
+						
+						if optimize_vector[0] != 0:
+							result += self.explorer.distance(path_length)*optimize_vector[0]
+						if optimize_vector[1] != 0:
+							result += self.explorer.time(path_length, slope)*optimize_vector[1]
+						if optimize_vector[2] != 0:
+							result += self.explorer.energyCost(path_length, slope, grav)*optimize_vector[2]
+						
+						return result
 					
-					step = 1.0/numTestPoints
+					#We test 11 points and choose the smallest one as the "seed value" for the minimization
+					step = 1.0/(numTestPoints-1)
 					
-					testPoints = [step/2 + step * i for i in range(numTestPoints)]
+					testPoints = [step * i for i in range(numTestPoints)]
 					fPoints = [f(tp) for tp in testPoints]
 					startPoint = testPoints[np.argmin(fPoints)]
 					
-					min = float(minimize(f, startPoint, method = 'SLSQP', bounds = [(0, 1)]).x)
+					min = fmin_slsqp(f, startPoint, bounds = [(0, 1)], iprint = 0)[0]
 					minResult = f(min)
 					
 					if minResult < minCost:
@@ -491,7 +540,8 @@ class Pathfinder:
 		
 		return path
 	
-	def fieldDStarSearch(self, startCoords, endCoords, optimize_on, numTestPoints = 10):
+	def fieldDStarSearch(self, startCoords, endCoords, optimize_on, numTestPoints = 11):
+		optimize_vector = self._vectorize(optimize_on)
 		
 		startNode = FieldDStarNode(startCoords, float('inf'), float('inf'))
 		endNode = FieldDStarNode(endCoords, float('inf'), 0)
@@ -502,15 +552,55 @@ class Pathfinder:
 		nodeDict[startCoords] = startNode
 		nodeDict[endCoords] = endNode
 		
-		heapq.heappush(open, (self._fieldDStarGetKey(nodeDict, endCoords, endNode, optimize_on), endCoords))
-		self._fieldDStarComputeShortestPath(nodeDict, startCoords, endCoords, open, optimize_on)
+		heapq.heappush(open, (self._fieldDStarGetKey(nodeDict, endCoords, endNode, optimize_vector), endCoords))
+		self._fieldDStarComputeShortestPath(nodeDict, startCoords, endCoords, open, optimize_vector)
 		
 		for key in nodeDict:
-			print key, nodeDict[key].cost
-				
-		path = self._fieldDStarExtractPath(nodeDict, startCoords, endCoords, optimize_on, numTestPoints)
-		return self._toJSON(path, optimize_on, [ActivityPoint(startCoords), ActivityPoint(endCoords)])
+			print '{',key[0],',', key[1],',', nodeDict[key].cost,'},'
+			
+		path = self._fieldDStarExtractPath(nodeDict, startCoords, endCoords, optimize_vector, numTestPoints)
+		# return self._toJSON(path, optimize_vector, [ActivityPoint(startCoords), ActivityPoint(endCoords)])
+		return path
 	
+	def fieldDStarCompletePath(self, optimize_on, waypoints, returnType = "JSON", fileName = None, numTestPoints = 11):
+		optimize_vector = self._vectorize(optimize_on)
+		
+		finalPath = []
+		costs = []
+		for i in range(len(waypoints)-1):
+			segmentCost = 0
+		
+			p1 = self.map.convertToRowCol(waypoints[i].coordinates)
+			p2 = self.map.convertToRowCol(waypoints[i+1].coordinates)
+			
+			partialPath = self.fieldDStarSearch(node1, node2, optimize_vector, numTestPoints)
+			
+			path, expanded, cost = partialPath
+			
+			finalPath += path # for now I'm not going to bother with deleting the duplicates
+							  # that will occur at every activity point. I think it might end up being useful
+			segmentCost += cost
+			segmentCost += optimize_vector[1]*waypoints[i].duration
+			
+			costs.append(segmentCost)
+		if returnType == "tuple":
+			return (finalPath, costs, sum(costs))
+		elif returnType == "JSON":
+			data = self._toJSON(finalPath, optimize_on, waypoints)
+			if fileName:
+				with open('data.json', 'w') as outfile:
+					json.dump(data, outfile, indent = 4)
+			return data
+		elif returnType == "csv":
+			sequence = self._toCSV(finalPath, optimize_on, waypoints)
+			print sequence
+			if fileName:
+				with open(fileName, 'wb') as csvfile:
+					writer = csv.writer(csvfile)
+					for row in sequence:
+						writer.writerow(row)
+			return sequence
+			
 	def _toJSON(self, path, optimize_on, waypoints):
 		'''
 		This returns the list following "sequence." It doesn't really make sense
@@ -542,8 +632,9 @@ class Pathfinder:
 			
 			latLong = self.map.convertToLatLong(AP.coordinates)
 			
-			element["geometry"] = {"coordinates": latLong.latLongList(), "type": "Point"}
+			element["geometry"] = {"coordinates": latLong.longLatList(), "type": "Point"}
 			element["type"] = "Station"
+			element["UUID"] = AP.UUID
 			
 			# When we hit a station, we need to add the previous lineString to the sequence,
 			# compute the total Dist, Time, and Energy
@@ -562,13 +653,13 @@ class Pathfinder:
 			if i == 0: # first element is a station
 				sequence.append(nextStation(lineString, True))
 				lineString = empty()
-				lineString["geometry"]["coordinates"].append(self.map.convertToLatLong(point).latLongList())
+				lineString["geometry"]["coordinates"].append(self.map.convertToLatLong(point).longLatList())
 			elif point == path[i-1]: # point is identical to the previous one and is thus a station
 				sequence.append(nextStation(lineString))
 				lineString = empty()
-				lineString["geometry"]["coordinates"].append(self.map.convertToLatLong(point).latLongList())
+				lineString["geometry"]["coordinates"].append(self.map.convertToLatLong(point).longLatList())
 			else: # This point is not a station and is thus a point inside the path
-				latLongCoords = self.map.convertToLatLong(point).latLongList()
+				latLongCoords = self.map.convertToLatLong(point).longLatList()
 				
 				lineString["geometry"]["coordinates"].append(latLongCoords)
 				

@@ -25,7 +25,7 @@ def UTMToLatLong(utm_coordinate):
 	y = utm_coordinate.northing
 	zone = utm_coordinate.zone
 	
-	p1 = pyproj.Proj("+proj=utm +zone="+str(zone)+", +north +datum=NAD83")
+	p1 = pyproj.Proj("+proj=utm +zone="+str(zone)+", +north +datum=WGS84")
 	p2 = pyproj.Proj(proj='latlong', zone=zone, datum='WGS84')
 	
 	long, lat = pyproj.transform(p1, p2, x, y)
@@ -42,7 +42,7 @@ def latLongToUTM(lat_long_coordinate):
 	zoneLetter = _getZoneLetter(lat_long_coordinate)
 	
 	p1 = pyproj.Proj(proj='latlong', datum='WGS84')
-	p2 = pyproj.Proj(proj='utm', zone = zone, datum='NAD83')
+	p2 = pyproj.Proj(proj='utm', zone = zone, datum='WGS84')
 	
 	easting, northing = pyproj.transform(p1, p2, x, y)
 	return (easting, northing, zone, zoneLetter)
