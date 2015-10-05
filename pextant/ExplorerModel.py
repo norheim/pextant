@@ -1,4 +1,7 @@
 import math
+import logging
+
+logger = logging.getLogger()
 
 class Explorer:
 	'''
@@ -31,16 +34,18 @@ class Explorer:
 		return self.energyRate(path_length, slope, g)*self.time(path_length, slope)
 
 class Astronaut(Explorer): #Astronaut extends Explorer
-	def __init__(self, mass, parameters = None):
-		Explorer.__init__(self, mass, parameters)
+	def __init__(self, mass, uuid = None, parameters = None):
+		Explorer.__init__(self, mass, uuid, parameters)
 		self.type = 'Astronaut'
 		
 	def velocity(self, slope): #slope is in degrees
 							   #this is from Marquez 2008
 							   #NOT the same slope as the one found in the slopes map
 		if slope > 20:
+			logger.debug("slope is over 20, returning zero")
 			return 0
 		elif slope < -20:
+			logger.debug("slope is under -20, returning zero")
 			return 0
 		elif slope > 15:
 			return 0.05
@@ -73,8 +78,8 @@ class Astronaut(Explorer): #Astronaut extends Explorer
 		return w_level + w_slope
 		
 class Rover(Explorer): #Rover also extends explorer
-	def __init__(self, mass, parameters = None, constant_speed = 15, additional_energy = 1500):
-		Explorer.__init__(self, mass, parameters)
+	def __init__(self, mass, uuid = None, parameters = None, constant_speed = 15, additional_energy = 1500):
+		Explorer.__init__(self, mass, uuid, parameters)
 		self.speed = constant_speed
 		self.P_e = additional_energy # The collection of all additional electronic components on the rover
 									 # Modelled as a constant, estimated to be 1500 W

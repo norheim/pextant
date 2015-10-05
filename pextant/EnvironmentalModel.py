@@ -31,6 +31,9 @@ class LatLongCoord(object):
 	def latLongList(self):
 		return [self.latitude, self.longitude]
 	
+	def longLatList(self):
+		return [self.longitude, self.latitude]
+	
 class EnvironmentalModel(object):
 	'''
 	This class ultimately represents an elevation map + all of the traversable spots on it.
@@ -44,7 +47,7 @@ class EnvironmentalModel(object):
 	convertToRowCol(coordinates), convertToUTM(coordinates), convertToLatLong(coordinates) - converts from one coordinate system to another
 	loadElevationMap(fileName) - load an elevation map from a geoTIFF or text file
 	'''
-	def __init__(self, elevation_map, resolution, maxSlope, planet = "Earth", NW_Coord = UTMCoord(332107.99, 4692261.58, 19, 'T')):
+	def __init__(self, elevation_map, resolution, maxSlope, planet = "Earth", NW_Coord = UTMCoord(332107.99, 4692261.58, 19, 'T'), uuid = None):
 		self.elevations = elevation_map #this is a numpy 2D array
 		self.resolution = float(resolution) #this is just a float
 		[gx, gy] = np.gradient(elevation_map, resolution, resolution)
@@ -54,6 +57,7 @@ class EnvironmentalModel(object):
 		self.planet = planet
 		self.NW_UTM = self.convertToUTM(NW_Coord) # a UTMCoord object, default set to Boston
 		self.special_obstacles = set() # a list of coordinates of obstacles are not identified by the slope
+		self.UUID = uuid
 
 	def getGravity(self):
 		if self.planet == 'Earth':
@@ -85,7 +89,15 @@ class EnvironmentalModel(object):
 	def getSlope(self, coordinates):
 		row, col = self.convertToRowCol(coordinates)
 		return self.slopes[row][col]
-			
+	
+	def setNoVal(self, noValResult):
+		for i, row in enumerate(self.elevations):
+			for j, item in enumerate(row):
+				if item == noValResult:
+					self.elevations[i][j] = None
+					self.slopes[i][j] = None
+					self.obstacles[i][j] = True
+	
 	def _inBounds(self, coordinates):
 		# determines if a state is within the boundaries of the environmental model
 		# a state is a tuple of the form (row, column)
@@ -181,94 +193,104 @@ class EnvironmentalModel(object):
 			print "Received " + repr(type(position)) + " object"
 			return 0
 			
-	def loadElevationMap(self, file, maxSlope = 15, planet = 'Earth', NWCorner = None, SWCorner = None):
-		'''
-		Creates a EnvironmentalModel object from either a geoTiff file or a text file.
-		
-		Issue: computer sometimes freezes whenever loading a very large geoTIFF file (1GB+)
+def loadElevationMap(file, maxSlope = 15, planet = 'Earth', NWCorner = None, SECorner = None, desiredRes = None, no_val = -10000):
+	'''
+	Creates a EnvironmentalModel object from either a geoTiff file or a text file.
+	
+	Issue: computer sometimes freezes whenever loading a very large geoTIFF file (1GB+)
 
-		Current modification: trying to enable loading a square sector of a geoTIFF file.
-		2 new optional inputs: NWCorner and SE corner - UTM or LatLong coordinates of the subregion
-		we would like to analyze.
-		'''
-		# file is a string representing the location of the file
-		extension = file.split('.')[-1] # this should be the file extension
-		
-		if extension == 'txt':
-			# This likely needs some updating
-			f = open(file, r)
-			inputs = [] #the values that end up in inputs will become numCols, numRows, xllcorner, yllcorner, cellsize, and NODATA_value
-			for i in range(6):
-				inputs.append(f.readline().split(' ')[-1]) # this should work given the current format
-			numCols = inputs[0]
-			numRows = inputs[1]
-			mapArray = np.empty([numRows, numCols]) # initializes an empty array
-			for i in range(numRows):
-				x = f.readline().split(' ')
-				if len(x) == numCols:
-					mapArray[i] = x
-				else:
-					print "ERROR: expected " + str(numCols) + " columns. Got " + str(len(x)) + " columns"
-					return 0
-			return EnvironmentalModel(mapArray, inputs[4], maxSlope, planet)
-		elif extension == 'tif':
-			# NOTE: Currently, SEXTANT only supports geoTIFF files that use the UTM projection and have "north up"
-			gdal.UseExceptions()
-			
-			# copied from stackexchange
-			dataset = gdal.Open(file)
-			band = dataset.GetRasterBand(1)
-			proj = dataset.GetProjection()
-			
-			srs = osr.SpatialReference(wkt=proj)
-			projcs = srs.GetAttrValue('projcs') # This will be a string that looks something like
-												# "NAD83 / UTM zone 5N"...hopefully
-			
-			if projcs: # projcs is not None for the government Hawaii data
-				zone = projcs.split(' ')[-1][0:-1]
-				zoneLetter = projcs.split(' ')[-1][-1]
-				
-			datasetInfo = dataset.GetGeoTransform()
-			# returns a list of length 6. Indices 0 and 3 are the easting and northing values of the upper left corner.
-			# Indices 1 and 5 are the w-e and n-s pixel resolutions, index 5 is always negative. Indicies 2 and 4 are
-			# set to zero for all maps pointing in a "North up" type projection; for now we will only be using maps where
-			# North is set to up.
-			NWeasting = datasetInfo[0]
-			NWnorthing = datasetInfo[3]
-			if datasetInfo[1] == -datasetInfo[5]: # SEXTANT does not support maps where the x-resolution differs from the y-resolution at the moment
-				resolution = datasetInfo[1]
-			NWCoord = UTMCoord(NWeasting, NWnorthing, zone, zoneLetter)
-
-			if NWCorner == None and SECorner == None: #No NW and SE corner implies we want the entire map
-				mapArray = band.ReadAsArray() #converts from a raster band to a numpy array
-				return EnvironmentalModel(mapArray, resolution, maxSlope, planet, NWCoord)
+	Current modification: trying to enable loading a square sector of a geoTIFF file.
+	2 new optional inputs: NWCorner and SE corner - UTM or LatLong coordinates of the subregion
+	we would like to analyze.
+	
+	Using the parameter desiredRes doesn't work very well if there are a significant number of
+	"unknown" points (usually denoted by a placeholder like -10000).
+	'''
+	# file is a string representing the location of the file
+	extension = file.split('.')[-1] # this should be the file extension
+	
+	if extension == 'txt':
+		# This likely needs some updating
+		f = open(file, r)
+		inputs = [] #the values that end up in inputs will become numCols, numRows, xllcorner, yllcorner, cellsize, and NODATA_value
+		for i in range(6):
+			inputs.append(f.readline().split(' ')[-1]) # this should work given the current format
+		numCols = inputs[0]
+		numRows = inputs[1]
+		mapArray = np.empty([numRows, numCols]) # initializes an empty array
+		for i in range(numRows):
+			x = f.readline().split(' ')
+			if len(x) == numCols:
+				mapArray[i] = x
 			else:
-				top = self.convertToUTM(NWCorner.northing)
-				bot = self.convertToUTM(SECorner.northing)
-				left = self.convertToUTM(NWCorner.easting)
-				right = self.convertToUTM(SECorner.easting)
+				print "ERROR: expected " + str(numCols) + " columns. Got " + str(len(x)) + " columns"
+				return 0
+		return EnvironmentalModel(mapArray, inputs[4], maxSlope, planet)
+	elif extension == 'tif':
+		# NOTE: Currently, SEXTANT only supports geoTIFF files that use the UTM projection and have "north up"
+		gdal.UseExceptions()
+		
+		# copied from stackexchange
+		dataset = gdal.Open(file)
+		band = dataset.GetRasterBand(1)
+		proj = dataset.GetProjection()
+		
+		srs = osr.SpatialReference(wkt=proj)
+		projcs = srs.GetAttrValue('projcs') # This will be a string that looks something like
+											# "NAD83 / UTM zone 5N"...hopefully
+		
+		if projcs: # projcs is not None for the government Hawaii data
+			zone = int(projcs.split(' ')[-1][0:-1])
+			zoneLetter = projcs.split(' ')[-1][-1]
+		
+		datasetInfo = dataset.GetGeoTransform()
+		# returns a list of length 6. Indices 0 and 3 are the easting and northing values of the upper left corner.
+		# Indices 1 and 5 are the w-e and n-s pixel resolutions, index 5 is always negative. Indicies 2 and 4 are
+		# set to zero for all maps pointing in a "North up" type projection; for now we will only be using maps where
+		# North is set to up.
+		NWeasting = datasetInfo[0]
+		NWnorthing = datasetInfo[3]
+		if datasetInfo[1] == -datasetInfo[5]: # SEXTANT does not support maps where the x-resolution differs from the y-resolution at the moment
+			if desiredRes:
+				resolution = desiredRes
+				bufx = round(dataset.RasterXSize * datasetInfo[1] / resolution)
+				bufy = round(dataset.RasterYSize * datasetInfo[1] / resolution)
+			else:
+				resolution = datasetInfo[1]
+				bufx = None
+				bufy = None
+		NWCoord = UTMCoord(NWeasting, NWnorthing, zone, zoneLetter)
 				
-				if bot > top or left > right:
-					print "ERROR with NWCorner and SECorner"
-					print "NWCorner: " + str(NWCorner) + " SWCorner: " + str(SECorner)
-					return 0
-				
-				if left < NWeasting:
-					left = NWeasting
-				if right > NWeasting + datasetInfo[1] * (dataset.RasterXSize - 1):
-					right = NWeasting + datasetInfo[1] * (dataset.RasterXSize - 1)
-				if top > NWnorthing:
-					top = NWnorthing
-				if bot < NWnorthing + datasetInfo[5] * (dataset.RasterYSize - 1):
-					bot = NWnorthing + datasetInfo[5] * (dataset.RasterYSize - 1)
-				
-				x_offset = int((left - NWeasting)/resolution)
-				x_size = int((right - NWeasting)/resolution) + 1 - x_offset
-				y_offset = int((NWnorthing - top)/resolution)
-				y_size = ((NWnorthing - top)/resolution) + 1 - y_offset
-				
-				mapArray = band.ReadAsArray(x_offset, y_offset, x_size, y_size).astype(numpy.float)
-				return EnvironmentalModel(mapArray, resolution, maxSlope, planet, NWCoord)
+		if NWCorner == None and SECorner == None: #No NW and SE corner implies we want the entire map
+			mapArray = band.ReadAsArray(buf_xsize = bufx, buf_ysize = bufy) #converts from a raster band to a numpy array
+			return EnvironmentalModel(mapArray, resolution, maxSlope, planet, NWCoord)
 		else:
-			print "ERROR: expected txt or tif file. Received " + extension + " type file"
-			return 0
+			top = self.convertToUTM(NWCorner.northing)
+			bot = self.convertToUTM(SECorner.northing)
+			left = self.convertToUTM(NWCorner.easting)
+			right = self.convertToUTM(SECorner.easting)
+			
+			if bot > top or left > right:
+				print "ERROR with NWCorner and SECorner"
+				print "NWCorner: " + str(NWCorner) + " SWCorner: " + str(SECorner)
+				return 0
+			
+			if left < NWeasting:
+				left = NWeasting
+			if right > NWeasting + datasetInfo[1] * (dataset.RasterXSize - 1):
+				right = NWeasting + datasetInfo[1] * (dataset.RasterXSize - 1)
+			if top > NWnorthing:
+				top = NWnorthing
+			if bot < NWnorthing + datasetInfo[5] * (dataset.RasterYSize - 1):
+				bot = NWnorthing + datasetInfo[5] * (dataset.RasterYSize - 1)
+			
+			x_offset = int((left - NWeasting)/resolution)
+			x_size = int((right - NWeasting)/resolution) + 1 - x_offset
+			y_offset = int((NWnorthing - top)/resolution)
+			y_size = ((NWnorthing - top)/resolution) + 1 - y_offset
+			
+			mapArray = band.ReadAsArray(x_offset, y_offset, x_size, y_size, bufx, bufy).astype(numpy.float)
+			return EnvironmentalModel(mapArray, resolution, maxSlope, planet, NWCoord)
+	else:
+		print "ERROR: expected txt or tif file. Received " + extension + " type file"
+		return 0
