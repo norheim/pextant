@@ -90,6 +90,7 @@ class Pathfinder:
 		h_diagonal = min(abs(startRow-endRow), abs(startCol-endCol)) # max number of diagonal steps that can be taken
 		h_straight = abs(startRow-endRow) + abs(startCol-endCol) # Manhattan distance
 		
+		# D represents the cost between two consecutive nodes
 		D = 0
 		
 		# Adding the energy weight
@@ -100,7 +101,7 @@ class Pathfinder:
 		elif self.map.planet == 'Moon' and self.explorer.type == 'Astronaut':
 			D += (2.295 * m + 52.936) * R * optimize_vector[2]
 		elif self.map.planet == 'Moon' and self.explorer.type == 'Rover':
-			P_e += self.explorer.P_e # this only exists for rovers
+			P_e = self.explorer.P_e # this only exists for rovers
 			D += (0.216 * m + P_e / 4.167) * R * optimize_vector[2]
 		else:
 			# This should not happen
@@ -148,8 +149,8 @@ class Pathfinder:
 		if self._goalTest(startNode, endNode):
 			return startNode.getPath()
 		agenda = []
-		heapq.heappush(agenda, (startNode.cost+self._heuristic(startNode, endNode, optimize_on, "A*"), startNode)) #heapq requires
-																						# the cost to come first I believe
+		heapq.heappush(agenda, (startNode.cost+self._heuristic(startNode, endNode, optimize_on, "A*"), startNode))
+																#agenda contains pairs (cost, node)
 		expanded = set()
 		while len(agenda) > 0:
 			priority, node = heapq.heappop(agenda)
@@ -725,7 +726,7 @@ class Pathfinder:
 	
 class aStarSearchNode:
 	'''
-	This class is only used to assist in the A* search
+	This class is used to assist in the A* search
 	'''
 	def __init__(self,state,parent,cost = 0):
 		self.state = state
