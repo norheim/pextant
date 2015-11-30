@@ -7,3 +7,7 @@ v0.2.0 August 2, 2015 -- Added support for weighted vector cost functions
 Paths can now be returned as tuples, JSON files, or csv files
 Option to use Field D* Algorithm - WIP
 Gravity is no longer part of an ExplorerModel
+
+v1.0.0 August 18, 2015 -- Added basic functionality for Field D*, although very buggy
+
+v1.0.1 November 19, 2015 -- some bug fixes
