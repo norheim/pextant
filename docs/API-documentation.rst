@@ -69,12 +69,17 @@ An EnvironmentalModel essentially contains an elevation map and information abou
 
 	Converts any type of coordinates (UTMCoord, LatLongCoord, tuple) into a LatLongCoord object
 
-.. py:method:: loadElevationMap(file, maxSlope = 15, planet = "Earth")
+.. py:method:: loadElevationMap(file, maxSlope = 15, planet = "Earth", NWCorner = None, SECorner = None, desiredRes = None, 
+					no_val = -10000)
 
 	Returns an EnvironmentalModel object given a geoTIFF or text file. Currently only reliably works with NAD83
 	and files using UTM rather than lat/long. 
 
-	:param file: A file location of a geoTIFF or a text file representing an elevation map. 
+	:param file: A file location of a geoTIFF or a text file representing an elevation map.
+	:param NWCorner, SECorner: The coordinates of the northwestern-most corner and southeastern-most corner if 
+								a crop of the original map is desired.
+	:param desiredRes: An optional input for downscaling the resolution of the elevation map.
+	:param no_val: All spots labelled with the "no_val" number will be considered to be portions of the data that are incomplete
 	
 Coordinate-representing objects
 --------------------------
@@ -168,12 +173,13 @@ The ActivityPoint object represents points of interest for the explorer, likely 
 for observation or data collection. It's possible that future versions of Pextant may
 have extensions of ActivityPoint.
 
-.. py:class:: ActivityPoint(coordinates, duration = 0)
+.. py:class:: ActivityPoint(coordinates, duration = 0, uuid = None)
 
 	Initialize an ActivityPoint representing a waypoint.
 
 	:param coordinates: A tuple representing the location of the waypoint
 	:param float duration: The amount of time spent at the ActivityPoint, in seconds.
+	:param string uuid: A uuid value for the activityPoint
 
 .. py:method:: setCoordinates(coordinates)
 
@@ -201,7 +207,7 @@ have extensions of ActivityPoint.
 	:param end: Also an ActivityPoint object
 	:param optimize_on: A string denoting what factor to optimize on, such as "Energy" or "Time"
 	
-.. py:method:: fieldDStarSearch(start, end, optimize_on, numTestPoints = 10)
+.. py:method:: fieldDStarSearch(start, end, optimize_on, numTestPoints = 11)
 
 	Returns a path through the start node and the end node using the Field D* algorithm.
 	Longer processing time than A*, but allows for more than the 8 cardinal directions, resulting in
@@ -212,7 +218,7 @@ have extensions of ActivityPoint.
 	:param optimize_on: A string denoting what factor to optimize on, such as "Energy" or "Time"
 	:param int numTestPoints: A number used in the costFunction calculations. Higher values will involve more accuracy but increased time.
 	
-.. py:method:: completePath(optimize_on, activityPoints, returnType = "JSON", fileName = None)
+.. py:method:: aStarCompletePath(optimize_on, activityPoints, returnType = "JSON", fileName = None)
 	
 	Returns a path through all of the ActivityPoint objects in exploration_objectives in order. The path takes the form
 	of a long list of row/column tuples. Currently runs with the A* search algorithm.
@@ -221,3 +227,7 @@ have extensions of ActivityPoint.
 	:param activityPoitns: A list of activityPoint objects representing the places to visit, in order
 	:param returnType: A string representing the format of the path to be returned. Options are 'tuple', 'JSON', and 'csv'
 	:param fileName: The optional name of the file to be written to
+	
+.. py:method:: fieldDStarCompletePath(optimize_on, waypoints, returnType = "JSON", fileName = None, numtestPoints = 11)
+
+	Similar to aStarCompletePath, except uses the field D* algorithm. Currently still under development.
