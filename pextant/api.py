@@ -197,7 +197,7 @@ class Pathfinder:
 		elif returnType == "JSON":
 			data = self._toJSON(finalPath, optimize_on, waypoints)
 			if fileName:
-				with open(filename, 'w') as outfile:
+				with open(fileName, 'w') as outfile:
 					json.dump(data, outfile, indent = 4)
 			return data
 		elif returnType == "csv":
@@ -217,10 +217,10 @@ class Pathfinder:
 		
 		for element in parsed_json: # identify all of the waypoints
 			if element["type"] == "Station":
-				long, lat = element["geometry"]["coordinates"]
-				waypoints.append(LatLongCoordinate(lat, long))
+				lon, lat = element["geometry"]["coordinates"]
+				waypoints.append(LatLongCoordinate(lat, lon))
 		if algorithm == "A*":
-			path = aStarCompletePath(self, optimze_on, waypoints, returnType, fileName)
+			path = aStarCompletePath(self, optimize_on, waypoints, returnType, fileName)
 		elif algorithm == "Field D*":
 			path = fieldDStarCompletePath(self, optimize_on, waypoints, returnType, fileName, numTestPoints)
 		
@@ -328,12 +328,12 @@ class Pathfinder:
 		startPoint = testPoints[np.argmin(funcPoints)]
 		
 		# Not too sure if SLSQP is the best choice. I chose it because it allows me to set bounds.
-		min = fmin_slsqp(f, startPoint, bounds = [(0, 1)], iprint = 0)[0]
+		minimum = fmin_slsqp(f, startPoint, bounds = [(0, 1)], iprint = 0)[0]
 		
 		# point is the point that is corresponds by the minimum value
-		point = ((1-min)*s_1.coordinates[0] + min*s_2.coordinates[0], (1-min)*s_1.coordinates[1] + min*s_2.coordinates[1])
+		point = ((1-minimum)*s_1.coordinates[0] + minimum*s_2.coordinates[0], (1-minimum)*s_1.coordinates[1] + minimum*s_2.coordinates[1])
 		
-		return (point, f(min))
+		return (point, f(minimum))
 		
 	def _fieldDStarGetKey(self, nodeDict, coordinates, start_node, optimize_on):
 		# if never visited before, add it to nodeDict
@@ -344,7 +344,7 @@ class Pathfinder:
 		
 		return (min(node.cost, node.rhs) + self._heuristic(node, start_node, optimize_on, "Field D*"), min(node.cost, node.rhs))
 		
-	def _fieldDStarUpdateState(self, nodeDict, open, startNode, coordinates, endCoordinates, optimize_on):
+	def _fieldDStarUpdateState(self, nodeDict, openInputs, startNode, coordinates, endCoordinates, optimize_on):
 		# print "State being updated: ", coordinates
 		
 		# If node was never previously visited, cost = infinity, mark it as visited
@@ -376,27 +376,27 @@ class Pathfinder:
 		# updating nodeDict
 		nodeDict[coordinates] = node
 		
-		# if node in open, remove node from open
-		open_coords = [pair[1] for pair in open]
+		# if node in openInputs, remove node from openInputs
+		open_coords = [pair[1] for pair in openInputs]
 		if coordinates in open_coords:
-			for pair in open:
+			for pair in openInputs:
 				if pair[1] == coordinates:
-					open.remove(pair)
+					openInputs.remove(pair)
 		
-		# if cost != rhs, insert node into open with key(node)
+		# if cost != rhs, insert node into openInputs with key(node)
 		if node.cost != node.rhs:
-			heapq.heappush(open, (self._fieldDStarGetKey(nodeDict, coordinates, startNode, optimize_on), coordinates))
+			heapq.heappush(openInputs, (self._fieldDStarGetKey(nodeDict, coordinates, startNode, optimize_on), coordinates))
 	
-	def _fieldDStarComputeShortestPath(self, nodeDict, startCoordinates, endCoordinates, open, optimize_on):
+	def _fieldDStarComputeShortestPath(self, nodeDict, startCoordinates, endCoordinates, openInputs, optimize_on):
 		startNode = nodeDict[startCoordinates]
 		past_100_coordinates = [None] * 100
 		
-		while (open[0][0] < self._fieldDStarGetKey(nodeDict, startCoordinates, startNode, optimize_on)) or (startNode.cost != startNode.rhs):
-			key, coordinates = heapq.heappop(open)
+		while (openInputs[0][0] < self._fieldDStarGetKey(nodeDict, startCoordinates, startNode, optimize_on)) or (startNode.cost != startNode.rhs):
+			key, coordinates = heapq.heappop(openInputs)
 			# if the coordinate appeared more than 20 times in the past 100 coordinates
-			# we skip it and move on to the next thing in open
+			# we skip it and move on to the next thing in openInputs
 			if past_100_coordinates.count(coordinates) > 20: 
-				key, coordinates = heapq.heappop(open)
+				key, coordinates = heapq.heappop(openInputs)
 			node = nodeDict[coordinates]
 			
 			past_100_coordinates.pop(0)
@@ -408,12 +408,12 @@ class Pathfinder:
 				node.cost = node.rhs
 				nodeDict[coordinates] = node
 				for neighbor in self._fieldDStarGetNeighbors(node):
-					self._fieldDStarUpdateState(nodeDict, open, nodeDict[startCoordinates], neighbor, endCoordinates, optimize_on)
+					self._fieldDStarUpdateState(nodeDict, openInputs, nodeDict[startCoordinates], neighbor, endCoordinates, optimize_on)
 			else:
 				node.cost = float('inf')
 				nodeDict[coordinates] = node
 				for neighbor in self._fieldDStarGetNeighbors(node) + [node.coordinates]:
-					self._fieldDStarUpdateState(nodeDict, open, nodeDict[startCoordinates], neighbor, endCoordinates, optimize_on)
+					self._fieldDStarUpdateState(nodeDict, openInputs, nodeDict[startCoordinates], neighbor, endCoordinates, optimize_on)
 					
 	def _fieldDStarExtractPath(self, nodeDict, startCoordinates, endCoordinates, optimize_on, numTestPoints = 11):
 		coordinates = startCoordinates
@@ -533,12 +533,12 @@ class Pathfinder:
 					fPoints = [f(tp) for tp in testPoints]
 					startPoint = testPoints[np.argmin(fPoints)]
 					
-					min = fmin_slsqp(f, startPoint, bounds = [(0, 1)], iprint = 0)[0]
-					minResult = f(min)
+					minimum = fmin_slsqp(f, startPoint, bounds = [(0, 1)], iprint = 0)[0]
+					minResult = f(minimum)
 					
 					if minResult < minCost:
 						minCost = minResult
-						nextPoint = ((1-min)*pair[0][0] + min*pair[1][0], (1-min)*pair[0][1] + min*pair[1][1])
+						nextPoint = ((1-minimum)*pair[0][0] + minimum*pair[1][0], (1-minimum)*pair[0][1] + minimum*pair[1][1])
 			
 			if nextPoint:
 				# if nextPoint exists, add it
@@ -556,14 +556,14 @@ class Pathfinder:
 		startNode = FieldDStarNode(startCoords, float('inf'), float('inf'))
 		endNode = FieldDStarNode(endCoords, float('inf'), 0)
 		
-		open = []
+		open_coords = []
 		nodeDict = {} # This dictionary maps coordinates to FieldDStarNode objects.
 					  # Only contains nodes that have been travelled to/are relevant
 		nodeDict[startCoords] = startNode
 		nodeDict[endCoords] = endNode
 		
-		heapq.heappush(open, (self._fieldDStarGetKey(nodeDict, endCoords, endNode, optimize_vector), endCoords))
-		self._fieldDStarComputeShortestPath(nodeDict, startCoords, endCoords, open, optimize_vector)
+		heapq.heappush(open_coords, (self._fieldDStarGetKey(nodeDict, endCoords, endNode, optimize_vector), endCoords))
+		self._fieldDStarComputeShortestPath(nodeDict, startCoords, endCoords, open_coords, optimize_vector)
 		
 		for key in nodeDict:
 			print '{',key[0],',', key[1],',', nodeDict[key].cost,'},'
@@ -583,7 +583,7 @@ class Pathfinder:
 			p1 = self.map.convertToRowCol(waypoints[i].coordinates)
 			p2 = self.map.convertToRowCol(waypoints[i+1].coordinates)
 			
-			partialPath = self.fieldDStarSearch(node1, node2, optimize_vector, numTestPoints)
+			partialPath = self.fieldDStarSearch(p1, p2, optimize_vector, numTestPoints)
 			
 			path, expanded, cost = partialPath
 			

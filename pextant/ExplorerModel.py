@@ -155,8 +155,8 @@ class explorerParameters:
 	
 	The input p should be a dictionary of parameters
 	'''
-	def __init__(self, type, p = None):
-		if type == 'Astronaut' and p == None: #Default parameters for astronaut and rover
+	def __init__(self, typeString, p = None):
+		if typeString == 'Astronaut' and p == None: #Default parameters for astronaut and rover
 			self.dConstraint = 0
 			self.tConstraint = 0
 			self.eConstraint = 0
@@ -180,13 +180,13 @@ class explorerParameters:
 			self.mSuit = 50
 			self.cp_Suit = 1000
 			self.suitBatteryHeat = 50
-		elif type == 'Rover' and p == None:
+		elif typeString == 'Rover' and p == None:
 			self.efficiency_SA = 0.26
 			self.A_SA = 30
 			self.batterySpecificEnergy = 145
 			self.mBattery = 269
 			self.electronicsPower = 1400
-		elif type == 'Astronaut': # There should be a dictionary of parameters given
+		elif typeString == 'Astronaut': # There should be a dictionary of parameters given
 			self.dConstraint = p['dConstraint']
 			self.tConstraint = p['tConstraint']
 			self.eConstraint = p['eConstraint']
@@ -210,7 +210,7 @@ class explorerParameters:
 			self.mSuit = p['mSuit']
 			self.cp_Suit = p['cp_Suit']
 			self.suitBatteryHeat = p['suitBatteryHeat']
-		elif type == 'Rover':
+		elif typeString == 'Rover':
 			self.efficiency_SA = p['efficiency_SA']
 			self.A_SA = p['A_SA']
 			self.batterySpecificEnergy = p['batterySpecificEnergy']
