@@ -197,7 +197,7 @@ class Pathfinder:
 		elif returnType == "JSON":
 			data = self._toJSON(finalPath, optimize_on, waypoints)
 			if fileName:
-				with open('data.json', 'w') as outfile:
+				with open(filename, 'w') as outfile:
 					json.dump(data, outfile, indent = 4)
 			return data
 		elif returnType == "csv":
@@ -212,15 +212,24 @@ class Pathfinder:
 
 	def completeSearchFromJSON(self, optimize_on, json, returnType = "JSON", fileName = None, algorithm = "A*", numTestPoints = 0):
 		parsed_json = json.loads(json)
+		new_json = deepcopy(parsed_json)
 		waypoints = []
-		for element in parsed_json:
+		
+		for element in parsed_json: # identify all of the waypoints
 			if element["type"] == "Station":
 				long, lat = element["geometry"]["coordinates"]
 				waypoints.append(LatLongCoordinate(lat, long))
 		if algorithm == "A*":
-			return aStarCompletePath(self, optimze_on, waypoints, returnType, fileName)
+			path = aStarCompletePath(self, optimze_on, waypoints, returnType, fileName)
 		elif algorithm == "Field D*":
-			return fieldDStarCompletePath(self, optimize_on, waypoints, returnType, fileName, numTestPoints)
+			path = fieldDStarCompletePath(self, optimize_on, waypoints, returnType, fileName, numTestPoints)
+		
+		for i, element in enumerate(new_json):
+			if element["type"] == "Segment":
+				new_json[i]["derivedInfo"] = path[i]["derivedInfo"]
+				new_json[i]["geometry"] = path[i]["geometry"]
+
+		return json.dumps(new_json)
 			
 #########################################################################################
 # Above is A*; below is field D* (see Ferguson and Stentz 2005)							#
