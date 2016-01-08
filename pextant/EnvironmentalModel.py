@@ -209,8 +209,7 @@ def loadElevationMap(file, maxSlope = 15, planet = 'Earth', NWCorner = None, SEC
 	# file is a string representing the location of the file
 	extension = file.split('.')[-1] # this should be the file extension
 	
-	if extension == 'txt':
-		# This likely needs some updating
+	if extension == 'txt': # This likely needs some updating though it probably won't be used anytime soon
 		f = open(file, r)
 		inputs = [] #the values that end up in inputs will become numCols, numRows, xllcorner, yllcorner, cellsize, and NODATA_value
 		for i in range(6):
@@ -259,6 +258,7 @@ def loadElevationMap(file, maxSlope = 15, planet = 'Earth', NWCorner = None, SEC
 				resolution = datasetInfo[1]
 				bufx = None
 				bufy = None
+		
 		NWCoord = UTMCoord(NWeasting, NWnorthing, zone, zoneLetter)
 				
 		if NWCorner == None and SECorner == None: #No NW and SE corner implies we want the entire map
