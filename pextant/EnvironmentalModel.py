@@ -193,7 +193,8 @@ class EnvironmentalModel(object):
 			print "Received " + repr(type(position)) + " object"
 			return 0
 			
-def loadElevationMap(file, maxSlope = 15, planet = 'Earth', NWCorner = None, SECorner = None, desiredRes = None, no_val = -10000):
+def loadElevationMap(file, maxSlope = 15, planet = 'Earth', NWCorner = None, SECorner = None, desiredRes = None, no_val = -10000, /
+										zLetterIn = None, zIn = None):
 	'''
 	Creates a EnvironmentalModel object from either a geoTiff file or a text file.
 	
@@ -237,8 +238,10 @@ def loadElevationMap(file, maxSlope = 15, planet = 'Earth', NWCorner = None, SEC
 		srs = osr.SpatialReference(wkt=proj)
 		projcs = srs.GetAttrValue('projcs') # This will be a string that looks something like
 											# "NAD83 / UTM zone 5N"...hopefully
-		
-		if projcs: # projcs is not None for the government Hawaii data
+		if zLetterIn and zIn:
+			zone = zIn
+			zoneLetter = zLetterIn
+		elif projcs: # projcs is not None for the government Hawaii data
 			zone = int(projcs.split(' ')[-1][0:-1])
 			zoneLetter = projcs.split(' ')[-1][-1]
 		
