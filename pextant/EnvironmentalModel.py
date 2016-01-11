@@ -206,7 +206,7 @@ def convertToUTM(self, position):
 		print "Received " + repr(type(position)) + " object"
 		return 0
 			
-def loadElevationMap(filePath, maxSlope = 15, planet = 'Earth', NWCorner = None, SECorner = None, desiredRes = None, no_val = -10000):
+def loadElevationMap(filePath, maxSlope = 15, planet = 'Earth', NWCorner = None, SECorner = None, desiredRes = None, no_val = -10000, zone=None, zoneLetter=None):
 	'''
 	Creates a EnvironmentalModel object from either a geoTiff file or a text file.
 	
@@ -262,6 +262,8 @@ def loadElevationMap(filePath, maxSlope = 15, planet = 'Earth', NWCorner = None,
 		# North is set to up.
 		NWeasting = datasetInfo[0]
 		NWnorthing = datasetInfo[3]
+		bufx = None
+		bufy = None
 		if datasetInfo[1] == -datasetInfo[5]: # SEXTANT does not support maps where the x-resolution differs from the y-resolution at the moment
 			if desiredRes:
 				resolution = desiredRes
