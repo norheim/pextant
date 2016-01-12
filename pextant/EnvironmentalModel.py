@@ -251,7 +251,7 @@ def loadElevationMap(filePath, maxSlope = 15, planet = 'Earth', NWCorner = None,
 		projcs = srs.GetAttrValue('projcs') # This will be a string that looks something like
 											# "NAD83 / UTM zone 5N"...hopefully
 		
-		if (projcs and (zone == None) and zoneLetter = None): # projcs is not None for the government Hawaii data
+		if (projcs and (zone == None) and zoneLetter == None): # projcs is not None for the government Hawaii data
 			zone = int(projcs.split(' ')[-1][0:-1])
 			zoneLetter = projcs.split(' ')[-1][-1]
 		
