@@ -13,7 +13,7 @@ class UTMCoord(object):
 		self.zone = zone
 		self.zoneLetter = zoneLetter # Note: 'T' is the zone letter of all but the northernmost point of Idaho
 									 # 'Q' is the zone letter of Hawaii
-									 
+
 	def __str__(self):
 		return "UTM Coordinate "+str(self.easting)+"E,"+str(self.northing)+"N, zone"+str(self.zone)+self.zoneLetter+'\n'
 
@@ -21,9 +21,9 @@ class LatLongCoord(object):
 	'''
 	Represents a latitude and longitude pair. All Lat/Long Coordinates should be expressed in this form.
 	'''
-	def __init__(self, lat, long):
+	def __init__(self, lat, lon):
 		self.latitude = lat
-		self.longitude = long
+		self.longitude = lon
 	
 	def __str__(self):
 		return "LatLong Coordinate "+str(self.latitude)+','+str(self.longitude)+'\n'
@@ -55,7 +55,7 @@ class EnvironmentalModel(object):
 																						  # we want atan(sqrt(gx^2+gy^2)) in degrees
 		self.obstacles = self.slopes <= maxSlope # obstacles is basically an "isPassable" function
 		self.planet = planet
-		self.NW_UTM = self.convertToUTM(NW_Coord) # a UTMCoord object, default set to Boston
+		self.NW_UTM = convertToUTM(NW_Coord) # a UTMCoord object, default set to Boston
 		self.special_obstacles = set() # a list of coordinates of obstacles are not identified by the slope
 		self.UUID = uuid
 
@@ -164,37 +164,49 @@ class EnvironmentalModel(object):
 		Converts a row/column or UTM coordinate into a LatLongCoord
 		'''
 		if type(position) is UTMCoord:
-			lat, long = transform.UTMToLatLong(position)
-			return LatLongCoord(lat, long)
+			lat, lon = transform.UTMToLatLong(position)
+			return LatLongCoord(lat, lon)
 		elif type(position) is LatLongCoord:
 			return position
 		elif type(position) is tuple:
 			UTM = self._rowColToUTM(position)
-			lat, long = transform.UTMToLatLong(UTM)
-			return LatLongCoord(lat, long)
+			lat, lon = transform.UTMToLatLong(UTM)
+			return LatLongCoord(lat, lon)
 		else:
 			print "ERROR: only accepts UTMCoord, LatLongCoord, and tuple objects"
 			print "Received " + repr(type(position)) + " object"
 			return 0
+		
+		def convertToUTM(self, position):
+			'''
+			Converts a row/column coordinate or LatLongCoord into a UTMCoord.
+			Handles tuple.
+			'''
+			if type(position) is UTMCoord or type(position) is LatLongCoord:
+				return convertToUTM(position)
+			elif type(position) is tuple:
+				return self._rowColToUTM(position)
+			else:
+				print "ERROR: only accepts UTMCoord, LatLongCoord, and tuple objects"
+				print "Received " + repr(type(position)) + " object"
+				return 0
 	
-	def convertToUTM(self, position):
-		'''
-		Converts a row/column coordinate or LatLongCoord into a UTMCoord.
-		'''
-		if type(position) is UTMCoord:
-			return position
-		elif type(position) is LatLongCoord:
-			easting, northing, zoneNumber, zoneLetter = transform.latLongToUTM(position)
-			return UTMCoord(easting, northing, zoneNumber, zoneLetter)
-		elif type(position) is tuple:
-			return self._rowColToUTM(position)
-		else:
-			print "ERROR: only accepts UTMCoord, LatLongCoord, and tuple objects"
-			print "Received " + repr(type(position)) + " object"
-			return 0
+def convertToUTM(self, position):
+	'''
+	Converts a row/column coordinate or LatLongCoord into a UTMCoord.
+	'''
+	if type(position) is UTMCoord:
+		return position
+	elif type(position) is LatLongCoord:
+		easting, northing, zoneNumber, zoneLetter = transform.latLongToUTM(position)
+		return UTMCoord(easting, northing, zoneNumber, zoneLetter)
+		return self._rowColToUTM(position)
+	else:
+		print "ERROR: only accepts UTMCoord, LatLongCoord, and tuple objects"
+		print "Received " + repr(type(position)) + " object"
+		return 0
 			
-def loadElevationMap(file, maxSlope = 15, planet = 'Earth', NWCorner = None, SECorner = None, desiredRes = None, no_val = -10000, /
-										zLetterIn = None, zIn = None):
+def loadElevationMap(filePath, maxSlope = 15, planet = 'Earth', NWCorner = None, SECorner = None, desiredRes = None, no_val = -10000, zone=None, zoneLetter=None):
 	'''
 	Creates a EnvironmentalModel object from either a geoTiff file or a text file.
 	
@@ -207,11 +219,11 @@ def loadElevationMap(file, maxSlope = 15, planet = 'Earth', NWCorner = None, SEC
 	Using the parameter desiredRes doesn't work very well if there are a significant number of
 	"unknown" points (usually denoted by a placeholder like -10000).
 	'''
-	# file is a string representing the location of the file
-	extension = file.split('.')[-1] # this should be the file extension
+	# filePath is a string representing the location of the file
+	extension = filePath.split('.')[-1] # this should be the file extension
 	
 	if extension == 'txt': # This likely needs some updating though it probably won't be used anytime soon
-		f = open(file, r)
+		f = open(filePath, r)
 		inputs = [] #the values that end up in inputs will become numCols, numRows, xllcorner, yllcorner, cellsize, and NODATA_value
 		for i in range(6):
 			inputs.append(f.readline().split(' ')[-1]) # this should work given the current format
@@ -231,17 +243,15 @@ def loadElevationMap(file, maxSlope = 15, planet = 'Earth', NWCorner = None, SEC
 		gdal.UseExceptions()
 		
 		# copied from stackexchange
-		dataset = gdal.Open(file)
+		dataset = gdal.Open(filePath)
 		band = dataset.GetRasterBand(1)
 		proj = dataset.GetProjection()
 		
 		srs = osr.SpatialReference(wkt=proj)
 		projcs = srs.GetAttrValue('projcs') # This will be a string that looks something like
 											# "NAD83 / UTM zone 5N"...hopefully
-		if zLetterIn and zIn:
-			zone = zIn
-			zoneLetter = zLetterIn
-		elif projcs: # projcs is not None for the government Hawaii data
+		
+		if (projcs and (zone == None) and zoneLetter = None): # projcs is not None for the government Hawaii data
 			zone = int(projcs.split(' ')[-1][0:-1])
 			zoneLetter = projcs.split(' ')[-1][-1]
 		
@@ -252,6 +262,8 @@ def loadElevationMap(file, maxSlope = 15, planet = 'Earth', NWCorner = None, SEC
 		# North is set to up.
 		NWeasting = datasetInfo[0]
 		NWnorthing = datasetInfo[3]
+		bufx = None
+		bufy = None
 		if datasetInfo[1] == -datasetInfo[5]: # SEXTANT does not support maps where the x-resolution differs from the y-resolution at the moment
 			if desiredRes:
 				resolution = desiredRes
@@ -268,10 +280,10 @@ def loadElevationMap(file, maxSlope = 15, planet = 'Earth', NWCorner = None, SEC
 			mapArray = band.ReadAsArray(buf_xsize = bufx, buf_ysize = bufy) #converts from a raster band to a numpy array
 			return EnvironmentalModel(mapArray, resolution, maxSlope, planet, NWCoord)
 		else:
-			top = self.convertToUTM(NWCorner.northing)
-			bot = self.convertToUTM(SECorner.northing)
-			left = self.convertToUTM(NWCorner.easting)
-			right = self.convertToUTM(SECorner.easting)
+			top = convertToUTM(NWCorner.northing)
+			bot = convertToUTM(SECorner.northing)
+			left = convertToUTM(NWCorner.easting)
+			right = convertToUTM(SECorner.easting)
 			
 			if bot > top or left > right:
 				print "ERROR with NWCorner and SECorner"
@@ -292,7 +304,7 @@ def loadElevationMap(file, maxSlope = 15, planet = 'Earth', NWCorner = None, SEC
 			y_offset = int((NWnorthing - top)/resolution)
 			y_size = ((NWnorthing - top)/resolution) + 1 - y_offset
 			
-			mapArray = band.ReadAsArray(x_offset, y_offset, x_size, y_size, bufx, bufy).astype(numpy.float)
+			mapArray = band.ReadAsArray(x_offset, y_offset, x_size, y_size, bufx, bufy).astype(np.float)
 			return EnvironmentalModel(mapArray, resolution, maxSlope, planet, NWCoord)
 	else:
 		print "ERROR: expected txt or tif file. Received " + extension + " type file"
