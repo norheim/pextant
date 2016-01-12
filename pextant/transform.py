@@ -28,8 +28,8 @@ def UTMToLatLong(utm_coordinate):
 	p1 = pyproj.Proj("+proj=utm +zone="+str(zone)+", +north +datum=WGS84")
 	p2 = pyproj.Proj(proj='latlong', zone=zone, datum='WGS84')
 	
-	long, lat = pyproj.transform(p1, p2, x, y)
-	return (lat, long)
+	lon, lat = pyproj.transform(p1, p2, x, y)
+	return (lat, lon)
 	
 	
 def latLongToUTM(lat_long_coordinate):
