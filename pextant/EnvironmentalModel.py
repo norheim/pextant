@@ -21,9 +21,9 @@ class LatLongCoord(object):
 	'''
 	Represents a latitude and longitude pair. All Lat/Long Coordinates should be expressed in this form.
 	'''
-	def __init__(self, lat, lon):
+	def __init__(self, lat, long):
 		self.latitude = lat
-		self.longitude = lon
+		self.longitude = long
 	
 	def __str__(self):
 		return "LatLong Coordinate "+str(self.latitude)+','+str(self.longitude)+'\n'
@@ -55,7 +55,7 @@ class EnvironmentalModel(object):
 																						  # we want atan(sqrt(gx^2+gy^2)) in degrees
 		self.obstacles = self.slopes <= maxSlope # obstacles is basically an "isPassable" function
 		self.planet = planet
-		self.NW_UTM = convertToUTM(NW_Coord) # a UTMCoord object, default set to Boston
+		self.NW_UTM = self.convertToUTM(NW_Coord) # a UTMCoord object, default set to Boston
 		self.special_obstacles = set() # a list of coordinates of obstacles are not identified by the slope
 		self.UUID = uuid
 
@@ -177,35 +177,22 @@ class EnvironmentalModel(object):
 			print "Received " + repr(type(position)) + " object"
 			return 0
 		
-		def convertToUTM(self, position):
-			'''
-			Converts a row/column coordinate or LatLongCoord into a UTMCoord.
-			Handles tuple.
-			'''
-			if type(position) is UTMCoord or type(position) is LatLongCoord:
-				return convertToUTM(position)
-			elif type(position) is tuple:
-				return self._rowColToUTM(position)
-			else:
-				print "ERROR: only accepts UTMCoord, LatLongCoord, and tuple objects"
-				print "Received " + repr(type(position)) + " object"
-				return 0
-	
-def convertToUTM(self, position):
-	'''
-	Converts a row/column coordinate or LatLongCoord into a UTMCoord.
-	'''
-	if type(position) is UTMCoord:
-		return position
-	elif type(position) is LatLongCoord:
-		easting, northing, zoneNumber, zoneLetter = transform.latLongToUTM(position)
-		return UTMCoord(easting, northing, zoneNumber, zoneLetter)
-		return self._rowColToUTM(position)
-	else:
-		print "ERROR: only accepts UTMCoord, LatLongCoord, and tuple objects"
-		print "Received " + repr(type(position)) + " object"
-		return 0
-			
+	def convertToUTM(self, position):
+		'''
+		Converts a row/column coordinate or LatLongCoord into a UTMCoord.
+		'''
+		if type(position) is UTMCoord:
+			return position
+		elif type(position) is LatLongCoord:
+			easting, northing, zoneNumber, zoneLetter = transform.latLongToUTM(position)
+			return UTMCoord(easting, northing, zoneNumber, zoneLetter)
+		elif type(position) is tuple:
+			return self._rowColToUTM(position)
+		else:
+			print "ERROR: only accepts UTMCoord, LatLongCoord, and tuple objects"
+			print "Received " + repr(type(position)) + " object"
+			return 0
+				
 def loadElevationMap(filePath, maxSlope = 15, planet = 'Earth', NWCorner = None, SECorner = None, desiredRes = None, no_val = -10000, zone=None, zoneLetter=None):
 	'''
 	Creates a EnvironmentalModel object from either a geoTiff file or a text file.
