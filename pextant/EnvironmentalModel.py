@@ -50,9 +50,11 @@ class EnvironmentalModel(object):
 	def __init__(self, elevation_map, resolution, maxSlope, planet = "Earth", NW_Coord = UTMCoord(332107.99, 4692261.58, 19, 'T'), uuid = None):
 		self.elevations = elevation_map #this is a numpy 2D array
 		self.resolution = float(resolution) #this is just a float
-		[gx, gy] = np.gradient(elevation_map, resolution, resolution)
-		self.slopes = np.degrees(np.arctan(np.sqrt(np.add(np.square(gx),np.square(gy))))) # I think this syntax is correct
+		# [gx, gy] = np.gradient(elevation_map, resolution, resolution)
+		# self.slopes = np.degrees(np.arctan(np.sqrt(np.add(np.square(gx),np.square(gy))))) # I think this syntax is correct
 																						  # we want atan(sqrt(gx^2+gy^2)) in degrees
+		self.slopes = np.degrees(np.arctan(np.sqrt(np.add(np.square(np.gradient(elevation_map, resolution, resolution)[0])\
+					,np.square(np.gradient(elevation_map, resolution, resolution)[1]))))) # Combining for now for less RAM usage
 		self.obstacles = self.slopes <= maxSlope # obstacles is basically an "isPassable" function
 		self.planet = planet
 		self.NW_UTM = self.convertToUTM(NW_Coord) # a UTMCoord object, default set to Boston
