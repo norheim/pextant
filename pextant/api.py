@@ -1,3 +1,4 @@
+import pydevd
 from EnvironmentalModel import UTMCoord, LatLongCoord, EnvironmentalModel, loadElevationMap
 from ExplorationObjective import ActivityPoint
 from ExplorerModel import Explorer, Rover, Astronaut
@@ -210,19 +211,22 @@ class Pathfinder:
 						writer.writerow(row)
 			return sequence
 
-	def completeSearchFromJSON(self, optimize_on, json, returnType = "JSON", fileName = None, algorithm = "A*", numTestPoints = 0):
-		parsed_json = json.loads(json)
-		new_json = deepcopy(parsed_json)
+	def completeSearchFromJSON(self, optimize_on, jsonInput, returnType = "JSON", fileName = None, algorithm = "A*", numTestPoints = 0):
+		pydevd.settrace('192.168.1.64')
+		parsed_json = json.loads(jsonInput)
+		new_json = json.loads(jsonInput)
+# 		Kevin -- there is no deepcopy, and if you just want the same thing twice we can load it twice ...
+# 		new_json = deepcopy(parsed_json)
 		waypoints = []
 		
 		for element in parsed_json: # identify all of the waypoints
 			if element["type"] == "Station":
 				lon, lat = element["geometry"]["coordinates"]
-				waypoints.append(LatLongCoordinate(lat, lon))
+				waypoints.append(LatLongCoord(lat, lon))
 		if algorithm == "A*":
-			path = aStarCompletePath(self, optimize_on, waypoints, returnType, fileName)
+			path = self.aStarCompletePath(optimize_on, waypoints, returnType, fileName)
 		elif algorithm == "Field D*":
-			path = fieldDStarCompletePath(self, optimize_on, waypoints, returnType, fileName, numTestPoints)
+			path = self.fieldDStarCompletePath(optimize_on, waypoints, returnType, fileName, numTestPoints)
 		
 		for i, element in enumerate(new_json):
 			if element["type"] == "Segment":
