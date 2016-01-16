@@ -1,4 +1,3 @@
-import pydevd
 from EnvironmentalModel import UTMCoord, LatLongCoord, EnvironmentalModel, loadElevationMap
 from ExplorationObjective import ActivityPoint
 from ExplorerModel import Explorer, Rover, Astronaut
@@ -212,7 +211,6 @@ class Pathfinder:
 			return sequence
 
 	def completeSearchFromJSON(self, optimize_on, jsonInput, returnType = "JSON", fileName = None, algorithm = "A*", numTestPoints = 0):
-		pydevd.settrace('192.168.1.64')
 		parsed_json = json.loads(jsonInput)
 		new_json = json.loads(jsonInput)
 # 		Kevin -- there is no deepcopy, and if you just want the same thing twice we can load it twice ...
