@@ -220,7 +220,8 @@ class Pathfinder:
 		for element in parsed_json: # identify all of the waypoints
 			if element["type"] == "Station":
 				lon, lat = element["geometry"]["coordinates"]
-				waypoints.append(LatLongCoord(lat, lon))
+				time_cost = element["userDuration"]
+				waypoints.append(ActivityPoint(LatLongCoord(lat, lon), time_cost, None)) # set the cost to time cost
 		if algorithm == "A*":
 			path = self.aStarCompletePath(optimize_on, waypoints, returnType, fileName)
 		elif algorithm == "Field D*":
