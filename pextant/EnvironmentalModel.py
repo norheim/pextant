@@ -47,7 +47,7 @@ class EnvironmentalModel(object):
 	convertToRowCol(coordinates), convertToUTM(coordinates), convertToLatLong(coordinates) - converts from one coordinate system to another
 	loadElevationMap(fileName) - load an elevation map from a geoTIFF or text file
 	'''
-	def __init__(self, elevation_map, resolution, maxSlope, planet = "Earth", NW_Coord = UTMCoord(332107.99, 4692261.58, 19, 'T'), uuid = None):
+	def __init__(self, elevation_map, resolution, maxSlope, NW_Coord, planet = "Earth", uuid = None):
 		self.elevations = elevation_map #this is a numpy 2D array
 		self.resolution = float(resolution) #this is just a float
 		# [gx, gy] = np.gradient(elevation_map, resolution, resolution)
