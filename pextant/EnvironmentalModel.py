@@ -226,7 +226,7 @@ def loadElevationMap(filePath, maxSlope = 15, planet = 'Earth', NWCorner = None,
 			else:
 				print "ERROR: expected " + str(numCols) + " columns. Got " + str(len(x)) + " columns"
 				return 0
-		return EnvironmentalModel(mapArray, inputs[4], maxSlope, planet)
+		return EnvironmentalModel(mapArray, inputs[4], maxSlope=maxSlope, planet=planet)
 	elif extension == 'tif':
 		# NOTE: Currently, SEXTANT only supports geoTIFF files that use the UTM projection and have "north up"
 		gdal.UseExceptions()
@@ -267,8 +267,10 @@ def loadElevationMap(filePath, maxSlope = 15, planet = 'Earth', NWCorner = None,
 				
 		if NWCorner == None and SECorner == None: #No NW and SE corner implies we want the entire map
 			mapArray = band.ReadAsArray(buf_xsize = bufx, buf_ysize = bufy) #converts from a raster band to a numpy array
-			return EnvironmentalModel(mapArray, resolution, maxSlope, planet, NWCoord)
+			return EnvironmentalModel(mapArray, resolution, maxSlope, NWCoord, planet)
 		else:
+			#TODO Kevin you have to call convertToUTM from within EnvionmentalModel, which you don't have here.
+			# Alternately make it a standalone function
 			top = convertToUTM(NWCorner.northing)
 			bot = convertToUTM(SECorner.northing)
 			left = convertToUTM(NWCorner.easting)
@@ -294,7 +296,7 @@ def loadElevationMap(filePath, maxSlope = 15, planet = 'Earth', NWCorner = None,
 			y_size = ((NWnorthing - top)/resolution) + 1 - y_offset
 			
 			mapArray = band.ReadAsArray(x_offset, y_offset, x_size, y_size, bufx, bufy).astype(np.float)
-			return EnvironmentalModel(mapArray, resolution, maxSlope, planet, NWCoord)
+			return EnvironmentalModel(mapArray, resolution, maxSlope, NWCoord, planet)
 	else:
 		print "ERROR: expected txt or tif file. Received " + extension + " type file"
 		return 0
