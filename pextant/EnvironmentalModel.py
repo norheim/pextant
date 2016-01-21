@@ -226,7 +226,7 @@ def loadElevationMap(filePath, maxSlope = 15, planet = 'Earth', NWCorner = None,
 			else:
 				print "ERROR: expected " + str(numCols) + " columns. Got " + str(len(x)) + " columns"
 				return 0
-		return EnvironmentalModel(mapArray, inputs[4], maxSlope, planet)
+		return EnvironmentalModel(mapArray, inputs[4], maxSlope=maxSlope, planet=planet)
 	elif extension == 'tif':
 		# NOTE: Currently, SEXTANT only supports geoTIFF files that use the UTM projection and have "north up"
 		gdal.UseExceptions()
@@ -279,7 +279,7 @@ def loadElevationMap(filePath, maxSlope = 15, planet = 'Earth', NWCorner = None,
 				bot = transform.latLongToUTM(SECorner).northing
 				left = transform.latLongToUTM(NWCorner).easting
 				right = transform.latLongToUTM(SECorner).easting
-				
+
 			if bot > top or left > right:
 				print "ERROR with NWCorner and SECorner"
 				print "NWCorner: " + str(NWCorner) + " SWCorner: " + str(SECorner)
@@ -300,7 +300,7 @@ def loadElevationMap(filePath, maxSlope = 15, planet = 'Earth', NWCorner = None,
 			y_size = ((NWnorthing - top)/resolution) + 1 - y_offset
 			
 			mapArray = band.ReadAsArray(x_offset, y_offset, x_size, y_size, bufx, bufy).astype(np.float)
-			return EnvironmentalModel(mapArray, resolution, maxSlope, planet, NWCoord)
+			return EnvironmentalModel(mapArray, resolution, maxSlope, NWCoord, planet)
 	else:
 		print "ERROR: expected txt or tif file. Received " + extension + " type file"
 		return 0
