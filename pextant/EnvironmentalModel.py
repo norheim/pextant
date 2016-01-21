@@ -264,16 +264,22 @@ def loadElevationMap(filePath, maxSlope = 15, planet = 'Earth', NWCorner = None,
 				bufy = None
 		
 		NWCoord = UTMCoord(NWeasting, NWnorthing, zone, zoneLetter)
-				
+		
 		if NWCorner == None and SECorner == None: #No NW and SE corner implies we want the entire map
 			mapArray = band.ReadAsArray(buf_xsize = bufx, buf_ysize = bufy) #converts from a raster band to a numpy array
-			return EnvironmentalModel(mapArray, resolution, maxSlope, planet, NWCoord)
+			return EnvironmentalModel(mapArray, resolution, maxSlope, NWCoord, planet)
 		else:
-			top = convertToUTM(NWCorner.northing)
-			bot = convertToUTM(SECorner.northing)
-			left = convertToUTM(NWCorner.easting)
-			right = convertToUTM(SECorner.easting)
-			
+			if(NWCorner.type == UTMCoord):
+				top = NWCorner.northing
+				bot = SECorner.northing
+				left = NWCorner.easting
+				right = SECorner.easting
+			else:
+				top = transform.latLongToUTM(NWCorner).northing
+				bot = transform.latLongToUTM(SECorner).northing
+				left = transform.latLongToUTM(NWCorner).easting
+				right = transform.latLongToUTM(SECorner).easting
+				
 			if bot > top or left > right:
 				print "ERROR with NWCorner and SECorner"
 				print "NWCorner: " + str(NWCorner) + " SWCorner: " + str(SECorner)

@@ -213,8 +213,6 @@ class Pathfinder:
 	def completeSearchFromJSON(self, optimize_on, jsonInput, returnType = "JSON", fileName = None, algorithm = "A*", numTestPoints = 0):
 		parsed_json = json.loads(jsonInput)
 		new_json = json.loads(jsonInput)
-# 		Kevin -- there is no deepcopy, and if you just want the same thing twice we can load it twice ...
-# 		new_json = deepcopy(parsed_json)
 		waypoints = []
 		
 		for element in parsed_json: # identify all of the waypoints
