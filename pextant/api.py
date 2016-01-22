@@ -186,8 +186,11 @@ class Pathfinder:
 						
 			path, expanded, cost = partialPath
 			
-			finalPath += path # for now I'm not going to bother with deleting the duplicates
+			if path != None:
+				finalPath += path # for now I'm not going to bother with deleting the duplicates
 							  # that will occur at every activity point. I think it might end up being useful
+			else:
+				return [None, waypoints[i].coordinates, waypoints[i+1].coordinates]
 			segmentCost += cost
 			segmentCost += optimize_vector[1]*waypoints[i].duration
 			
@@ -224,6 +227,9 @@ class Pathfinder:
 			path = self.aStarCompletePath(optimize_on, waypoints, returnType, fileName)
 		elif algorithm == "Field D*":
 			path = self.fieldDStarCompletePath(optimize_on, waypoints, returnType, fileName, numTestPoints)
+		
+		if path[0] == None:
+			return "ERROR: path was not found between", path[1], "and", path[2]
 		
 		for i, element in enumerate(new_json):
 			if element["type"] == "Segment":
