@@ -68,9 +68,9 @@ class Pathfinder:
 		path_length = R * math.sqrt((startRow-endRow)**2 + (startCol-endCol)**2)
 		slope = math.degrees(math.atan((endElev - startElev) / path_length))
 		
-		distWeight = self.explorer.distance(path_length)*optimize_vector[0]
-		timeWeight = self.explorer.time(path_length, slope)*optimize_vector[1]
-		energyWeight = self.explorer.energyCost(path_length, slope, self.map.getGravity())*optimize_vector[2]
+		distWeight = self.explorer.distance(path_length)*optimize_vector[0] if optimize_vector[0] else 0
+		timeWeight = self.explorer.time(path_length, slope)*optimize_vector[1] if optimize_vector[1] else 0
+		energyWeight = self.explorer.energyCost(path_length, slope, self.map.getGravity())*optimize_vector[2] if optimize_vector[2] else 0
 		
 		return distWeight + timeWeight + energyWeight
 	
@@ -678,7 +678,7 @@ class Pathfinder:
 				distance = self._aStarCostFunction(startState, endState, [1, 0, 0]) # distance
 				energy = self._aStarCostFunction(startState, endState, [0, 0, 1]) # energy
 				time = self._aStarCostFunction(startState, endState, [0, 1, 0]) # time
-				
+								
 				lineString["derivedInfo"]["distanceList"].append(distance)
 				lineString["derivedInfo"]["energyList"].append(energy)
 				lineString["derivedInfo"]["timeList"].append(time)
