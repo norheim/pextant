@@ -105,15 +105,15 @@ class EnvironmentalModel(object):
 		# determines if a state is within the boundaries of the environmental model
 		# a state is a tuple of the form (row, column)
 		row, col = coordinates
-		return (row in range(self.numRows)) and (col in range(self.numCols))
+		return (0 <= row < self.numRows) and (0 <= col < self.numCols)
 	
 	def isPassable(self, coordinates):
 		# determines if coordinates can be passed through
 		row, col = self.convertToRowCol(coordinates) # coordinates is a tuple
-		if not self._inBounds(coordinates):
-			return False
-		else:
+		if self._inBounds(coordinates):
 			return self.obstacles[row][col]
+		else:
+			return False
 	
 	def _UTMtoRowCol(self, UTM):
 		'''
