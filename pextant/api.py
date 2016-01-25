@@ -68,9 +68,9 @@ class Pathfinder:
 		path_length = R * math.sqrt((startRow-endRow)**2 + (startCol-endCol)**2)
 		slope = math.degrees(math.atan((endElev - startElev) / path_length))
 		
-		distWeight = self.explorer.distance(path_length)*optimize_vector[0]
-		timeWeight = self.explorer.time(path_length, slope)*optimize_vector[1]
-		energyWeight = self.explorer.energyCost(path_length, slope, self.map.getGravity())*optimize_vector[2]
+		distWeight = self.explorer.distance(path_length)*optimize_vector[0] if optimize_vector[0] else 0
+		timeWeight = self.explorer.time(path_length, slope)*optimize_vector[1] if optimize_vector[1] else 0
+		energyWeight = self.explorer.energyCost(path_length, slope, self.map.getGravity())*optimize_vector[2] if optimize_vector[2] else 0
 		
 		return distWeight + timeWeight + energyWeight
 	
@@ -186,8 +186,11 @@ class Pathfinder:
 						
 			path, expanded, cost = partialPath
 			
-			finalPath += path # for now I'm not going to bother with deleting the duplicates
+			if path != None:
+				finalPath += path # for now I'm not going to bother with deleting the duplicates
 							  # that will occur at every activity point. I think it might end up being useful
+			else:
+				return [None, waypoints[i].coordinates, waypoints[i+1].coordinates]
 			segmentCost += cost
 			segmentCost += optimize_vector[1]*waypoints[i].duration
 			
@@ -213,8 +216,6 @@ class Pathfinder:
 	def completeSearchFromJSON(self, optimize_on, jsonInput, returnType = "JSON", fileName = None, algorithm = "A*", numTestPoints = 0):
 		parsed_json = json.loads(jsonInput)
 		new_json = json.loads(jsonInput)
-# 		Kevin -- there is no deepcopy, and if you just want the same thing twice we can load it twice ...
-# 		new_json = deepcopy(parsed_json)
 		waypoints = []
 		
 		for element in parsed_json: # identify all of the waypoints
@@ -226,6 +227,9 @@ class Pathfinder:
 			path = self.aStarCompletePath(optimize_on, waypoints, returnType, fileName)
 		elif algorithm == "Field D*":
 			path = self.fieldDStarCompletePath(optimize_on, waypoints, returnType, fileName, numTestPoints)
+		
+		if path[0] == None:
+			return "ERROR: path was not found between", path[1], "and", path[2]
 		
 		for i, element in enumerate(new_json):
 			if element["type"] == "Segment":
@@ -680,7 +684,7 @@ class Pathfinder:
 				distance = self._aStarCostFunction(startState, endState, [1, 0, 0]) # distance
 				energy = self._aStarCostFunction(startState, endState, [0, 0, 1]) # energy
 				time = self._aStarCostFunction(startState, endState, [0, 1, 0]) # time
-				
+								
 				lineString["derivedInfo"]["distanceList"].append(distance)
 				lineString["derivedInfo"]["energyList"].append(energy)
 				lineString["derivedInfo"]["timeList"].append(time)
