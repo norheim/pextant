@@ -1,6 +1,7 @@
 from EnvironmentalModel import UTMCoord, LatLongCoord, EnvironmentalModel, loadElevationMap
 from ExplorationObjective import ActivityPoint
 from ExplorerModel import Explorer, Rover, Astronaut
+from Exceptions import *
 import convenience
 
 import logging
@@ -45,8 +46,10 @@ class Pathfinder:
 			return [0, 1, 0]
 		elif optimize_on == 'Distance':
 			return [1, 0, 0]
-		else:
+		elif isinstance(optimize_on, list) and len(optimize_on) == 3:
 			return optimize_on
+		else:
+			raise TypeError("optimize_on must be a list of length 3, \'Energy\', \'Time\', or \'Distance\', given" + repr(optimize_on))
 	
 	def _aStarCostFunction(self, start_state, end_state, optimize_on):
 		'''
@@ -68,9 +71,20 @@ class Pathfinder:
 		path_length = R * math.sqrt((startRow-endRow)**2 + (startCol-endCol)**2)
 		slope = math.degrees(math.atan((endElev - startElev) / path_length))
 		
-		distWeight = self.explorer.distance(path_length)*optimize_vector[0] if optimize_vector[0] else 0
-		timeWeight = self.explorer.time(path_length, slope)*optimize_vector[1] if optimize_vector[1] else 0
-		energyWeight = self.explorer.energyCost(path_length, slope, self.map.getGravity())*optimize_vector[2] if optimize_vector[2] else 0
+		if optimize_vector[0]:
+			distWeight = self.explorer.distance(path_length)*optimize_vector[0]
+		else:
+			distWeight = 0
+
+		if optimize_vector[1]:
+			timeWeight = self.explorer.time(path_length, slope)*optimize_vector[1]
+		else:
+			timeWeight = 0
+			
+		if optimize_vector[2]:
+			energyWeight = self.explorer.energyCost(path_length, slope, self.map.getGravity())*optimize_vector[2]
+		else:
+			energyWeight = 0
 		
 		return distWeight + timeWeight + energyWeight
 	
@@ -105,9 +119,7 @@ class Pathfinder:
 			D += (0.216 * m + P_e / 4.167) * R * optimize_vector[2]
 		else:
 			# This should not happen
-			print "Error: something wrong with either the planet or the explorer"
-			print "current planet: " + self.map.planet + "; current explorer type: " + self.explorer.type
-			return 0
+			raise TypeError("planet/explorer conflict, current planet: ", self.map.planet, "current explorer: ", self.explorer.type)
 		
 		# Adding the distance weight
 		D += self.map.resolution * optimize_vector[0]
@@ -186,11 +198,11 @@ class Pathfinder:
 						
 			path, expanded, cost = partialPath
 			
-			if path != None:
+			if path:
 				finalPath += path # for now I'm not going to bother with deleting the duplicates
 							  # that will occur at every activity point. I think it might end up being useful
 			else:
-				return [None, waypoints[i].coordinates, waypoints[i+1].coordinates]
+				raise RuntimeError("Path not found between waypoints", waypoints[i].coordinates, "and", waypoints[i+1].coordinates)
 			segmentCost += cost
 			segmentCost += optimize_vector[1]*waypoints[i].duration
 			
@@ -227,9 +239,6 @@ class Pathfinder:
 			path = self.aStarCompletePath(optimize_on, waypoints, returnType, fileName)
 		elif algorithm == "Field D*":
 			path = self.fieldDStarCompletePath(optimize_on, waypoints, returnType, fileName, numTestPoints)
-		
-		if path[0] == None:
-			return "ERROR: path was not found between", path[1], "and", path[2]
 		
 		for i, element in enumerate(new_json):
 			if element["type"] == "Segment":
