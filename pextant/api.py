@@ -1,6 +1,7 @@
 from EnvironmentalModel import UTMCoord, LatLongCoord, EnvironmentalModel, loadElevationMap
 from ExplorationObjective import ActivityPoint
 from ExplorerModel import Explorer, Rover, Astronaut
+from Exceptions import *
 import convenience
 
 import logging
@@ -158,9 +159,9 @@ class Pathfinder:
 		As of right now 'Energy' just refers to metabolic energy.
 		'''
 		# raise errors if start/end nodes are out of bounds
-		if not self.map._inBounds(startNode.coordinates):
+		if not self.map._inBounds(startNode.state):
 			raise IndexError("The location ", startNode.coordinates, "is out of bounds")
-		elif not self.map._inBounds(endNode.coordinates):
+		elif not self.map._inBounds(endNode.state):
 			raise IndexError("The location ", endNode.coordinates, "is out of bounds")
 		
 		if self._goalTest(startNode, endNode):
@@ -670,9 +671,21 @@ class Pathfinder:
 			# When we hit a station, we need to add the previous lineString to the sequence,
 			# compute the total Dist, Time, and Energy
 			if not firstStation:
-				lineString["derivedInfo"]["totalDistance"] = sum(lineString["derivedInfo"]["distanceList"])
-				lineString["derivedInfo"]["totalTime"] = sum(lineString["derivedInfo"]["timeList"])
-				lineString["derivedInfo"]["totalEnergy"] = sum(lineString["derivedInfo"]["energyList"])
+				distSum = sum(lineString["derivedInfo"]["distanceList"])
+				timeSum = sum(lineString["derivedInfo"]["timeList"])
+				energySum = sum(lineString["derivedInfo"]["energyList"])
+			
+				lineString["derivedInfo"]["totalDistance"] = (distSum if distSum != float('inf') else "Infinity")
+				lineString["derivedInfo"]["totalTime"] = (timeSum if timeSum != float('inf') else "Infinity")
+				lineString["derivedInfo"]["totalEnergy"] = (energySum if energySum != float('inf') else "Infinity")
+				
+				for i in range(len(lineString["derivedInfo"]["distanceList"])):
+					if lineString["derivedInfo"]["distanceList"][i] == float('inf'):
+						lineString["derivedInfo"]["distanceList"][i] = "Infinity"
+					if lineString["derivedInfo"]["timeList"][i] == float('inf'):
+						lineString["derivedInfo"]["timeList"][i] = "Infinity"
+					if lineString["derivedInfo"]["energyList"][i] == float('inf'):
+						lineString["derivedInfo"]["energyList"][i] = "Infinity"
 				
 				sequence.append(lineString)
 				
