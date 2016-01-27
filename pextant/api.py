@@ -1,7 +1,6 @@
 from EnvironmentalModel import UTMCoord, LatLongCoord, EnvironmentalModel, loadElevationMap
 from ExplorationObjective import ActivityPoint
 from ExplorerModel import Explorer, Rover, Astronaut
-from Exceptions import *
 import convenience
 
 import logging
