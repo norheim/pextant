@@ -159,9 +159,9 @@ class Pathfinder:
 		'''
 		# raise errors if start/end nodes are out of bounds
 		if not self.map._inBounds(startNode.state):
-			raise IndexError("The location ", startNode.coordinates, "is out of bounds")
+			raise IndexError("The location ", startNode.state, "is out of bounds")
 		elif not self.map._inBounds(endNode.state):
-			raise IndexError("The location ", endNode.coordinates, "is out of bounds")
+			raise IndexError("The location ", endNode.state, "is out of bounds")
 		
 		if self._goalTest(startNode, endNode):
 			return startNode.getPath()
