@@ -157,6 +157,12 @@ class Pathfinder:
 		three vector elements representing: 'Energy', 'Time', or 'Distance'
 		As of right now 'Energy' just refers to metabolic energy.
 		'''
+		# raise errors if start/end nodes are out of bounds
+		if not self.map._inBounds(startNode.coordinates):
+			raise IndexError("The location ", startNode.coordinates, "is out of bounds")
+		elif not self.map._inBounds(endNode.coordinates):
+			raise IndexError("The location ", endNode.coordinates, "is out of bounds")
+		
 		if self._goalTest(startNode, endNode):
 			return startNode.getPath()
 		agenda = []
@@ -170,7 +176,7 @@ class Pathfinder:
 				if self._goalTest(node, endNode):
 					return (node.getPath(), len(expanded), node.cost)
 				for child in self._aStarGetNeighbors(node, optimize_on):
-					if child.state not in expanded:
+					if child.state not in expanded and child.cost != float('inf'):
 						heapq.heappush(agenda,((child.cost+self._heuristic(child, endNode, optimize_on, "A*"), child)))
 		return (None, len(expanded), node.cost)
 
@@ -184,7 +190,7 @@ class Pathfinder:
 		used when we would like to write stuff to a file and is currently necessary
 		for csv return types.
 		'''
-		optimize_vector = self._vectorize(optimize_on)
+		optimize_vector = self._vectorize(optimize_on)		
 		
 		finalPath = []
 		costs = []

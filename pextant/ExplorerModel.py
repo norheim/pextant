@@ -41,11 +41,11 @@ class Astronaut(Explorer): #Astronaut extends Explorer
 	def velocity(self, slope): #slope is in degrees
 							   #this is from Marquez 2008
 							   #NOT the same slope as the one found in the slopes map
-		if slope > 20:
-			logger.debug("slope is over 20, returning zero")
+		if slope > 25:
+			logger.debug("slope is over 25, returning zero")
 			return 0
-		elif slope < -20:
-			logger.debug("slope is under -20, returning zero")
+		elif slope < -25:
+			logger.debug("slope is under -25, returning zero")
 			return 0
 		elif slope > 15:
 			return 0.05
