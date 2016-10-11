@@ -1,12 +1,12 @@
 from pextant.api import *
 import unittest
 
-testfile = ('datasets\INFERNO-DEM.tif')
+testfile = 'datasets\INFERNO-DEM.tif'
 
 class TestPathfinder(unittest.TestCase):
 
 	def setUp(self):
-		map = EnvironmentalModel.loadElevationMap(testfile)
+		map = loadElevationMap(testfile)
 		explorer = Astronaut(120)
 		AP1 = ActivityPoint((1300, 1300), 0, {})
 		AP2 = ActivityPoint((1800, 1600), 10, {})
