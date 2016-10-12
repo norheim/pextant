@@ -1,43 +1,6 @@
 import numpy as np
-import transform
+from transform import *
 from osgeo import gdal, osr
-
-
-class UTMCoord(object):
-    """
-	Represents a UTM coordinate. All UTM Coordinates should be expressed in this form.
-	"""
-
-    def __init__(self, easting, northing, zone, zone_letter='T'):
-        self.easting = easting
-        self.northing = northing
-        self.zone = zone
-        self.zoneLetter = zone_letter  # Note: 'T' is the zone letter of all but the northernmost point of Idaho
-        # 'Q' is the zone letter of Hawaii
-
-    def __str__(self):
-        return "UTM Coordinate " + str(self.easting) + "E," + str(self.northing) + "N, zone" + str(
-            self.zone) + self.zoneLetter + '\n'
-
-
-class LatLongCoord(object):
-    '''
-	Represents a latitude and longitude pair. All Lat/Long Coordinates should be expressed in this form.
-	'''
-
-    def __init__(self, lat, long):
-        self.latitude = lat
-        self.longitude = long
-
-    def __str__(self):
-        return "LatLong Coordinate " + str(self.latitude) + ',' + str(self.longitude) + '\n'
-
-    def latLongList(self):
-        return [self.latitude, self.longitude]
-
-    def longLatList(self):
-        return [self.longitude, self.latitude]
-
 
 class EnvironmentalModel(object):
     '''
@@ -55,7 +18,7 @@ class EnvironmentalModel(object):
 
     def __init__(self, elevation_map, resolution, maxSlope, NW_Coord, planet="Earth", uuid=None):
         self.elevations = elevation_map  # this is a numpy 2D array
-        self.resolution = float(resolution)  # this is just a float
+        self.resolution = resolution  # float expected in meters/pixel
         [gx, gy] = np.gradient(elevation_map, resolution, resolution)
         # self.slopes = np.degrees(np.arctan(np.sqrt(np.add(np.square(gx),np.square(gy))))) # I think this syntax is correct
         # we want atan(sqrt(gx^2+gy^2)) in degrees
@@ -131,6 +94,7 @@ class EnvironmentalModel(object):
 		'''
         if UTM.zone == self.NW_UTM.zone:
             row = round((self.NW_UTM.northing - UTM.northing) / self.resolution)
+            # for column due to image reversal need to do non obvious thing:
             col = round((UTM.easting - self.NW_UTM.easting) / self.resolution)
             return row, col
         else:
@@ -155,12 +119,11 @@ class EnvironmentalModel(object):
 		This should be called before every function in EnvironmentalModel. Converts UTMCoord or LatLongCoord
 		objects into a tuple representing the row and the column of the environmental map closest to that location.
 		"""
-        if type(position) is UTMCoord:
+        if isinstance(position, UTMCoord):
             return self._UTMtoRowCol(position)
-        elif type(position) is LatLongCoord:
-            easting, northing, zoneNumber, zoneLetter = transform.latLongToUTM(position)
-            return self._UTMtoRowCol(UTMCoord(easting, northing, zoneNumber, zoneLetter))
-        elif type(position) is tuple:
+        elif isinstance(position, LatLongCoord):
+            return self._UTMtoRowCol(latLongToUTM(position))
+        elif isinstance(position, tuple):
             return position
         else:
             print "ERROR: only accepts UTMCoord, LatLongCoord, and tuple objects"
@@ -172,13 +135,13 @@ class EnvironmentalModel(object):
 		Converts a row/column or UTM coordinate into a LatLongCoord
 		'''
         if type(position) is UTMCoord:
-            lat, lon = transform.UTMToLatLong(position)
+            lat, lon = UTMToLatLong(position)
             return LatLongCoord(lat, lon)
         elif type(position) is LatLongCoord:
             return position
         elif type(position) is tuple:
             UTM = self._rowColToUTM(position)
-            lat, lon = transform.UTMToLatLong(UTM)
+            lat, lon = UTMToLatLong(UTM)
             return LatLongCoord(lat, lon)
         else:
             print "ERROR: only accepts UTMCoord, LatLongCoord, and tuple objects"
@@ -192,7 +155,7 @@ class EnvironmentalModel(object):
         if type(position) is UTMCoord:
             return position
         elif type(position) is LatLongCoord:
-            easting, northing, zoneNumber, zoneLetter = transform.latLongToUTM(position)
+            easting, northing, zoneNumber, zoneLetter = latLongToUTM(position)
             return UTMCoord(easting, northing, zoneNumber, zoneLetter)
         elif type(position) is tuple:
             return self._rowColToUTM(position)
@@ -202,8 +165,8 @@ class EnvironmentalModel(object):
             return 0
 
 
-def loadElevationMap(filePath, maxSlope=15, planet='Earth', NWCorner=None, SECorner=None, desiredRes=None,
-                     no_val=-10000, zone=None, zoneLetter=None):
+def loadElevationMap(filePath, maxSlope=15, planet='Earth', nw_corner=None, se_corner=None, desired_res=None,
+                     no_val=-10000, zone=None, zone_letter=None):
     '''
 	Creates a EnvironmentalModel object from either a geoTiff file or a text file.
 	
@@ -226,15 +189,15 @@ def loadElevationMap(filePath, maxSlope=15, planet='Earth', NWCorner=None, SECor
             inputs.append(f.readline().split(' ')[-1])  # this should work given the current format
         numCols = inputs[0]
         numRows = inputs[1]
-        mapArray = np.empty([numRows, numCols])  # initializes an empty array
+        map_array = np.empty([numRows, numCols])  # initializes an empty array
         for i in range(numRows):
             x = f.readline().split(' ')
             if len(x) == numCols:
-                mapArray[i] = x
+                map_array[i] = x
             else:
                 print "ERROR: expected " + str(numCols) + " columns. Got " + str(len(x)) + " columns"
                 return 0
-        return EnvironmentalModel(mapArray, inputs[4], maxSlope, planet)
+        return EnvironmentalModel(map_array, inputs[4], maxSlope, planet)
     elif extension == 'tif':
         # NOTE: Currently, SEXTANT only supports geoTIFF files that use the UTM projection and have "north up"
         gdal.UseExceptions()
@@ -248,69 +211,66 @@ def loadElevationMap(filePath, maxSlope=15, planet='Earth', NWCorner=None, SECor
         projcs = srs.GetAttrValue('projcs')  # This will be a string that looks something like
         # "NAD83 / UTM zone 5N"...hopefully
 
-        if (projcs and (zone == None) and zoneLetter == None):  # projcs is not None for the government Hawaii data
+        if projcs and (zone is None and zone_letter is None):  # projcs is not None for the government Hawaii data
             zone = int(projcs.split(' ')[-1][0:-1])
-            zoneLetter = projcs.split(' ')[-1][-1]
+            zone_letter = projcs.split(' ')[-1][-1]
 
-        datasetInfo = dataset.GetGeoTransform()
+        dataset_info = dataset.GetGeoTransform()
         # returns a list of length 6. Indices 0 and 3 are the easting and northing values of the upper left corner.
         # Indices 1 and 5 are the w-e and n-s pixel resolutions, index 5 is always negative. Indicies 2 and 4 are
         # set to zero for all maps pointing in a "North up" type projection; for now we will only be using maps where
         # North is set to up.
-        NWeasting = datasetInfo[0]
-        NWnorthing = datasetInfo[3]
-        bufx = None
-        bufy = None
+        nw_easting = dataset_info[0]
+        nw_northing = dataset_info[3]
 
-        if datasetInfo[1] == -datasetInfo[5]:  # SEXTANT does not support maps where the x-resolution differs from the y-resolution at the moment
-            if desiredRes:
-                resolution = desiredRes
-                bufx = round(dataset.RasterXSize * datasetInfo[1] / resolution)
-                bufy = round(dataset.RasterYSize * datasetInfo[1] / resolution)
-            else:
-                resolution = datasetInfo[1]
-                bufx = None
-                bufy = None
+        resolution = dataset_info[1]
+        # SEXTANT does not support maps where the x-resolution differs from the y-resolution at the moment
+        if abs(resolution) != abs(dataset_info[5]):
+            raise ValueError('Resolution in x,y = ' + str(resolution) + "," + str(dataset_info[5]) + " do not match")
 
-
-        NWCoord = UTMCoord(NWeasting, NWnorthing, zone, zoneLetter)
-
-        if NWCorner == None and SECorner == None:  # No NW and SE corner implies we want the entire map
-            mapArray = band.ReadAsArray(buf_xsize=bufx, buf_ysize=bufy)  # converts from a raster band to a numpy array
-            return EnvironmentalModel(mapArray, resolution, maxSlope, NWCoord, planet)
+        buf_x = None
+        buf_y = None
+        if desired_res:
+            buf_x = round(dataset.RasterXSize * dataset_info[1] / desired_res)
+            buf_y = round(dataset.RasterYSize * dataset_info[1] / desired_res)
         else:
-            if (NWCorner.type == UTMCoord):
-                top = NWCorner.northing
-                bot = SECorner.northing
-                left = NWCorner.easting
-                right = SECorner.easting
-            else:
-                top = transform.latLongToUTM(NWCorner).northing
-                bot = transform.latLongToUTM(SECorner).northing
-                left = transform.latLongToUTM(NWCorner).easting
-                right = transform.latLongToUTM(SECorner).easting
+            desired_res = resolution # will need desiredRes later on
+
+        if nw_corner is None and se_corner is None:  # No NW and SE corner implies we want the entire map
+            # converts from a raster band to a numpy array
+            map_array = band.ReadAsArray(buf_xsize=buf_x, buf_ysize=buf_y)
+        else:
+            nw_corner = nw_corner if isinstance(nw_corner, UTMCoord) else latLongToUTM(nw_corner)
+            se_corner = se_corner if isinstance(se_corner, UTMCoord) else latLongToUTM(se_corner)
+
+            top, bot = nw_corner.northing, se_corner.northing
+            left, right = nw_corner.easting, se_corner.easting
 
             if bot > top or left > right:
                 print "ERROR with NWCorner and SECorner"
-                print "NWCorner: " + str(NWCorner) + " SWCorner: " + str(SECorner)
+                print "NWCorner: " + str(nw_corner) + "SWCorner: " + str(se_corner)
                 return 0
 
-            if left < NWeasting:
-                left = NWeasting
-            if right > NWeasting + datasetInfo[1] * (dataset.RasterXSize - 1):
-                right = NWeasting + datasetInfo[1] * (dataset.RasterXSize - 1)
-            if top > NWnorthing:
-                top = NWnorthing
-            if bot < NWnorthing + datasetInfo[5] * (dataset.RasterYSize - 1):
-                bot = NWnorthing + datasetInfo[5] * (dataset.RasterYSize - 1)
+            left = max(left, nw_easting)
+            ne_easting = nw_easting + dataset_info[1] * (dataset.RasterXSize - 1)
+            right = min(right, ne_easting)
 
-            x_offset = int((left - NWeasting) / resolution)
-            x_size = int((right - NWeasting) / resolution) + 1 - x_offset
-            y_offset = int((NWnorthing - top) / resolution)
-            y_size = ((NWnorthing - top) / resolution) + 1 - y_offset
+            top = min(top, nw_northing)
+            se_northing = nw_northing + dataset_info[5] * (dataset.RasterYSize - 1)
+            bot = max(bot, se_northing)
 
-            mapArray = band.ReadAsArray(x_offset, y_offset, x_size, y_size, bufx, bufy).astype(np.float)
-            return EnvironmentalModel(mapArray, resolution, maxSlope, planet, NWCoord)
+            x_offset = int((left - nw_easting) / resolution)
+            x_size = int((right - nw_easting) / resolution) + 1 - x_offset
+            y_offset = int((nw_northing - top) / resolution)
+            y_size = ((nw_northing - bot) / resolution) + 1 - y_offset
+
+            map_array = band.ReadAsArray(x_offset, y_offset, x_size, y_size, buf_x, buf_y).astype(np.float)
+
+            nw_easting = nw_corner.easting
+            nw_northing = nw_corner.northing
+
+        nw_coord = UTMCoord(nw_easting, nw_northing, zone, zone_letter)
+
+        return EnvironmentalModel(map_array, desired_res, maxSlope, nw_coord, planet)
     else:
-        print "ERROR: expected txt or tif file. Received " + extension + " type file"
-        return 0
+        raise ValueError("ERROR: expected txt or tif file. Received " + extension + " type file")

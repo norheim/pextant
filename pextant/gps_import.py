@@ -6,7 +6,7 @@ import numpy as np
 pd.options.display.max_rows = 5
 
 map = loadElevationMap('hsnew.tif', maxSlope = 15,
-					planet = 'Earth', NWCorner = None, SECorner = None, desiredRes = 0.5)
+                       planet = 'Earth', nw_corner= None, se_corner= None, desired_res= 0.5)
 
 def get_gps_data(filename, traversal_id):
     """
