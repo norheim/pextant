@@ -46,3 +46,6 @@ Temporary Items
 pextant/lines.html
 .*
 !/.gitignore
+.tif
+maps/
+waypoints/
