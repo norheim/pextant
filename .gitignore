@@ -46,6 +46,7 @@ Temporary Items
 pextant/lines.html
 .*
 !/.gitignore
-.tif
+*.tif
+*.ipynb
 maps/
 waypoints/
