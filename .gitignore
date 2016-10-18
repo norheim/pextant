@@ -48,5 +48,6 @@ pextant/lines.html
 !/.gitignore
 *.tif
 *.ipynb
+*.csv
 maps/
 waypoints/
