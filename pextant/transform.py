@@ -1,5 +1,5 @@
 import pyproj
-
+import numpy as np
 
 class UTMCoord(object):
     """
@@ -41,18 +41,25 @@ class LatLongCoord(object):
 
 
 def _longToUTMZone(longitude):
+    #TODO: remove hack
+    zones = 0
+    if isinstance(longitude, list) or isinstance(longitude, np.ndarray):
+        longitude = np.array(longitude)
+        zones = (((longitude + 180).astype(int) / 6.0) % 60) + 1
+    else:
+        zones = ((int(longitude + 180) / 6.0) % 60) + 1
     # returns the UTM zone based on the longitude. Doesn't take into account the special zones.
-    return (int((longitude + 180) / 6.0) % 60) + 1
+    return zones
 
 
 def _getZoneLetter(coordinate):
     # Figures out the zone letter of a LatLongCoord
-    lat = coordinate.latitude
+    lat = np.array(coordinate.latitude)
 
     UTMzdlChars = "CDEFGHJKLMNPQRSTUVWXX"
 
     if -80 <= lat and lat <= 84:
-        return UTMzdlChars[int((lat + 80) / 8)]
+        return UTMzdlChars[((lat + 80) / 8).astype(int)]
     else:
         # Not normally reached
         print "No zdl: UTM is not valid for Lat " + str(lat)
@@ -66,6 +73,9 @@ def UTMToLatLong(utm_coordinate):
     x = utm_coordinate.easting
     y = utm_coordinate.northing
     zone = utm_coordinate.zone
+
+    if not isinstance(zone, int):
+        zone = int(np.array(zone)[0]) # TODO: need to fix hack
 
     p1 = pyproj.Proj("+proj=utm +zone=" + str(zone) + ", +north +datum=WGS84")
     p2 = pyproj.Proj(proj='latlong', zone=zone, datum='WGS84')
@@ -81,10 +91,14 @@ def latLongToUTM(lat_long_coordinate):
     x = lat_long_coordinate.longitude
     y = lat_long_coordinate.latitude
     zone = _longToUTMZone(x)
-    zoneLetter = _getZoneLetter(lat_long_coordinate)
+    # TODO: fix this
+    #zoneLetter = _getZoneLetter(lat_long_coordinate)
+
+    if isinstance(zone, list) or isinstance(zone, np.ndarray):
+        zone = int(zone[0]) # TODO: remove hack
 
     p1 = pyproj.Proj(proj='latlong', datum='WGS84')
     p2 = pyproj.Proj(proj='utm', zone=zone, datum='WGS84')
 
     easting, northing = pyproj.transform(p1, p2, x, y)
-    return UTMCoord(easting, northing, zone, zoneLetter)
+    return UTMCoord(easting, northing, zone, zone_letter="T")
