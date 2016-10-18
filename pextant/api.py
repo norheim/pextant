@@ -1,5 +1,6 @@
 from EnvironmentalModel import UTMCoord, LatLongCoord, EnvironmentalModel, loadElevationMap
 from ExplorationObjective import ActivityPoint
+from bokeh.models import Label
 from ExplorerModel import Explorer, Rover, Astronaut
 import convenience
 
@@ -158,7 +159,7 @@ class Pathfinder:
                                 self._aStarCostFunction(search_node.state, state, optimize_on)) for state in
                 valid_children]
 
-    def aStarSearch(self, start_node, end_node, optimize_on):
+    def aStarSearch(self, start_node, end_node, optimize_on, p=None, dh=None):
         """
         returns the path (as a list of coordinates), followed by the number of
         states expanded, followed by the total cost
@@ -188,6 +189,11 @@ class Pathfinder:
             priority, node = heapq.heappop(agenda)
             if node.state not in expanded:
                 expanded.add(node.state)
+                if p is not None:
+                    p[0].circle(node.state[1], dh-node.state[0], fill_color="green", line_color="green")
+                    p[1].circle(node.state[1], dh - node.state[0], fill_color="green", line_color="green")
+                    #mytext = Label(x=node.state[1], y=dh-node.state[0], text='here your text')
+                    #p.add_layout(mytext)
                 if self._goalTest(node, end_node):
                     return (node.getPath(), len(expanded), node.cost)
                 for child in self._aStarGetNeighbors(node, optimize_on):
@@ -196,7 +202,7 @@ class Pathfinder:
                                        ((child.cost + self._heuristic(child, end_node, optimize_on, "A*"), child)))
         return (None, len(expanded), node.cost)
 
-    def aStarCompletePath(self, optimize_on, waypoints, returnType="JSON", fileName=None):
+    def aStarCompletePath(self, optimize_on, waypoints, returnType="JSON", plot=None, dh=None, fileName=None ):
         """
         Returns a tuple representing the path and the total cost of the path.
         The path will be a list. All activity points will be duplicated in
@@ -215,7 +221,7 @@ class Pathfinder:
 
             node1 = aStarSearchNode(self.map.convertToRowCol(waypoints[i].coordinates), None, 0)
             node2 = aStarSearchNode(self.map.convertToRowCol(waypoints[i + 1].coordinates), None, 0)
-            partialPath = self.aStarSearch(node1, node2, optimize_vector)
+            partialPath = self.aStarSearch(node1, node2, optimize_vector, plot, dh)
 
             path, expanded, cost = partialPath
 
@@ -223,8 +229,9 @@ class Pathfinder:
                 finalPath += path  # for now I'm not going to bother with deleting the duplicates
                 # that will occur at every activity point. I think it might end up being useful
             else:
-                raise RuntimeError("Path not found between waypoints", waypoints[i].coordinates, "and",
-                                   waypoints[i + 1].coordinates)
+                return []
+                #raise RuntimeError("Path not found between waypoints", waypoints[i].coordinates, "and",
+                #                   waypoints[i + 1].coordinates)
             segmentCost += cost
             segmentCost += optimize_vector[1] * waypoints[i].duration
 
