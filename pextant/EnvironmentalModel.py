@@ -20,6 +20,8 @@ class EnvironmentalModel(object):
         self.elevations = elevation_map  # this is a numpy 2D array
         self.resolution = resolution  # float expected in meters/pixel
         [gx, gy] = np.gradient(elevation_map, resolution, resolution)
+        #self.gx = gx
+        #self.gy = gy
         # self.slopes = np.degrees(np.arctan(np.sqrt(np.add(np.square(gx),np.square(gy))))) # I think this syntax is correct
         # we want atan(sqrt(gx^2+gy^2)) in degrees
         self.slopes = np.degrees(
@@ -262,7 +264,7 @@ def loadElevationMap(filePath, maxSlope=15, planet='Earth', nw_corner=None, se_c
             x_offset = int((left - nw_easting) / resolution)
             x_size = int((right - nw_easting) / resolution) + 1 - x_offset
             y_offset = int((nw_northing - top) / resolution)
-            y_size = ((nw_northing - bot) / resolution) + 1 - y_offset
+            y_size = int((nw_northing - bot) / resolution) + 1 - y_offset
 
             map_array = band.ReadAsArray(x_offset, y_offset, x_size, y_size, buf_x, buf_y).astype(np.float)
 
@@ -274,3 +276,41 @@ def loadElevationMap(filePath, maxSlope=15, planet='Earth', nw_corner=None, se_c
         return EnvironmentalModel(map_array, desired_res, maxSlope, nw_coord, planet)
     else:
         raise ValueError("ERROR: expected txt or tif file. Received " + extension + " type file")
+
+def loadElevationsLite(file_path):
+    gdal.UseExceptions()
+
+    # copied from stackexchange
+    dataset = gdal.Open(file_path)
+    band = dataset.GetRasterBand(1)
+    proj = dataset.GetProjection()
+
+    srs = osr.SpatialReference(wkt=proj)
+    projcs = srs.GetAttrValue('projcs')  # This will be a string that looks something like
+    # "NAD83 / UTM zone 5N"...hopefully
+
+    #if projcs:  # projcs is not None for the government Hawaii data
+    zone = int(projcs.split(' ')[-1][0:-1])
+    zone_letter = projcs.split(' ')[-1][-1]
+
+    dataset_info = dataset.GetGeoTransform()
+    # returns a list of length 6. Indices 0 and 3 are the easting and northing values of the upper left corner.
+    # Indices 1 and 5 are the w-e and n-s pixel resolutions, index 5 is always negative. Indicies 2 and 4 are
+    # set to zero for all maps pointing in a "North up" type projection; for now we will only be using maps where
+    # North is set to up.
+    nw_easting = dataset_info[0]
+    nw_northing = dataset_info[3]
+
+    resolution = dataset_info[1]
+
+    allinfo = {
+        "nw_easting" : nw_easting,
+        "nw_northing" : nw_northing,
+        "resolution" : resolution,
+        "zone" : zone,
+        "zone_letter" : zone_letter,
+        "width": dataset.RasterXSize,
+        "height" : dataset.RasterYSize
+    }
+
+    return allinfo
