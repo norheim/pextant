@@ -44,4 +44,5 @@ Temporary Items
 
 *.pyc
 pextant/lines.html
-.idea/workspace.xml
+.*
+!/.gitignore
