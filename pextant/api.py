@@ -1,6 +1,5 @@
 from EnvironmentalModel import UTMCoord, LatLongCoord, EnvironmentalModel, loadElevationMap
 from ExplorationObjective import ActivityPoint
-from bokeh.models import Label
 from ExplorerModel import Explorer, Rover, Astronaut
 import convenience
 
