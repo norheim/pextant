@@ -5,7 +5,7 @@ from bokeh.io import hplot
 
 output_file("lines.html", title="line plot example")
 
-dem_path = 'hawaiiDEM.tif'
+dem_path = 'maps/hawaiiDEM.tif'
 
 NWCorner = LatLongCoord(19.4025, -155.2750)
 SECorner = LatLongCoord(19.3987, -155.2694)

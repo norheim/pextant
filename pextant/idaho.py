@@ -1,13 +1,13 @@
 from api import *
 from EnvironmentalModel import *
 
-dem_path = 'maps/hwmidres.tif'
+dem_path = 'maps/hwmidlow.tif'
 
 import pandas as pd
 import json
 pd.options.display.max_rows = 5
 
-with open('MD10_EVA10_Stn18_Stn23_X.json') as data_file:
+with open('waypoints/MD10_EVA10_Stn18_Stn23_X.json') as data_file:
     data = json.load(data_file)
 ways_and_segments = data['sequence']
 s = pd.DataFrame(ways_and_segments)
@@ -25,13 +25,21 @@ utmmaxy, utmminy = utm.northing.max(), utm.northing.min()
 
 NWCorner = UTMCoord(utmminx, utmmaxy, utm.zone)
 SECorner = UTMCoord(utmmaxx, utmminy, utm.zone)
-print(NWCorner)
-print(SECorner)
+print(UTMToLatLong(NWCorner))
+print(UTMToLatLong(SECorner))
 
-dem_map = loadElevationMap(dem_path, nw_corner=NWCorner, se_corner=SECorner)
+dem_map = loadElevationMap(dem_path, maxSlope=30, nw_corner=NWCorner, se_corner=SECorner)
 
 astronaut = Astronaut(70)
 P = Pathfinder(astronaut, dem_map)
+
+lat,lon = latlong[['latitude','longitude']].iloc[7]
+print(lat,lon)
+latlong0 = LatLongCoord(lat, lon);
+utm0 = latLongToUTM(latlong0)
+ap0 = ActivityPoint(latlong0, 0)
+row0, col0 = dem_map.convertToRowCol(utm0)
+print(row0,col0)
 
 lat,lon = latlong[['latitude','longitude']].iloc[8]
 print(lat,lon)
@@ -65,9 +73,15 @@ s1.image(image=[dem_map.elevations[::-1,:]], dw=dw, dh=dh, palette="Spectral11")
 s2.image(image=[dem_map.obstacles[::-1,:]], dw=dw, dh=dh)
 # show the results
 
-final = P.aStarCompletePath([0, 0, 1], [ap1, ap2], 'tuple', [s1, s2], dh)
-s1.circle([col1,col2], [dh-row1,dh-row2])
-s2.circle([col1,col2], [dh-row1,dh-row2])
+final = P.aStarCompletePath([0, 0, 1], [ap0, ap1, ap2], 'tuple')
+
+if len(final)>0:
+    for elt in final[0]:
+        s2.circle(elt[1], dh-elt[0], fill_color="green", line_color="green")
+    s1.circle([col0, col1,col2], [dh-row0,dh-row1,dh-row2])
+    s2.circle([col0, col1,col2], [dh-row0,dh-row1,dh-row2])
+
+print final
 
 p = hplot(s1, s2)
 show(p)
