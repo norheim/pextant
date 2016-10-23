@@ -61,7 +61,8 @@ class LatLon(GeoType):
 
     def transform(self, geo_point, to_geo_type):
         if to_geo_type.name == "utm":
-            zones = (((np.array(geo_point.data["longitude"]) + 180).round() / 6.0) % 60 + 1).astype(int)
+            np_longitude = np.array(geo_point.data["longitude"])
+            zones = (((np_longitude + 180).round() / 6.0) % 60 + 1).astype(int)
             geo_point.data["zonenum"] = zones[0] if isinstance(zones, np.ndarray) else zones
             out = super(LatLon, self).transform(geo_point, to_geo_type)
             a = list(out)
@@ -142,7 +143,7 @@ class GeoPoint(object):
         return GeoPoint(UTM, easting_upper_left, northing_upper_left, zones[0])
 
     def square(self):
-        easting, northing, zones  = self.to(UTM)
+        easting, northing, zones = self.to(UTM)
         minx = easting.min()
         miny = northing.min()
         maxx = easting.max()
