@@ -1,100 +1,105 @@
 import pyproj
+import numpy as np
+
 
 class GeoType(object):
     def __init__(self, name, values, projparam, projtransformorder):
         self.name = name
+        self.projtype = name
         self.values = values
         self.projparam = projparam
-        self.proj_transform_order = projtransformorder
+        self.proj_transform_order = [values.index(parameter) for parameter in projtransformorder]
 
-    def getProj(self, geo_point):
-        proj = self.projparam["proj"]
-
+    def get_proj(self, data):
         for k, v in self.projparam.iteritems():
             for val in self.values:
-                self.projparam[k] = geo_point.data[v] if v == val else v
+                self.projparam[k] = data[v] if v == val else v
 
         # add additional parameters here
         self.projparam["datum"] = "WGS84"
 
-        proj_param = self.projparam;
+        proj_param = self.projparam
         p = pyproj.Proj(**proj_param)
-
         return p
 
     # will belong to all instance
     def transform(self, geo_point, to_geo_type):
-        out1, out2 = self.transform_implementation(geo_point, to_geo_type)
-        out3, out4 = to_geo_type.postprocess((out1, out2))
-        return out3, out4
+        if self.name == to_geo_type.name:
+            return geo_point.values()
+        elif self.projtype == to_geo_type.projtype:
+            args = self.getargs(geo_point)
+            return to_geo_type.post_process(args)
+        else:
+            data = geo_point.data
+            p_from = self.get_proj(data)
+            p_to = to_geo_type.get_proj(data)
+            args = self.getargs(geo_point)
+            out = pyproj.transform(p_from, p_to, args[0], args[1])
+            array_out = np.array(out)  # just in case its not a numpy already, and will simplify calcs later
+        return to_geo_type.post_process(array_out)
 
-    # will be specific to certain instances
-    def transform_implementation(self, geo_point, to_geo_type):
-        p_from = self.getProj(geo_point)
-        p_to = to_geo_type.getProj(geo_point)
-        # need to add function that is specific to geo_type. Problem comes from dealing with coord type values
-        # x, y = geo_point.data[self.values[0]], geo_point.data[self.values[1]] # TODO: make function for this?
-        x, y = self.getargs(geo_point)
+    def post_process(self, transformed_points):
+        return self.reorder(transformed_points)
 
-        out1, out2 = pyproj.transform(p_from, p_to, x, y)
-
-        return out1, out2
-
-    def postprocess(selg, transformed_points):
-        return transformed_points
+    def reorder(self, elements):
+        array_elements = np.array(elements)
+        if len(array_elements.shape) <= 1:
+            post_out = array_elements[self.proj_transform_order]
+        else:
+            post_out = array_elements[self.proj_transform_order, :]
+        return post_out
 
     def getargs(self, geo_point):
-        return self.getargshelper(geo_point)
-
-    def getargshelper(self, geo_point):
-        return geo_point.data[self.proj_transform_order[0]], geo_point.data[self.proj_transform_order[1]]
+        parameters = self.reorder(self.values)
+        return geo_point.data[parameters[0]], geo_point.data[parameters[1]]
 
 
-import numpy as np
-from math import floor
+class LatLon(GeoType):
+    def __init__(self):
+        super(LatLon, self).__init__("latlon", ["latitude", "longitude"], {"proj": "latlong"},
+                                     ["longitude", "latitude"])
+
+    def transform(self, geo_point, to_geo_type):
+        if to_geo_type.name == "utm":
+            zones = (((np.array(geo_point.data["longitude"]) + 180).round() / 6.0) % 60 + 1).astype(int)
+            geo_point.data["zonenum"] = zones[0] if isinstance(zones, np.ndarray) else zones
+            out = super(LatLon, self).transform(geo_point, to_geo_type)
+            a = list(out)
+            a.append(zones)
+            out = a
+        else:
+            out = super(LatLon, self).transform(geo_point, to_geo_type)
+
+        return out
+
+UTM = GeoType("utm", ["easting", "northing", "zonenum"], {"proj": "utm", "zone": "zonenum"}, ["easting", "northing"])
+LAT_LONG = LatLon()
 
 
 # realization: utm and latlong are "primitive" geoTypes. DEMType has a different structure,
 # but still same interface as the other geoTypes. It also relies on geo_points interface
 class DEMType(GeoType):
-    # needed for all coordinate conversions. got some serious bootstrapping going on right here
-    utm = GeoType("utm", ["easting", "northing", "zonenum"], {"proj": "utm", "zone": "zonenum"},
-                  ["easting", "northing"])
-
     def __init__(self, origin, resolution):
-        self.name = "coord"
-        self.values = ['x', 'y']
+        super(DEMType, self).__init__("coord", ["x", "y", "zonenum"], {"proj": "utm", "zone": "zonenum"}, ["x", "y"])
+        self.projtype = "utm"
+
         # doing conversion early on will save use from redoing it later, we don't expect our origin to change too much
-        self.origin = np.array(origin.to(utm))
-        self.projparamt = []
+        self.origin_easting, self.origin_northing, self.origin_zone = np.array(origin.to(UTM))
         self.resolution = resolution
 
-    # TODO: should be able to clean transform function even more
-    def getProj(self, geo_points):
-        return utm.getProj(geo_points)
+    def get_proj(self, geo_points):
+        return super(DEMType, self).get_proj({"zonenum": self.origin_zone})
 
     # this function is used internally and externally
     def getargs(self, geo_points):
-        origin_easting, origin_northing = self.origin
         # next line should ideally be super.getargs, but we overwrite the fx so not sure if possible
-        x, y = geo_points.data[geo_points.geo_type.values[0]], geo_points.data[geo_points.geo_type.values[1]]
-        points_easting, points_northing = origin_easting + x, origin_northing - y
-        return points_easting, points_northing
+        x, y = geo_points.data["x"], geo_points.data["y"]
+        return self.origin_easting + x, self.origin_northing - y
 
-    def postprocess(self, transformed_points):
-        origin_easting, origin_northing = self.origin
+    def post_process(self, transformed_points):
         points_easting, points_northing = transformed_points
-        x, y = (points_easting - origin_easting, origin_northing - points_northing)
-        return np.floor(x / self.resolution), np.floor(y / self.resolution)
-
-    def transform_implementation(self, geo_points, to_geo_type):
-        x, y = geo_point.data[self.values[0]], geo_point.data[self.values[1]]
-
-        # if we didnt do conversion eaerlier this is where we would have to do it
-        origin_easting, origin_northing = self.origin
-        points_easting, points_northing = origin_easting + x, origin_northing - y
-
-        return points_easting, points_northing
+        x, y = (points_easting - self.origin_easting, self.origin_northing - points_northing)
+        return np.array([np.floor(x / self.resolution), np.floor(y / self.resolution)]).astype(int)
 
 
 class GeoPoint(object):
@@ -120,30 +125,29 @@ class GeoPoint(object):
         for k, v in self.data.iteritems():
             print "%s : %s" % (k, v)
 
-    def raw(self):
-        return self.data.values()
-
     def values(self):
         # need to make immutable
-        return self.data.copy()
+        values = []
+        for parameter in self.geo_type.values:
+            values.append(self.data[parameter])
+        return values
 
     def to(self, to_geo_type):
-        if self.geo_type != to_geo_type:
-            out1, out2 = self.geo_type.transform(self, to_geo_type)
-        else:
-            return self.raw()
+        return self.geo_type.transform(self, to_geo_type)
 
-        return np.array((out1, out2))
+    def upper_left(self):
+        easting, northing, zones = self.to(UTM)
+        easting_upper_left = easting.min()
+        northing_upper_left = northing.max()
+        return GeoPoint(UTM, easting_upper_left, northing_upper_left, zones[0])
 
     def square(self):
-        easting, northing = self.to(utm)
+        easting, northing, zones  = self.to(UTM)
         minx = easting.min()
         miny = northing.min()
         maxx = easting.max()
         maxy = northing.max()
         xcoords = np.array([minx, minx, maxx, maxx])
         ycoords = np.array([maxy, miny, miny, maxy])
-        return GeoPoint(utm, xcoords, ycoords)
-
-utm = GeoType("utm", ["easting", "northing", "zonenum"], {"proj": "utm", "zone": "zonenum"}, ["easting", "northing"])
-latlong = GeoType("latlon", ["latitude", "longitude"], {"proj": "latlong"}, ["longitude", "latitude"])
+        # TODO: remove hack from zones
+        return GeoPoint(UTM, xcoords, ycoords, zones[0])
