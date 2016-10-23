@@ -95,32 +95,44 @@ class DEMType(GeoType):
     def getargs(self, geo_points):
         # next line should ideally be super.getargs, but we overwrite the fx so not sure if possible
         x, y = geo_points.data["x"], geo_points.data["y"]
-        return self.origin_easting + x, self.origin_northing - y
+        delta_easting, delta_northing = np.array([x, y]) * self.resolution
+        return self.origin_easting + delta_easting, self.origin_northing - delta_northing
 
     def post_process(self, transformed_points):
         points_easting, points_northing = transformed_points
         x, y = (points_easting - self.origin_easting, self.origin_northing - points_northing)
         return np.array([np.floor(x / self.resolution), np.floor(y / self.resolution)]).astype(int)
 
-
+import folium
+import pandas
 class GeoPoint(object):
     def __init__(self, geo_type, *args):
-        self.geo_type = geo_type
         self.data = dict()
 
         counter = 0
 
-        if len(args) == 1:
-            # python pandas library
-            pandalist = args[0]
-            for entry in geo_type.values:
-                self.data[entry] = pandalist[entry].values
+        # allow for a couple of input options:
+        if isinstance(geo_type, list):
+            self.geo_type = LAT_LONG
+            # assume list of points, convert to lat long
+            self.data["latitude"], self.data["longitude"] = [], []
+            for points in geo_type:
+                lat, long = points.to(LAT_LONG)
+                self.data["latitude"].append(lat)
+                self.data["longitude"].append(long)
         else:
-            for arg in args:
-                # print geo_type.values[counter]
-                self.data[geo_type.values[counter]] = arg
-                # print arg
-                counter += 1
+            self.geo_type = geo_type
+            if len(args) == 1:
+                # python pandas library
+                pandalist = args[0]
+                for entry in geo_type.values:
+                    self.data[entry] = pandalist[entry].values
+            else:
+                for arg in args:
+                    # print geo_type.values[counter]
+                    self.data[geo_type.values[counter]] = arg
+                    # print arg
+                    counter += 1
 
     def disp(self):
         for k, v in self.data.iteritems():
@@ -152,3 +164,8 @@ class GeoPoint(object):
         ycoords = np.array([maxy, miny, miny, maxy])
         # TODO: remove hack from zones
         return GeoPoint(UTM, xcoords, ycoords, zones[0])
+
+    def middle(self):
+        easting, northing, zones = self.to(UTM)
+        easting_mean, northing_mean = np.mean([easting, northing], axis=0)
+        return GeoPoint(UTM, easting_mean, northing_mean, zones)
