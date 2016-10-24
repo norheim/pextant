@@ -1,6 +1,11 @@
+from geoshapely import *
 import json
 import pandas as pd
 pd.options.display.max_rows = 5
+
+latlong = LatLon()
+origin = GeoPoint(latlong, 43.461621,-113.572019)
+origincopy = GeoPolygon(latlong, [43.461621, 43.461622, 43.461622],[-113.572019,-113.572010, -113.572010])
 
 with open('waypoints/MD10_EVA10_Stn18_Stn23_X.json') as data_file:
     data = json.load(data_file)
@@ -12,13 +17,20 @@ latlongFull = pd.DataFrame(w)
 latlongInter = latlongFull['coordinates'].values.tolist()
 waypointslatlong = pd.DataFrame(latlongInter, columns=['longitude','latitude'])
 
-waypoints = GeoPoint(LAT_LONG, waypointslatlong)
-print(waypoints.to(UTM))
-border = waypoints.square()
-print(border.to(UTM))
-origin = waypoints.upper_left()
-print(origin.to(UTM))
-COORD = DEMType(origin, 0.2)
-print(border.to(COORD))
-origin_xy = waypoints.to(COORD)
-print(origin_xy)
+print waypointslatlong['latitude'].values, waypointslatlong['longitude'].values
+waypoints = GeoPolygon(latlong, waypointslatlong['latitude'].values, waypointslatlong['longitude'].values)
+from EnvironmentalModel import *
+info = loadElevationsLite("maps/hwmidres.tif")
+nw_corner = GeoPoint(UTM(info["zone"]), info["nw_easting"], info["nw_northing"])
+print nw_corner
+XY = Cartesian(nw_corner, info["resolution"])
+se_corner = GeoPoint(XY, info["width"], info["height"])
+print se_corner
+corners = LineString([(p.x, p.y) for p in [nw_corner, se_corner]])
+
+bounds = corners.envelope
+print bounds
+zoomarea = waypoints.envelope
+print zoomarea
+intersection = bounds.intersection(zoomarea)
+print intersection
