@@ -314,3 +314,70 @@ def loadElevationsLite(file_path):
     }
 
     return allinfo
+
+from geoshapely import *
+def loadElevationMapExp(filePath, maxSlope=15, planet='Earth', nw_corner=None, se_corner=None, desired_res=None,
+                     no_val=-10000, zone=None, zone_letter=None):
+    '''
+	Creates a EnvironmentalModel object from either a geoTiff file or a text file.
+
+	Issue: computer sometimes freezes whenever loading a very large geoTIFF file (1GB+)
+
+	Current modification: trying to enable loading a square sector of a geoTIFF file.
+	2 new optional inputs: NWCorner and SE corner - UTM or LatLong coordinates of the subregion
+	we would like to analyze.
+
+	Using the parameter desiredRes doesn't work very well if there are a significant number of
+	"unknown" points (usually denoted by a placeholder like -10000).
+	'''
+    gdal.UseExceptions()
+    # filePath is a string representing the location of the file
+    dataset = gdal.Open(file_path)
+    band = dataset.GetRasterBand(1)
+    proj = dataset.GetProjection()
+
+    srs = osr.SpatialReference(wkt=proj)
+    projcs = srs.GetAttrValue('projcs')  # This will be a string that looks something like
+    # "NAD83 / UTM zone 5N"...hopefully
+
+    # if projcs:  # projcs is not None for the government Hawaii data
+    zone = int(projcs.split(' ')[-1][0:-1])
+    zone_letter = projcs.split(' ')[-1][-1]
+
+    width = dataset.RasterXSize
+    height = dataset.RasterYSize
+    dataset_info = dataset.GetGeoTransform()
+    # returns a list of length 6. Indices 0 and 3 are the easting and northing values of the upper left corner.
+    # Indices 1 and 5 are the w-e and n-s pixel resolutions, index 5 is always negative. Indicies 2 and 4 are
+    # set to zero for all maps pointing in a "North up" type projection; for now we will only be using maps where
+    # North is set to up.
+    nw_easting = dataset_info[0]
+    nw_northing = dataset_info[3]
+    resolution = dataset_info[1]
+
+    buf_x = None
+    buf_y = None
+    if desired_res:
+        buf_x = round(width * resolution / desired_res)
+        buf_y = round(height * resolution / desired_res)
+    else:
+        desired_res = resolution
+
+    map_nw_corner = GeoPoint(zone, nw_easting, nw_northing)
+    XY = Cartesian(nw_corner, resolution)
+    map_se_corner = GeoPoint(XY, width, height)
+    map_box = LineString([(p.x, p.y) for p in [map_nw_corner, map_se_corner]]).envelope
+    selection_box = LineString([(p.x, p.y) for p in [map_nw_corner, map_se_corner]]).envelope
+    intersection_box = map_box.intersection(selection_box)
+    inter_easting, inter_northing = np.array(intersection_box.bounds).reshape((2,2)).transpose()
+    intersection_box_geo = GeoPolygon(UTM(zone), inter_easting, inter_northing)
+    inter_x, inter_y = intersection_box_geo.to(XY)
+    x_offset, max_x = inter_x
+    max_y, y_offset = inter_y
+    x_size = max_x - x_offset
+    y_size = max_y - y_offset
+
+    map_array = band.ReadAsArray(x_offset, y_offset, x_size, y_size, buf_x, buf_y).astype(np.float)
+    nw_coord = UTMCoord(inter_easting, inter_northing, zone, zone_letter)
+
+    return EnvironmentalModel(map_array, desired_res, maxSlope, nw_coord, planet)
