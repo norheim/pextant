@@ -28,7 +28,7 @@ SECorner = UTMCoord(utmmaxx, utmminy, utm.zone)
 print(UTMToLatLong(NWCorner))
 print(UTMToLatLong(SECorner))
 
-dem_map = loadElevationMap(dem_path, maxSlope=30, nw_corner=NWCorner, se_corner=SECorner)
+dem_map = loadElevationMap(dem_path, maxSlope=25, nw_corner=NWCorner, se_corner=SECorner)
 
 astronaut = Astronaut(70)
 P = Pathfinder(astronaut, dem_map)
@@ -65,21 +65,22 @@ output_file("lines.html", title="line plot example")
 dh, dw = dem_map.elevations.shape
 print dw,dh
 # create a new plot with a title and axis labels
-s1 = figure(title="simple line example", x_axis_label='x', y_axis_label='y', x_range=[0, dh], y_range=[0, dh])
-s2 = figure(title="simple line example", x_axis_label='x', y_axis_label='y', x_range=[0, dh], y_range=[0, dh])
+s1 = figure(title="simple line example", x_axis_label='x', y_axis_label='y', x_range=[0, 250], y_range=[250, 500])
+s2 = figure(title="simple line example", x_axis_label='x', y_axis_label='y', x_range=[0, 250], y_range=[250, 500])
 
 # add a line renderer with legend and line thickness
 s1.image(image=[dem_map.elevations[::-1,:]], dw=dw, dh=dh, palette="Spectral11")
 s2.image(image=[dem_map.obstacles[::-1,:]], dw=dw, dh=dh)
 # show the results
 
-final = P.aStarCompletePath([0, 0, 1], [ap0, ap1, ap2], 'tuple')
+final = P.aStarCompletePath([0, 0, 1], [ap1, ap2], 'tuple', [s1, s2], dh)
 
 if len(final)>0:
     for elt in final[0]:
-        s2.circle(elt[1], dh-elt[0], fill_color="green", line_color="green")
-    s1.circle([col0, col1,col2], [dh-row0,dh-row1,dh-row2])
-    s2.circle([col0, col1,col2], [dh-row0,dh-row1,dh-row2])
+        s1.circle(elt[1], dh - elt[0], fill_color="yellow", line_color="yellow")
+        s2.circle(elt[1], dh-elt[0], fill_color="yellow", line_color="yellow")
+s1.circle([col1, col2], [dh - row1, dh - row2], fill_color="orange", line_color="orange")
+s2.circle([col1, col2], [dh - row1, dh - row2], fill_color="orange", line_color="orange")
 
 print final
 
