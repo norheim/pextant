@@ -19,10 +19,17 @@ Contents:
    installation
 
 
-Note
+Experimental 1
 ----
 .. note:: This is a **note**.
 
+Experimental 2
+----
+
+Hos to list all git files in a folder
+.. code-block:: git
+
+	git ls-tree -r master --name-only
 
 Important links
 ===============
