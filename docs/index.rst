@@ -7,9 +7,8 @@
 PEXTANT |release|
 ===================================
 
-PEXTANT, short for python-SEXTANT, is a tool for path planning and analysis.
-It is intended to be integrated with the MINERVA suite for the BASALT project
-and is based off of SEXTANT from MIT's Man Vehicle Laboratory.
+PEXTANT, short for python-SEXTANT, is a tool for astronaut EVA path planning on planetary surfaces.
+It is intended to be integrated with the MINERVA suite for the BASALT project and is based off of SEXTANT from MIT's Man Vehicle Laboratory.
 
 Contents:
 
@@ -17,7 +16,13 @@ Contents:
    :maxdepth: 1
 
    API-documentation
-   How it Works
+   installation
+
+
+Note
+----
+.. note:: This is a **note**.
+
 
 Important links
 ===============
