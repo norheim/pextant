@@ -25,7 +25,7 @@ If shapely doesn't install, and you are on windows run:
 Make sure to have the environment activated in your terminal befor running >>> python xxxx.py in the console/terminal. 
 If you use pycharm make sure to changes your interpreter settings:
 
-.. figure:: _static/pycharm_virtenv.png
+.. image:: _images/pycharm_virtenv.png
 
 Good to know about Conda Enviroment Manager
 ================================
