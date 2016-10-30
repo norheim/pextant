@@ -13,6 +13,7 @@ setup(
     install_requires=[
         'numpy >= 1.9',
 		'osgeo >= 2.0.0',
-		'pyproj >= 1.9'
+		'pyproj >= 1.9',
+		'shapely >= 1.5'
     ],
 )
