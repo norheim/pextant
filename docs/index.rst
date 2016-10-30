@@ -27,6 +27,7 @@ Experimental 2
 ----
 
 Hos to list all git files in a folder
+
 .. code-block:: git
 
 	git ls-tree -r master --name-only
