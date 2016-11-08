@@ -1,4 +1,6 @@
 import numpy as np
+from pandas.tslib import _NaT
+
 from transform import *
 from osgeo import gdal, osr
 
@@ -94,7 +96,7 @@ class EnvironmentalModel(object):
 		As of right now both UTMtoRowCol and RowColToUTM only work if we do not cross a UTM line.
 		Eventually for completeness sake this should probably be changed
 		'''
-        if UTM.zone == self.NW_UTM.zone:
+        if str(UTM.zone) == str(self.NW_UTM.zone):
             row = round((self.NW_UTM.northing - UTM.northing) / self.resolution)
             # for column due to image reversal need to do non obvious thing:
             col = round((UTM.easting - self.NW_UTM.easting) / self.resolution)
@@ -121,16 +123,19 @@ class EnvironmentalModel(object):
 		This should be called before every function in EnvironmentalModel. Converts UTMCoord or LatLongCoord
 		objects into a tuple representing the row and the column of the environmental map closest to that location.
 		"""
+        conversion = None
         if isinstance(position, UTMCoord):
-            return self._UTMtoRowCol(position)
+            conversion = self._UTMtoRowCol(position)
         elif isinstance(position, LatLongCoord):
-            return self._UTMtoRowCol(latLongToUTM(position))
+            conversion = self._UTMtoRowCol(latLongToUTM(position))
         elif isinstance(position, tuple):
-            return position
+            conversion= position
         else:
             print "ERROR: only accepts UTMCoord, LatLongCoord, and tuple objects"
             print "Received " + repr(type(position)) + " object"
             return 0
+
+        return tuple([int(i) for i in conversion])
 
     def convertToLatLong(self, position):
         '''
@@ -277,107 +282,85 @@ def loadElevationMap(filePath, maxSlope=15, planet='Earth', nw_corner=None, se_c
     else:
         raise ValueError("ERROR: expected txt or tif file. Received " + extension + " type file")
 
+import re
 def loadElevationsLite(file_path):
     gdal.UseExceptions()
-
-    # copied from stackexchange
     dataset = gdal.Open(file_path)
-    band = dataset.GetRasterBand(1)
-    proj = dataset.GetProjection()
 
-    srs = osr.SpatialReference(wkt=proj)
-    projcs = srs.GetAttrValue('projcs')  # This will be a string that looks something like
-    # "NAD83 / UTM zone 5N"...hopefully
-
-    #if projcs:  # projcs is not None for the government Hawaii data
-    zone = int(projcs.split(' ')[-1][0:-1])
-    zone_letter = projcs.split(' ')[-1][-1]
-
-    dataset_info = dataset.GetGeoTransform()
-    # returns a list of length 6. Indices 0 and 3 are the easting and northing values of the upper left corner.
-    # Indices 1 and 5 are the w-e and n-s pixel resolutions, index 5 is always negative. Indicies 2 and 4 are
-    # set to zero for all maps pointing in a "North up" type projection; for now we will only be using maps where
-    # North is set to up.
-    nw_easting = dataset_info[0]
-    nw_northing = dataset_info[3]
-
-    resolution = dataset_info[1]
-
-    allinfo = {
-        "nw_easting" : nw_easting,
-        "nw_northing" : nw_northing,
-        "resolution" : resolution,
-        "zone" : zone,
-        "zone_letter" : zone_letter,
+    all_info = {
         "width": dataset.RasterXSize,
-        "height" : dataset.RasterYSize
+        "height": dataset.RasterYSize
     }
 
-    return allinfo
+    dataset_info = dataset.GetGeoTransform()
+    nw_easting = dataset_info[0]
+    nw_northing = dataset_info[3]
+    all_info.update({
+        "nw_easting" : nw_easting,
+        "nw_northing" : nw_northing,
+        "resolution" : dataset_info[1]
+    })
+
+    proj = dataset.GetProjection()
+    srs = osr.SpatialReference(wkt=proj)
+    projcs = srs.GetAttrValue('projcs')   # "NAD83 / UTM zone 5N"...hopefully
+    regex_result = re.search('zone\s(\d+)(\w)', projcs)
+    zone_number = regex_result.group(1)
+    zone_letter = regex_result.group(2)
+
+    all_info.update({
+        "zone" : zone_number,
+        "zone_letter" : zone_letter,
+        "nw_geo_point" : GeoPoint(UTM(zone_number), nw_easting, nw_northing)
+    })
+
+    return dataset, all_info
 
 from geoshapely import *
-def loadElevationMapExp(filePath, maxSlope=15, planet='Earth', nw_corner=None, se_corner=None, desired_res=None,
-                     no_val=-10000, zone=None, zone_letter=None):
+def loadElevationMapExp(file_path, maxSlope=15, planet='Earth', nw_corner=None, se_corner=None, desired_res=None,
+                     no_val=-10000):
     '''
 	Creates a EnvironmentalModel object from either a geoTiff file or a text file.
 
 	Issue: computer sometimes freezes whenever loading a very large geoTIFF file (1GB+)
 
 	Current modification: trying to enable loading a square sector of a geoTIFF file.
-	2 new optional inputs: NWCorner and SE corner - UTM or LatLong coordinates of the subregion
-	we would like to analyze.
+	2 new optional inputs: NWCorner and SE corner - GeoPoints
 
 	Using the parameter desiredRes doesn't work very well if there are a significant number of
 	"unknown" points (usually denoted by a placeholder like -10000).
 	'''
-    gdal.UseExceptions()
-    # filePath is a string representing the location of the file
-    dataset = gdal.Open(file_path)
-    band = dataset.GetRasterBand(1)
-    proj = dataset.GetProjection()
+    dataset, info = loadElevationsLite(file_path)
+    width, height, resolution = info["width"], info["height"], info["resolution"]
 
-    srs = osr.SpatialReference(wkt=proj)
-    projcs = srs.GetAttrValue('projcs')  # This will be a string that looks something like
-    # "NAD83 / UTM zone 5N"...hopefully
+    map_nw_corner = info["nw_geo_point"]
+    XY = Cartesian(map_nw_corner, resolution)
+    map_se_corner = GeoPoint(XY, width, height)
 
-    # if projcs:  # projcs is not None for the government Hawaii data
-    zone = int(projcs.split(' ')[-1][0:-1])
-    zone_letter = projcs.split(' ')[-1][-1]
+    map_box = LineString([(p.x, p.y) for p in [map_nw_corner, map_se_corner]]).envelope
+    selection_box = LineString([(p.x, p.y) for p in [nw_corner, se_corner]]).envelope
+    intersection_box = map_box.intersection(selection_box)
 
-    width = dataset.RasterXSize
-    height = dataset.RasterYSize
-    dataset_info = dataset.GetGeoTransform()
-    # returns a list of length 6. Indices 0 and 3 are the easting and northing values of the upper left corner.
-    # Indices 1 and 5 are the w-e and n-s pixel resolutions, index 5 is always negative. Indicies 2 and 4 are
-    # set to zero for all maps pointing in a "North up" type projection; for now we will only be using maps where
-    # North is set to up.
-    nw_easting = dataset_info[0]
-    nw_northing = dataset_info[3]
-    resolution = dataset_info[1]
+    inter_easting, inter_northing = np.array(intersection_box.bounds).reshape((2,2)).transpose()
+    intersection_box_geo = GeoPolygon(UTM(info["zone"]), inter_easting, inter_northing)
+    inter_x, inter_y = intersection_box_geo.to(XY)
+
+    x_offset, max_x = inter_x
+    max_y, y_offset = inter_y
+    x_size = max_x - x_offset + 1
+    y_size = max_y - y_offset + 1
 
     buf_x = None
     buf_y = None
     if desired_res:
-        buf_x = round(width * resolution / desired_res)
-        buf_y = round(height * resolution / desired_res)
+        buf_x = int(x_size * resolution / desired_res)
+        buf_y = int(y_size * resolution / desired_res)
     else:
         desired_res = resolution
 
-    map_nw_corner = GeoPoint(zone, nw_easting, nw_northing)
-    XY = Cartesian(nw_corner, resolution)
-    map_se_corner = GeoPoint(XY, width, height)
-    map_box = LineString([(p.x, p.y) for p in [map_nw_corner, map_se_corner]]).envelope
-    selection_box = LineString([(p.x, p.y) for p in [map_nw_corner, map_se_corner]]).envelope
-    intersection_box = map_box.intersection(selection_box)
-    inter_easting, inter_northing = np.array(intersection_box.bounds).reshape((2,2)).transpose()
-    intersection_box_geo = GeoPolygon(UTM(zone), inter_easting, inter_northing)
-    inter_x, inter_y = intersection_box_geo.to(XY)
-    x_offset, max_x = inter_x
-    max_y, y_offset = inter_y
-    x_size = max_x - x_offset
-    y_size = max_y - y_offset
-
+    band = dataset.GetRasterBand(1)
     map_array = band.ReadAsArray(x_offset, y_offset, x_size, y_size, buf_x, buf_y).astype(np.float)
-    nw_coord = UTMCoord(inter_easting, inter_northing, zone, zone_letter)
+    nw_coord = UTMCoord(inter_easting.min(), inter_northing.max(), info["zone"], info["zone_letter"])
 
     return EnvironmentalModel(map_array, desired_res, maxSlope, nw_coord, planet)
+
