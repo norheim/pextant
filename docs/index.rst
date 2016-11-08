@@ -17,6 +17,9 @@ Contents:
 
    API-documentation
    installation
+   docs_howto
+   npm_guide
+   docker
 
 
 Experimental 1
