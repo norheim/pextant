@@ -1,5 +1,6 @@
 from api import *
 from EnvironmentalModel import *
+from osgeo import gdal
 
 dem_path = 'maps/hwmidlow.tif'
 

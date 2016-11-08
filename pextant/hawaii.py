@@ -5,37 +5,42 @@ from bokeh.io import hplot
 
 output_file("lines.html", title="line plot example")
 
-dem_path = 'maps/hawaiiDEM.tif'
+dem_path = 'maps/HI_lowqual_DEM.tif'
+dataset, info = loadElevationsLite(dem_path)
+#print(info)
 
-NWCorner = LatLongCoord(19.4025, -155.2750)
-SECorner = LatLongCoord(19.3987, -155.2694)
-print(NWCorner)
-print(SECorner)
+import json
+import pandas as pd
+pd.options.display.max_rows = 5
 
-dem_map = loadElevationMap(dem_path, nw_corner=NWCorner, se_corner=SECorner)
-dh, dw = dem_map.elevations.shape
-print dw,dh
-s1 = figure(title="simple line example", x_axis_label='x', y_axis_label='y', x_range=[0, dh], y_range=[0, dh])
-s2 = figure(title="simple line example", x_axis_label='x', y_axis_label='y', x_range=[0, dh], y_range=[0, dh])
-s1.image(image=[dem_map.elevations[::-1,:]], dw=dw, dh=dh, palette="Spectral11")
-s2.image(image=[dem_map.obstacles[::-1,:]], dw=dw, dh=dh)
-p = hplot(s1, s2)
-astronaut = Astronaut(70)
-P = Pathfinder(astronaut, dem_map)
+with open('waypoints/HI16_Stn01_02_03_sextant_B.json') as data_file:
+    data = json.load(data_file)
+ways_and_segments = data['sequence']
+s = pd.DataFrame(ways_and_segments)
+waypoints = s[s['type']=='Station']['geometry']
+w = waypoints.values.tolist()
+latlongFull = pd.DataFrame(w)
+latlongInter = latlongFull['coordinates'].values.tolist()
+waypointslatlong = pd.DataFrame(latlongInter, columns=['longitude','latitude'])
+waypoints = GeoPolygon(LAT_LONG, waypointslatlong['latitude'].values, waypointslatlong['longitude'].values)
 
-latlong1 = LatLongCoord(19.401161895944455, -155.27348924428225)
-utm1 = latLongToUTM(latlong1)
-ap1 = ActivityPoint(latlong1, 0)
-row1, col1 = dem_map.convertToRowCol(utm1)
-print(row1,col1)
+easting,northing = np.array(waypoints.bounds).reshape((2,2)).transpose()
+nw_corner = GeoPoint(UTM(info["zone"]), easting.min(), northing.max())
+se_corner = GeoPoint(UTM(info["zone"]), easting.max(), northing.min())
+nw_lat,nw_lon = nw_corner.to(LAT_LONG)
+se_lat,se_lon = se_corner.to(LAT_LONG)
 
-latlong2 = LatLongCoord(19.400835538227028, -155.27217370457942)
-utm2 = latLongToUTM(latlong2)
-ap2 = ActivityPoint(latlong2, 0)
-row2, col2 = dem_map.convertToRowCol(utm2)
-print(row2,col2)
+NWCorner = LatLongCoord(se_lat, se_lon)
+SECorner = LatLongCoord(se_lat, se_lon)
 
-s1.circle([col1,col2], [dh-row1,dh-row2], fill_color="yellow", line_color="yellow")
-s2.circle([col1,col2], [dh-row1,dh-row2], fill_color="yellow", line_color="yellow")
-show(p)
-#final = P.aStarCompletePath([0, 0, 1], [ap1, ap2], 'tuple', [s1, s2], dh)
+EM2 = loadElevationMapExp(dem_path, maxSlope=15, planet='Earth', nw_corner=nw_corner, se_corner=se_corner,
+                          desired_res=info["resolution"], no_val=-10000)
+
+astronaut = Astronaut(45)
+ap = []
+for waypoint in np.array(waypoints):
+    ap.append(ActivityPoint(UTMCoord(waypoint[0], waypoint[1], 5, 'N'), 0))
+
+P = Pathfinder(astronaut, EM2)
+out = P.aStarCompletePath([0, 0, 1], ap, 'tuple')
+print out
