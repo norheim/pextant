@@ -1,8 +1,5 @@
-from EnvironmentalModel import UTMCoord, LatLongCoord, EnvironmentalModel, loadElevationMap
 from ExplorationObjective import ActivityPoint
-from ExplorerModel import Explorer, Rover, Astronaut
-import convenience
-
+from geoshapely import *
 import logging
 import csv
 import heapq
@@ -221,8 +218,8 @@ class Pathfinder:
         for i in range(len(waypoints)-1):
             segmentCost = 0
 
-            node1 = aStarSearchNode(waypoints[i].geopoint.to(self.map.ROW_COL), None, 0)
-            node2 = aStarSearchNode(waypoints[i+1].geopoint.to(self.map.ROW_COL), None, 0)
+            node1 = aStarSearchNode(waypoints[i].coordinates.to(self.map.ROW_COL), None, 0)
+            node2 = aStarSearchNode(waypoints[i+1].coordinates.to(self.map.ROW_COL), None, 0)
             partialPath = self.aStarSearch(node1, node2, optimize_vector, plot, dh)
 
             path, expanded, cost = partialPath
@@ -266,7 +263,7 @@ class Pathfinder:
             if element["type"] == "Station":
                 lon, lat = element["geometry"]["coordinates"]
                 time_cost = element["userDuration"]
-                waypoints.append(ActivityPoint(LatLongCoord(lat, lon), time_cost, None))  # set the cost to time cost
+                waypoints.append(ActivityPoint(GeoPoint(LAT_LONG,lat, lon), time_cost, None))  # set the cost to time cost
         if algorithm == "A*":
             path = self.aStarCompletePath(optimize_on, waypoints, returnType, fileName)
         elif algorithm == "Field D*":

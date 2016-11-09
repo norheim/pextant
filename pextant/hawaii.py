@@ -1,5 +1,6 @@
 from api import *
 from EnvironmentalModel import *
+from ExplorerModel import Astronaut
 from bokeh.plotting import figure, output_file, show
 from bokeh.io import hplot
 from loadWaypoints import loadPoints
@@ -20,19 +21,14 @@ XY = Cartesian(info["nw_geo_point"], info["resolution"])
 nw_corner = waypoints.geoEnvelope().addMargin(XY,10).upper_left
 se_corner = waypoints.geoEnvelope().addMargin(XY,10).lower_right
 
-nw_lat,nw_lon = nw_corner.to(LAT_LONG)
-se_lat,se_lon = se_corner.to(LAT_LONG)
-NWCorner = LatLongCoord(se_lat, se_lon)
-SECorner = LatLongCoord(se_lat, se_lon)
-
-EM2 = loadElevationMapExp(dem_path, maxSlope=15, planet='Earth', nw_corner=nw_corner, se_corner=se_corner,
+EM2 = loadElevationMap(dem_path, maxSlope=15, planet='Earth', nw_corner=nw_corner, se_corner=se_corner,
                           desired_res=info["resolution"], no_val=-10000)
 
 astronaut = Astronaut(45)
 ap = []
 for waypoint in waypoints.to(LAT_LONG).transpose():
     lat, long = waypoint
-    ap.append(ActivityPoint(LatLongCoord(lat,long), 0))
+    ap.append(ActivityPoint(GeoPoint(LAT_LONG,lat,long), 0))
 
 P = Pathfinder(astronaut, EM2)
 out = P.aStarCompletePath([0, 0, 1], ap, 'tuple')
