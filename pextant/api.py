@@ -181,7 +181,10 @@ class Pathfinder:
         if self._goalTest(start_node, end_node):
             return start_node.getPath()
         agenda = []
-        heapq.heappush(agenda, (start_node.cost + self._heuristic(start_node, end_node, optimize_on, "A*"), start_node))
+        node_cost = start_node.cost
+        heuristic = self._heuristic(start_node, end_node, optimize_on, "A*")
+        estimated_cost = node_cost + heuristic
+        heapq.heappush(agenda, (estimated_cost, start_node))
         # agenda contains pairs (cost, node)
         expanded = set()
         while len(agenda) > 0:
@@ -215,11 +218,11 @@ class Pathfinder:
 
         finalPath = []
         costs = []
-        for i in range(len(waypoints) - 1):
+        for i in range(len(waypoints)-1):
             segmentCost = 0
 
-            node1 = aStarSearchNode(self.map.convertToRowCol(waypoints[i].coordinates), plot, dh)
-            node2 = aStarSearchNode(self.map.convertToRowCol(waypoints[i + 1].coordinates), plot, dh)
+            node1 = aStarSearchNode(waypoints[i].geopoint.to(self.map.ROW_COL), None, 0)
+            node2 = aStarSearchNode(waypoints[i+1].geopoint.to(self.map.ROW_COL), None, 0)
             partialPath = self.aStarSearch(node1, node2, optimize_vector, plot, dh)
 
             path, expanded, cost = partialPath
