@@ -1,8 +1,8 @@
 import json
 import pandas as pd
+from geoshapely import *
 
 def loadPoints(filename):
-    filename = 'waypoints/MD10_EVA10_Stn18_Stn23_X.json'
     with open(filename) as data_file:
         data = json.load(data_file)
 
@@ -13,3 +13,4 @@ def loadPoints(filename):
     latlongFull = pd.DataFrame(w)
     latlongInter = latlongFull['coordinates'].values.tolist()
     waypointslatlong = pd.DataFrame(latlongInter, columns=['longitude','latitude'])
+    return GeoPolygon(LAT_LONG, waypointslatlong['latitude'].values, waypointslatlong['longitude'].values)
