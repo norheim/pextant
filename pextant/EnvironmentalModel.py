@@ -31,7 +31,7 @@ class EnvironmentalModel(object):
         self.numRows, self.numCols = elevation_map.shape
         self.obstacles = self.slopes <= maxSlope  # obstacles is basically an "isPassable" function
         self.planet = planet
-        self.NW_UTM = self.convertToUTM(NW_Coord)  # a UTMCoord object, default set to Boston
+        self.ROW_COL = Row_Col(NW_Coord, resolution)
         self.special_obstacles = set()  # a list of coordinates of obstacles are not identified by the slope
         self.UUID = uuid
 
@@ -323,9 +323,7 @@ def loadElevationMapExp(file_path, maxSlope=15, planet='Earth', nw_corner=None, 
 	Creates a EnvironmentalModel object from either a geoTiff file or a text file.
 
 	Issue: computer sometimes freezes whenever loading a very large geoTIFF file (1GB+)
-
-	Current modification: trying to enable loading a square sector of a geoTIFF file.
-	2 new optional inputs: NWCorner and SE corner - GeoPoints
+	Solution: optional inputs: NWCorner and SE corner - GeoPoints
 
 	Using the parameter desiredRes doesn't work very well if there are a significant number of
 	"unknown" points (usually denoted by a placeholder like -10000).
@@ -337,8 +335,11 @@ def loadElevationMapExp(file_path, maxSlope=15, planet='Earth', nw_corner=None, 
     XY = Cartesian(map_nw_corner, resolution)
     map_se_corner = GeoPoint(XY, width, height)
 
-    map_box = LineString([(p.x, p.y) for p in [map_nw_corner, map_se_corner]]).envelope
-    selection_box = LineString([(p.x, p.y) for p in [nw_corner, se_corner]]).envelope
+    selection_nw_corner = map_nw_corner if nw_corner is None else nw_corner
+    selection_se_corner = map_se_corner if se_corner is None else se_corner
+
+    map_box = GeoPolygon([map_nw_corner, map_se_corner]).envelope
+    selection_box = GeoEnvelope(selection_nw_corner, selection_se_corner).envelope
     intersection_box = map_box.intersection(selection_box)
 
     inter_easting, inter_northing = np.array(intersection_box.bounds).reshape((2,2)).transpose()
@@ -347,8 +348,8 @@ def loadElevationMapExp(file_path, maxSlope=15, planet='Earth', nw_corner=None, 
 
     x_offset, max_x = inter_x
     max_y, y_offset = inter_y
-    x_size = max_x - x_offset + 1
-    y_size = max_y - y_offset + 1
+    x_size = max_x - x_offset
+    y_size = max_y - y_offset
 
     buf_x = None
     buf_y = None
@@ -360,7 +361,7 @@ def loadElevationMapExp(file_path, maxSlope=15, planet='Earth', nw_corner=None, 
 
     band = dataset.GetRasterBand(1)
     map_array = band.ReadAsArray(x_offset, y_offset, x_size, y_size, buf_x, buf_y).astype(np.float)
-    nw_coord = UTMCoord(inter_easting.min(), inter_northing.max(), info["zone"], info["zone_letter"])
+    nw_coord = GeoPoint(UTM(info["zone"]),inter_easting.min(), inter_northing.max())
 
     return EnvironmentalModel(map_array, desired_res, maxSlope, nw_coord, planet)
 
