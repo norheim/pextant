@@ -23,7 +23,7 @@ class EnvironmentalModel(object):
         self.numRows, self.numCols = elevation_map.shape
         self.obstacles = self.slopes <= maxSlope  # obstacles is basically an "isPassable" function
         self.planet = planet
-        self.ROW_COL = Row_Col(NW_Coord, resolution)
+        self.ROW_COL = Cartesian(NW_Coord, resolution, reverse=True)
         self.special_obstacles = set()  # a list of coordinates of obstacles are not identified by the slope
         self.UUID = uuid
 

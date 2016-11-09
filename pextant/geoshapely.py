@@ -20,7 +20,7 @@ class GeoType(object):
     def to_utm(self, geo_point):
         return self
 
-    def transform(self, geo_point, to_geo_type):
+    def transform(self, geo_point, to_geo_type, conversion_type=None):
         args = self.getargs(geo_point)
         if self.proj_param == to_geo_type.proj_param:
             out = args
@@ -29,7 +29,11 @@ class GeoType(object):
             p_to = to_geo_type.get_proj()
             out = pyproj.transform(p_from, p_to, args[0], args[1])
         array_out = np.array(out)  # just in case its not a numpy already, and will simplify calcs later
-        return to_geo_type.post_process(array_out)
+        post_array = to_geo_type.post_process(array_out)
+        if conversion_type is not None:
+            return conversion_type(post_array)
+        else:
+            return post_array
 
     def post_process(self, transformed_points):
         return self.reorder(transformed_points)
@@ -54,8 +58,13 @@ class UTM(GeoType):
 
 
 class LatLon(GeoType):
-    def __init__(self):
-        super(LatLon, self).__init__("latlon", ["latitude", "longitude"], {"proj": "latlong"},
+    def __init__(self, reverse=False):
+        if reverse:
+            order = ["longitude", "latitude"]
+        else:
+            order = ["latitude", "longitude"]
+
+        super(LatLon, self).__init__("latlon", order, {"proj": "latlong"},
                                      ["longitude", "latitude"])
 
     def to_utm(self, geo_point):
@@ -64,11 +73,15 @@ class LatLon(GeoType):
         zone = zones[0] if isinstance(zones, np.ndarray) else zones
         return UTM(zone)
 
-
 class Cartesian(GeoType):
-    def __init__(self, origin, resolution):
+    def __init__(self, origin, resolution, reverse=False):
+        if reverse:
+            order = ["y", "x"]
+        else:
+            order = ["x", "y"]
+
         self.zone = origin.utm_reference.proj_param["zone"]
-        super(Cartesian, self).__init__("coord", ["x", "y"], {"proj": "utm", "zone": self.zone}, ["x", "y"])
+        super(Cartesian, self).__init__("coord", order, {"proj": "utm", "zone": self.zone}, ["x", "y"])
         # doing conversion early on will save use from redoing it later, we don't expect our origin to change too much
         self.origin_easting, self.origin_northing = origin.x, origin.y
         self.resolution = resolution
@@ -84,20 +97,10 @@ class Cartesian(GeoType):
 
     def post_process(self, transformed_points):
         points_easting, points_northing = transformed_points
-        x, y = (points_easting - self.origin_easting, self.origin_northing - points_northing)
-        return np.array([np.round(x / self.resolution,6), np.round(y / self.resolution,6)]).astype(int)
-
-class Row_Col(Cartesian):
-    def __init__(self, origin, resolution):
-        Cartesian.__init__(self, origin, resolution)
-
-    def getargs(self, geo_points):
-        arg1, arg2 = Cartesian.getargs(self, geo_points)
-        return arg2, arg1
-
-    def post_process(self, transformed_points):
-        arg1, arg2 = Cartesian.post_process(self, transformed_points)
-        return arg2, arg1
+        delta_easting, delta_northing = points_easting - self.origin_easting, self.origin_northing - points_northing
+        coords = np.array([np.round(delta_easting / self.resolution,6),
+                           np.round(delta_northing / self.resolution,6)]).astype(int)
+        return self.reorder(coords)
 
 class GeoObject(object):
     def __init__(self, geo_type, x, y):
@@ -112,9 +115,9 @@ class GeoObject(object):
             self.utm_reference = geo_type.to_utm(self.data)
             self.easting, self.northing = geo_type.transform(self.data, self.utm_reference)
 
-    def to(self, other_reference):
+    def to(self, other_reference, conversion_type=None):
         # assuming other_reference is not of type utm
-        return self.original_reference.transform(self.data, other_reference)
+        return self.original_reference.transform(self.data, other_reference, conversion_type)
 
     def eastingnorthing(self):
         return self.easting, self.northing
@@ -170,5 +173,5 @@ class GeoEnvelope(GeoPolygon):
         return self.upper_left, self.lower_right
 
 
-
 LAT_LONG = LatLon()
+LONG_LAT = LatLon(True)

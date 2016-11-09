@@ -218,8 +218,8 @@ class Pathfinder:
         for i in range(len(waypoints)-1):
             segmentCost = 0
 
-            node1 = aStarSearchNode(waypoints[i].coordinates.to(self.map.ROW_COL), None, 0)
-            node2 = aStarSearchNode(waypoints[i+1].coordinates.to(self.map.ROW_COL), None, 0)
+            node1 = aStarSearchNode(waypoints[i].coordinates.to(self.map.ROW_COL, tuple), None, 0)
+            node2 = aStarSearchNode(waypoints[i+1].coordinates.to(self.map.ROW_COL, tuple), None, 0)
             partialPath = self.aStarSearch(node1, node2, optimize_vector, plot, dh)
 
             path, expanded, cost = partialPath
@@ -253,28 +253,33 @@ class Pathfinder:
                         writer.writerow(row)
             return sequence
 
-    def completeSearchFromJSON(self, optimize_on, jsonInput, returnType="JSON", fileName=None, algorithm="A*",
-                               numTestPoints=0):
+    def loadActivityPointsFromJSON(self, jsonInput):
         parsed_json = json.loads(jsonInput)
-        new_json = json.loads(jsonInput)
-        waypoints = []
+        activity_points = []
 
         for element in parsed_json:  # identify all of the waypoints
             if element["type"] == "Station":
                 lon, lat = element["geometry"]["coordinates"]
                 time_cost = element["userDuration"]
-                waypoints.append(ActivityPoint(GeoPoint(LAT_LONG,lat, lon), time_cost, None))  # set the cost to time cost
+                activity_points.append(
+                    ActivityPoint(GeoPoint(LAT_LONG, lat, lon), time_cost, None))  # set the cost to time cost
+
+        return activity_points, parsed_json
+
+
+    def completeSearchFromJSON(self, optimize_on, jsonInput, returnType="JSON", fileName=None, algorithm="A*",
+                               numTestPoints=0):
+        waypoints, parsed_json = self.loadActivityPointsFromJSON(jsonInput)
+
         if algorithm == "A*":
             path = self.aStarCompletePath(optimize_on, waypoints, returnType, fileName)
-        elif algorithm == "Field D*":
-            path = self.fieldDStarCompletePath(optimize_on, waypoints, returnType, fileName, numTestPoints)
 
-        for i, element in enumerate(new_json):
+        for i, element in enumerate(parsed_json):
             if element["type"] == "Segment":
-                new_json[i]["derivedInfo"] = path[i]["derivedInfo"]
-                new_json[i]["geometry"] = path[i]["geometry"]
+                parsed_json[i]["derivedInfo"] = path[i]["derivedInfo"]
+                parsed_json[i]["geometry"] = path[i]["geometry"]
 
-        return json.dumps(new_json)
+        return json.dumps(parsed_json)
 
     def _toJSON(self, path, optimize_on, waypoints):
         '''
@@ -304,14 +309,12 @@ class Pathfinder:
         lineString = {}
 
         def nextStation(lineString, firstStation=False):  # firstStation denotes if the station is the first of the path
-            AP = waypoints.pop(0)
+            ap = waypoints.pop(0)
             element = {}
 
-            latLong = self.map.convertToLatLong(AP.coordinates)
-
-            element["geometry"] = {"coordinates": latLong.longLatList(), "type": "Point"}
+            element["geometry"] = {"coordinates": ap.coordinates.to(LONG_LAT, list), "type": "Point"}
             element["type"] = "Station"
-            element["UUID"] = AP.UUID
+            element["UUID"] = ap.UUID
 
             # When we hit a station, we need to add the previous lineString to the sequence,
             # compute the total Dist, Time, and Energy
@@ -339,18 +342,19 @@ class Pathfinder:
         for i, point in enumerate(path):
             # first set of if/elif statements creates the "Station" or "pathPoint" things,
             # second set of if/elif statements creates the "segments" connecting them
+            row, col = point
+            geopoint = GeoPoint(self.map.ROW_COL, row, col)
+            lonlat = geopoint.to(LONG_LAT, list)
             if i == 0:  # first element is a station
                 sequence.append(nextStation(lineString, True))
                 lineString = empty()
-                lineString["geometry"]["coordinates"].append(self.map.convertToLatLong(point).longLatList())
+                lineString["geometry"]["coordinates"].append(lonlat)
             elif point == path[i - 1]:  # point is identical to the previous one and is thus a station
                 sequence.append(nextStation(lineString))
                 lineString = empty()
-                lineString["geometry"]["coordinates"].append(self.map.convertToLatLong(point).longLatList())
+                lineString["geometry"]["coordinates"].append(lonlat)
             else:  # This point is not a station and is thus a point inside the path
-                latLongCoords = self.map.convertToLatLong(point).longLatList()
-
-                lineString["geometry"]["coordinates"].append(latLongCoords)
+                lineString["geometry"]["coordinates"].append(lonlat)
 
                 startState, endState = path[i - 1], path[i]
                 distance = self._aStarCostFunction(startState, endState, [1, 0, 0])  # distance
