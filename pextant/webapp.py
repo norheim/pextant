@@ -3,10 +3,19 @@ import eventlet
 import pandas as pd
 import json
 import time
+import pynmea2
+import serial
+from gpsstream import *
+from loadWaypoints import loadPoints
+from geoshapely import *
+from hawaiiclean import runpextant
+import threading
 
 sio = socketio.Server()
 
 d =  {'time': [], 'latitude' : [],'longitude' : []}
+gps_on = False
+threads = []
 
 def save():
     print 'save'
@@ -18,15 +27,69 @@ def save():
     print pdd
     pdd.to_csv(savestring,index=False)
 
+def gps_status():
+    return gps_on
+
 @sio.on('connect')
 def connect(sid, environ):
-
+    print('turning gps on, listening on COM port:')
+    comport = 'COM6'
+    print comport
+    channelname = 'gpstrack'
+    t = threading.Thread(target=serialRun, args=(comport, sio, channelname))
+    threads.append(t)
+    t.start()
     print('connect ', sid)
 
 @sio.on('message')
 def message(sid, data):
     print('message ', data)
     sio.emit('event', data)
+
+@sio.on('serialstatus')
+def serialstatus(sid, data):
+    print('got serial data request')
+    returnstring = json.dumps(serial_ports())
+    print returnstring
+    #sio.emit('event', returnstring)
+    sio.emit('serialstatus', returnstring)
+
+def helperfx(data):
+    print(data)
+
+@sio.on('gpstrack')
+def gpstrack(sid, data):
+    channelname = 'gpstrack'
+    #if not gps_status():
+    sio.emit('event', 'gps is on')
+
+@sio.on('waypoints')
+def getwaypoints(sid,data):
+    print('got waypoint request')
+    waypoints = loadPoints('waypoints/HI_sextant_testing2_B.json').to(LAT_LONG)
+    print waypoints
+    waypointsdict = {
+        'latitude': list(waypoints[0]),
+        'longitude' : list(waypoints[1])}
+
+    print waypointsdict
+    waypointsstr = json.dumps(waypointsdict)
+    print waypointsstr
+    sio.emit('waypoints', waypointsstr)
+
+@sio.on('pextant')
+def getpextant(sid,data):
+    print('got pextant request')
+    waypoints = runpextant('waypoints/HI_sextant_testing2_B.json')
+    print waypoints
+    waypointsdict = {
+        'latitude': list(waypoints[0]),
+        'longitude': list(waypoints[1])}
+
+    print waypointsdict
+    waypointsstr = json.dumps(waypointsdict)
+    print waypointsstr
+    sio.emit('pextant', waypointsstr)
 
 @sio.on('coords')
 def coords(sid, data):
@@ -41,11 +104,9 @@ def coords(sid, data):
 @sio.on('stop')
 def message(sid, data):
     print('stopped')
-    save()
 
 @sio.on('disconnect')
 def disconnect(sid):
-    save()
     print('disconnect ', sid)
 
 if __name__ == '__main__':

@@ -1,6 +1,7 @@
 name: pextant
 channels: !!python/tuple
-- !!python/unicode 'defaults'
+- !!python/unicode
+  'defaults'
 dependencies:
 - _nb_ext_conf=0.3.0=py27_0
 - anaconda-client=1.5.1=py27_0
@@ -88,23 +89,5 @@ dependencies:
 - win_unicode_console=0.5=py27_0
 - xerces-c=3.1.4=vc9_0
 - zlib=1.2.8=vc9_3
-- pip:
-  - backports-abc==0.4
-  - backports.shutil-get-terminal-size==1.0.0
-  - backports.ssl-match-hostname==3.4.0.2
-  - folium==0.2.1
-  - geojson==1.3.3
-  - grako==3.16.0
-  - ipython-genutils==0.1.0
-  - jupyter-client==4.4.0
-  - jupyter-console==5.0.0
-  - jupyter-core==4.2.0
-  - nb-anacondacloud==1.2.0
-  - nb-conda==2.0.0
-  - nb-conda-kernels==2.0.0
-  - parsewkt==0.1.dev0
-  - prompt-toolkit==1.0.3
-  - shapely==1.5.17
-  - win-unicode-console==0.5
-prefix: C:\Users\Johannes Norheim\Anaconda2\envs\pextant
+prefix: C:\Users\johan\Anaconda2\envs\pextant
 
