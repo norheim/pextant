@@ -150,6 +150,9 @@ class GeoPolygon(GeoObject, LineString):
         lower_right = GeoPoint(self.utm_reference, env_easting[1], env_northing[0])
         return GeoEnvelope(upper_left, lower_right)
 
+    def __getitem__(self, index):
+        return GeoPoint(self.utm_reference, self.easting[index], self.northing[index])
+
 
 class GeoEnvelope(GeoPolygon):
     def __init__(self, upper_left, lower_right):
