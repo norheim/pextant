@@ -1,0 +1,182 @@
+{
+    "contributors": [], 
+    "creator": "kobsshan", 
+    "dateCreated": "2016-11-13T05:06:45Z", 
+    "dateModified": "2016-11-13T05:11:56Z", 
+    "defaultSpeed": 0.89408, 
+    "derivedInfo": {}, 
+    "exceptions": [], 
+    "id": "HIL1007_A_EVA", 
+    "libraryUrls": [
+        "/home/irg/xgds_basalt/build/static/xgds_planner2/evPlanLibrary.json"
+    ], 
+    "name": "HI_13Nov16_MD7", 
+    "notes": "Mission Day 7 for Hawaii 2016 deployment", 
+    "optimization": "Energy", 
+    "planNumber": 7, 
+    "planVersion": "A", 
+    "platform": {
+        "derivedInfo": {}, 
+        "exceptions": [], 
+        "id": "1", 
+        "name": "EV", 
+        "notes": null, 
+        "type": "Platform"
+    }, 
+    "readOnly": false, 
+    "schemaUrl": "/home/irg/xgds_basalt/build/static/xgds_planner2/evPlanSchema.json", 
+    "sequence": [
+        {
+            "boundary": 0.6, 
+            "commandMonikerPlural": "Activities", 
+            "commands": [], 
+            "geometry": {
+                "coordinates": [
+                    -155.20178273320198, 
+                    19.364795549449482
+                ], 
+                "type": "Point"
+            }, 
+            "id": "HIL17_A_WAY0", 
+            "itemMoniker": "Waypoint", 
+            "tolerance": 0.6, 
+            "type": "Station", 
+            "userDuration": 0, 
+            "uuid": "f99d9102-73e7-4c66-886c-757231fc1def"
+        }, 
+        {
+            "commands": [], 
+            "derivedInfo": {
+                "distanceMeters": 210.5439285271853, 
+                "durationSeconds": 235, 
+                "straightLineDurationSeconds": 235
+            }, 
+            "id": "HIL17_A_SEG1", 
+            "type": "Segment", 
+            "uuid": "941fd605-0d31-47cd-892f-7c78c943b1e7"
+        }, 
+        {
+            "boundary": 20, 
+            "commandMonikerPlural": "Activities", 
+            "commands": [], 
+            "geometry": {
+                "coordinates": [
+                    -155.2002431, 
+                    19.3660102
+                ], 
+                "type": "Point"
+            }, 
+            "id": "HIL17_A_WAY1", 
+            "itemMoniker": "Waypoint", 
+            "name": "St17", 
+            "tolerance": 5, 
+            "type": "Station", 
+            "userDuration": 0, 
+            "uuid": "5d855b9e-2eb9-4398-be11-e37c3f06507f"
+        }, 
+        {
+            "commands": [], 
+            "derivedInfo": {
+                "distanceMeters": 28.03939030585142, 
+                "durationSeconds": 31, 
+                "straightLineDurationSeconds": 31
+            }, 
+            "id": "HIL17_A_SEG2", 
+            "type": "Segment", 
+            "uuid": "ccdc2c1b-82f7-4343-80ed-d390de4160ef"
+        }, 
+        {
+            "boundary": 20, 
+            "commandMonikerPlural": "Activities", 
+            "commands": [], 
+            "geometry": {
+                "coordinates": [
+                    -155.200506, 
+                    19.3660557
+                ], 
+                "type": "Point"
+            }, 
+            "id": "HIL17_A_WAY2", 
+            "itemMoniker": "Waypoint", 
+            "name": "St18", 
+            "tolerance": 5, 
+            "type": "Station", 
+            "userDuration": 0, 
+            "uuid": "23e30810-88fd-4785-b3eb-83186675b430"
+        }, 
+        {
+            "commands": [], 
+            "derivedInfo": {
+                "distanceMeters": 30.164198724726923, 
+                "durationSeconds": 34, 
+                "straightLineDurationSeconds": 34
+            }, 
+            "id": "HIL17_A_SEG3", 
+            "type": "Segment", 
+            "uuid": "40e50e22-7c36-4223-8bd2-a927328ecce8"
+        }, 
+        {
+            "boundary": 20, 
+            "commandMonikerPlural": "Activities", 
+            "commands": [], 
+            "geometry": {
+                "coordinates": [
+                    -155.2006777, 
+                    19.3662733
+                ], 
+                "type": "Point"
+            }, 
+            "id": "HIL17_A_WAY3", 
+            "itemMoniker": "Waypoint", 
+            "name": "St16", 
+            "tolerance": 5, 
+            "type": "Station", 
+            "userDuration": 0, 
+            "uuid": "54ff3f92-64e0-4bce-b576-d8aa49302d37"
+        }
+    ], 
+    "serverId": 781, 
+    "site": {
+        "alternateCrs": {
+            "properties": {
+                "coordinateLabel": "X, Y", 
+                "coordinateMapping": "lat, lon", 
+                "coordinateNotes": "X=Northing Y=Easting", 
+                "frame": "HawaiiSiteFrame", 
+                "label": "Site Frame", 
+                "originEasting": 268475.7, 
+                "originNorthing": 2142944.1, 
+                "projection": "utm", 
+                "timezone": "US/Hawaii", 
+                "zDirection": "down", 
+                "zone": 5, 
+                "zoneLetter": "Q"
+            }, 
+            "type": "roversw"
+        }, 
+        "bbox": [
+            19.36258137556692, 
+            -155.21292462944984, 
+            19.371974326960242, 
+            -155.19550099968913
+        ], 
+        "crs": {
+            "properties": {
+                "name": "urn:ogc:def:crs:OGC:1.3:CRS84"
+            }, 
+            "type": "name"
+        }, 
+        "derivedInfo": {}, 
+        "exceptions": [], 
+        "id": "HIL", 
+        "name": "Hawaii Lava Flows", 
+        "notes": "Hawaii", 
+        "type": "Site"
+    }, 
+    "subject": [], 
+    "targets": [], 
+    "type": "Plan", 
+    "url": "/xgds_planner2/plan/781/HI_13Nov16_MD7.json", 
+    "uuid": "9165d54d-8444-440f-b64f-f5af16c6c703", 
+    "xpjson": "0.2"
+}

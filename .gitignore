@@ -50,4 +50,4 @@ pextant/lines.html
 *.ipynb
 *.csv
 maps/
-waypoints/
+pextant/gps/
