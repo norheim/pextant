@@ -1,6 +1,6 @@
 from flask import Flask
 from flask_socketio import SocketIO
-from serialgps import GPSSerialThread, serial_ports, SocketTest, RandomThread
+from serialgps import GPSSerialThread, serial_ports, GPSSerialEmulator, RandomThread
 from geoshapely import LAT_LONG
 from loadWaypoints import loadPoints
 from hawaiiclean import runpextant
@@ -34,8 +34,19 @@ def gpstrack_handler(data):
     global thread
     if not thread.isAlive():
         print "Starting Thread"
-        thread = GPSSerialThread(SocketChannel(socketio, 'gpstrack'), 'COM6')
+        thread = GPSSerialEmulator(SocketChannel(socketio, 'gpstrack'), 'COM6')
         thread.start()
+    else:
+        thread.record = True
+
+@socketio.on('gpstracksilencer')
+def gpstrack_stopper(data):
+    print 'silencing gps'
+    socketio.emit('message', 'silencing gps')
+    global thread
+    if thread.isAlive():
+        print thread.record
+        thread.record = False
 
 class SocketChannel:
     def __init__(self, socket, channelname):
@@ -48,7 +59,7 @@ class SocketChannel:
 @socketio.on('waypoints')
 def getwaypoints(data):
     print('got waypoint request')
-    waypoints = loadPoints('waypoints/HI_sextant_testing2_B.json').to(LAT_LONG)
+    waypoints = loadPoints('waypoints/HI_13Nov16_MD7_A.json').to(LAT_LONG)
     print waypoints
     waypointsdict = {
         'latitude': list(waypoints[0]),
@@ -62,7 +73,11 @@ def getwaypoints(data):
 @socketio.on('pextant')
 def getpextant(data):
     print('got pextant request')
-    waypoints = runpextant('waypoints/HI_sextant_testing2_B.json')
+    global thread
+    waypoint = None
+    if data == 'gps':
+        waypoint = thread.most_recent_gps_point
+    waypoints = runpextant('waypoints/HI_13Nov16_MD7_A.json', waypoint)
     print waypoints
     waypointsdict = {
         'latitude': list(waypoints[0]),

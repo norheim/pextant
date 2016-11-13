@@ -4,6 +4,8 @@ import serial
 import pynmea2
 import json
 from serial.tools import list_ports
+from geoshapely import GeoPoint, LAT_LONG, Cartesian
+from random import randint
 import eventlet
 eventlet.monkey_patch(thread=True)
 
@@ -25,6 +27,8 @@ class GPSSerialThread(Thread):
         self.recorded_points = []
         self.delay = 0.1
         self.serial_reference = None
+        self.record = True
+        self.most_recent_gps_point = None
 
     def saveRecordedPoints(self):
         with open(self.recorded_points_file_name, 'w') as outfile:
@@ -50,10 +54,12 @@ class GPSSerialThread(Thread):
                     'longitude': msg.longitude,
                     'altitude': msg.altitude}
                 latlon_point_json = json.dumps(latlon_point)
+                self.most_recent_gps_point = latlon_point_json
                 print latlon_point
-                self.recorded_points.append(latlon_point)
-                self.saveRecordedPoints()
-                self.socket_channel.emit(latlon_point_json)
+                if self.record:
+                    self.recorded_points.append(latlon_point)
+                    self.saveRecordedPoints()
+                    self.socket_channel.emit(latlon_point_json)
                 eventlet.sleep()
 
     def run(self):
@@ -63,6 +69,7 @@ class RandomThread(Thread):
     def __init__(self, socket_ref):
         self.socket_ref = socket_ref
         self.delay = 1
+        self.record = True
         super(RandomThread, self).__init__()
 
     def randomNumberGenerator(self):
@@ -74,20 +81,39 @@ class RandomThread(Thread):
     def run(self):
         self.randomNumberGenerator()
 
-class SocketTest(Thread):
-    def __init__(self, socket_ref):
-        self.socket_ref = socket_ref
-        self.delay = 1
-        super(SocketTest, self).__init__()
+class GPSSerialEmulator(Thread):
+    def __init__(self, socket_channel, comport):
+        self.socket_channel = socket_channel
+        self.time = time()
+        self.record = True
+        self.most_recent_gps_point = None
+        super(GPSSerialEmulator, self).__init__()
 
-    def greeter(self):
+    def randomPointGenerator(self):
         while not thread_stop_event.isSet():
-            print 'emitting'
-            self.socket_ref.emit('Greetings')
+            #print 'emitting'
+            newtime = time()
+            deltat = newtime-self.time
+            #print deltat
+            if deltat > 1:
+                self.time = newtime
+                center = GeoPoint(LAT_LONG, 19.36479555, -155.20178273)
+                XY = Cartesian(center, 1)
+                randomPointLat, randomPointLong = GeoPoint(XY,randint(0,100), randint(0,100)).to(LAT_LONG)
+                latlon_point = {
+                    'time': time(),
+                    'latitude': randomPointLat,
+                    'longitude': randomPointLong,
+                    'altitude': 0}
+                latlon_point_json = json.dumps(latlon_point)
+                self.most_recent_gps_point = latlon_point_json
+                print latlon_point
+                if self.record:
+                    self.socket_channel.emit(latlon_point_json)
             eventlet.sleep()
 
     def run(self):
-        self.greeter()
+        self.randomPointGenerator()
 
 class FakeEmitter(object):
     def __init__(self):
@@ -98,5 +124,5 @@ class FakeEmitter(object):
         print message
 
 if __name__ == '__main__':
-    gps = GPSSerialThread(FakeEmitter(), 'COM6')
-    gps.streamFromSerial()
+    gps = GPSSerialEmulator(FakeEmitter(), 'COM6')
+    gps.start()
