@@ -24,13 +24,14 @@ def runpextant(filename):
     lat_long_out = GeoPolygon(EM2.ROW_COL,npout[0],npout[1]).to(LAT_LONG)
     return  lat_long_out
 
-print('got waypoint request')
-waypoints = runpextant('waypoints/HI_sextant_testing2_B.json')
-print waypoints
-waypointsdict = {
-    'latitude': list(waypoints[0]),
-    'longitude' : list(waypoints[1])}
+if __name__ == '__main__':
+    print('got waypoint request')
+    waypoints = runpextant('waypoints/HI_sextant_testing2_B.json')
+    print waypoints
+    waypointsdict = {
+        'latitude': list(waypoints[0]),
+        'longitude' : list(waypoints[1])}
 
-print waypointsdict
-waypointsstr = json.dumps(waypointsdict)
-print waypointsstr
+    print waypointsdict
+    waypointsstr = json.dumps(waypointsdict)
+    print waypointsstr
