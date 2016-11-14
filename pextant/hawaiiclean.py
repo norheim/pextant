@@ -31,8 +31,8 @@ def runpextant(filename, pointJSON=None):
 
 if __name__ == '__main__':
     print('got waypoint request')
-    waypoints = runpextant('waypoints/HI_sextant_testing2_B.json',
-                           '{"latitude":19.36477996833597, "longitude":-155.2008308586817}')
+    waypoints = runpextant('waypoints/HI_13Nov16_MD7_A.json')
+
     print waypoints
     waypointsdict = {
         'latitude': list(waypoints[0]),
@@ -40,4 +40,6 @@ if __name__ == '__main__':
 
     print waypointsdict
     waypointsstr = json.dumps(waypointsdict)
+    with open('generated_paths/HI_13Nov16_MD7_A.json', 'w') as outfile:
+        json.dump(waypointsdict, outfile)
     print waypointsstr
