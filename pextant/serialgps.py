@@ -9,15 +9,27 @@ from random import randint
 import eventlet
 eventlet.monkey_patch(thread=True)
 
-thread_stop_event = Event()
-
 def serial_ports():
     com_ports = []
     for connection in list_ports.comports():
         com_ports.append(connection.description)
     return com_ports
 
-class GPSSerialThread(Thread):
+class StoppableThread(Thread):
+    """Thread class with a stop() method. The thread itself has to check
+    regularly for the stopped() condition."""
+
+    def __init__(self):
+        super(StoppableThread, self).__init__()
+        self._stop = Event()
+
+    def stop(self):
+        self._stop.set()
+
+    def stopped(self):
+        return self._stop.isSet()
+
+class GPSSerialThread(StoppableThread):
     def __init__(self, socket_channel, comport):
         super(GPSSerialThread, self).__init__()
         self.socket_channel = socket_channel
@@ -44,7 +56,7 @@ class GPSSerialThread(Thread):
 
     def streamFromSerial(self):
         self.openSerialConnection()
-        while not thread_stop_event.isSet():
+        while not self.stopped():
             data = self.serial_reference.readline()
             if data[0:6] == '$GPGGA':
                 msg = pynmea2.parse(data)
@@ -65,7 +77,7 @@ class GPSSerialThread(Thread):
     def run(self):
         self.streamFromSerial()
 
-class RandomThread(Thread):
+class RandomThread(StoppableThread):
     def __init__(self, socket_ref):
         self.socket_ref = socket_ref
         self.delay = 1
@@ -73,7 +85,7 @@ class RandomThread(Thread):
         super(RandomThread, self).__init__()
 
     def randomNumberGenerator(self):
-        while not thread_stop_event.isSet():
+        while not self.stopped():
             print 'emitting'
             self.socket_ref.emit('event', str(time()))
             eventlet.sleep()
@@ -81,16 +93,23 @@ class RandomThread(Thread):
     def run(self):
         self.randomNumberGenerator()
 
-class GPSSerialEmulator(Thread):
+class GPSSerialEmulator(StoppableThread):
     def __init__(self, socket_channel, comport):
         self.socket_channel = socket_channel
         self.time = time()
         self.record = True
         self.most_recent_gps_point = None
+        self._stop = Event()
         super(GPSSerialEmulator, self).__init__()
 
+    def stop(self):
+        self._stop.set()
+
+    def stopped(self):
+        return self._stop.isSet()
+
     def randomPointGenerator(self):
-        while not thread_stop_event.isSet():
+        while not self.stopped():
             #print 'emitting'
             newtime = time()
             deltat = newtime-self.time

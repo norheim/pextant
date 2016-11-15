@@ -38,6 +38,7 @@ def gpstrack_handler(data):
         thread.start()
     else:
         thread.record = True
+        socketio.emit('message', 'gps already on')
 
 @socketio.on('gpstracksilencer')
 def gpstrack_stopper(data):
@@ -47,6 +48,7 @@ def gpstrack_stopper(data):
     if thread.isAlive():
         print thread.record
         thread.record = False
+        thread.stop()
 
 class SocketChannel:
     def __init__(self, socket, channelname):
