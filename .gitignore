@@ -51,3 +51,4 @@ pextant/lines.html
 *.csv
 maps/
 pextant/gps/
+pextant/generated_paths/
