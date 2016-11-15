@@ -34,7 +34,7 @@ def gpstrack_handler(data):
     global thread
     if not thread.isAlive():
         print "Starting Thread"
-        thread = GPSSerialEmulator(SocketChannel(socketio, 'gpstrack'), 'COM6')
+        thread = GPSSerialThread(SocketChannel(socketio, 'gpstrack'), 'COM5')
         thread.start()
     else:
         thread.record = True
@@ -59,11 +59,15 @@ class SocketChannel:
 @socketio.on('waypoints')
 def getwaypoints(data):
     print('got waypoint request')
-    waypoints = loadPoints('waypoints/HI_13Nov16_MD7_A.json').to(LAT_LONG)
+    print(data != "")
+    waypoints = loadPoints('waypoints/HI16_14Nov16_MD8_A.json').to(LAT_LONG)
     print waypoints
     waypointsdict = {
         'latitude': list(waypoints[0]),
         'longitude' : list(waypoints[1])}
+    if data != "":
+        with open('generated_paths/1479162835.96.json') as data_file:
+            waypointsdict = json.load(data_file)
 
     print waypointsdict
     waypointsstr = json.dumps(waypointsdict)
@@ -75,9 +79,17 @@ def getpextant(data):
     print('got pextant request')
     global thread
     waypoint = None
-    if data == 'gps':
-        waypoint = thread.most_recent_gps_point
-    waypoints = runpextant('waypoints/HI_13Nov16_MD7_A.json', waypoint)
+    if data != "":
+        waypoint0 = json.loads(thread.most_recent_gps_point)
+        waypoint1 = json.loads(data)
+        print waypoint1['latitude']
+        print waypoint0['latitude']
+        waypoint =  json.dumps({"latitude":[waypoint0['latitude'], waypoint1['latitude']],
+                     "longitude": [waypoint0['longitude'], waypoint1['longitude']]})
+        print waypoint
+        waypoints = runpextant('waypoints/HI16_14Nov16_MD8_A.json', waypoint)
+    else:
+        waypoints = runpextant('waypoints/HI16_14Nov16_MD8_A.json', waypoint)
     print waypoints
     waypointsdict = {
         'latitude': list(waypoints[0]),
