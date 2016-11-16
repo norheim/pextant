@@ -1,7 +1,7 @@
 from flask import Flask
 from flask_socketio import SocketIO
 from serialgps import GPSSerialThread, serial_ports, GPSSerialEmulator, RandomThread
-from geoshapely import LAT_LONG
+from geoshapely import LAT_LONG, GeoPoint, Cartesian, UTM
 from loadWaypoints import loadPoints
 from hawaiiclean import runpextant
 
@@ -34,7 +34,7 @@ def gpstrack_handler(data):
     global thread
     if not thread.isAlive():
         print "Starting Thread"
-        thread = GPSSerialThread(SocketChannel(socketio, 'gpstrack'), 'COM5')
+        thread = GPSSerialEmulator(SocketChannel(socketio, 'gpstrack'), 'COM5')
         thread.start()
     else:
         thread.record = True
@@ -75,6 +75,29 @@ def getwaypoints(data):
     waypointsstr = json.dumps(waypointsdict)
     print waypointsstr
     socketio.emit('waypoints', waypointsstr)
+
+@socketio.on('calibrate')
+def getcalibration(data):
+    print('got calibration request')
+    global thread
+    global GPS_OFFSET
+    mappoint = json.loads(data)
+    print data
+    gpspoint = json.loads(thread.most_recent_gps_point_raw)
+    print gpspoint
+    geomappoint = GeoPoint(LAT_LONG, mappoint["latitude"], mappoint["longitude"])
+    geogpspoint = GeoPoint(LAT_LONG, gpspoint["latitude"], gpspoint["longitude"])
+    print geogpspoint
+    print geomappoint
+    offset = geogpspoint.to(UTM(5)) - geomappoint.to(UTM(5))
+    print offset
+    GPS_OFFSET = {
+        'easting': offset[0],
+        'northing': offset[1]
+    }
+    thread.gpsoffset = GPS_OFFSET
+    socketio.emit('message', 'calibration completed')
+    socketio.emit('message', json.dumps(GPS_OFFSET))
 
 @socketio.on('pextant')
 def getpextant(data):
