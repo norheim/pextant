@@ -27,6 +27,10 @@ def serialstatus(data):
     socketio.emit('event', returnstring)
     socketio.emit('serialstatus', returnstring)
 
+@socketio.on('gpsmesh')
+def gpsmesh(data):
+    print data
+
 @socketio.on('gpstrack')
 def gpstrack_handler(data):
     print 'requesting gps tracking'
@@ -34,7 +38,7 @@ def gpstrack_handler(data):
     global thread
     if not thread.isAlive():
         print "Starting Thread"
-        thread = GPSSerialEmulator(SocketChannel(socketio, 'gpstrack'), 'COM5')
+        thread = GPSSerialEmulator(SocketChannel(socketio, 'gpstrack'), SocketChannel(socketio, 'gpsmesh'), 'COM5')
         thread.start()
     else:
         thread.record = True
@@ -131,6 +135,9 @@ def message(message):
 
 @socketio.on('disconnect')
 def disconnect():
+    global thread
+    if thread.isAlive():
+        thread.stop()
     print('disconnected')
 
 if __name__ == '__main__':

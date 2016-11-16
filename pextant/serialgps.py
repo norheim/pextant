@@ -1,11 +1,14 @@
 from time import time, sleep
 from threading import Thread, Event
+import numpy as np
+import numpy.ma as ma
 import serial
 import pynmea2
 import json
 from serial.tools import list_ports
-from geoshapely import GeoPoint, LAT_LONG, Cartesian, UTM
+from geoshapely import GeoPoint, LAT_LONG, Cartesian, UTM, GeoEnvelope
 from random import randint
+from EnvironmentalModel import loadElevationMap
 import eventlet
 
 eventlet.monkey_patch(thread=True)
@@ -33,9 +36,10 @@ class StoppableThread(Thread):
 
 
 class GPSRecorderThread(StoppableThread):
-    def __init__(self, socket_channel):
+    def __init__(self, socket_channel, socket_channel2):
         super(GPSRecorderThread, self).__init__()
         self.socket_channel = socket_channel
+        self.socket_channel2 = socket_channel2
         self.gpsoffset = {
             'easting': 0,
             'northing': 0
@@ -46,6 +50,14 @@ class GPSRecorderThread(StoppableThread):
         self.most_recent_gps_point = None
         self.most_recent_gps_point_raw = None
         self.save_name_baseline = str(time())
+        EM = loadElevationMap('maps/HI_lowqual_DEM.tif',
+                                   nw_corner=GeoPoint(LAT_LONG, 19.370299271704212, -155.2175380561995),
+                                   se_corner=GeoPoint(LAT_LONG, 19.359626542672096, -155.19608451884082))
+        ma_el = ma.masked_array(EM.elevations, mask=EM.elevations < 0)
+        self.EM = EM
+        self.ma_el = ma_el
+        self.maxelevation = ma_el.max()
+        self.minelevation = ma_el.min()
 
     def getSaveName(self, extraname):
         return 'gps/gps_' + extraname + '_' + self.save_name_baseline + '.json'
@@ -62,10 +74,45 @@ class GPSRecorderThread(StoppableThread):
         print lat, lon
         raw_point_json = self.recordAndSaveGPSPoint(lat, lon, alt, 'raw')
         correctedPointLat, correctedPointLong = self.correctForOffset(lat, lon)
+        self.getMesh(correctedPointLat, correctedPointLong)
         corrected_point_json = self.recordAndSaveGPSPoint(correctedPointLat, correctedPointLong, 0, 'corrected')
         self.most_recent_gps_point = corrected_point_json
         self.most_recent_gps_point_raw = raw_point_json
         self.emit(corrected_point_json)
+
+    def getMesh(self, lat, lon):
+        center = GeoPoint(LAT_LONG, lat, lon)
+        upper_left, lower_right = GeoEnvelope(center, center).addMargin(self.EM.ROW_COL, 5).getBounds()
+        ul_row, ul_col = upper_left.to(self.EM.ROW_COL)
+        lr_row, lr_col = lower_right.to(self.EM.ROW_COL)
+        local_elevations = self.ma_el[ul_row:lr_row, ul_col:lr_col]
+        elevations_normalized = (local_elevations - self.minelevation)/(self.maxelevation-self.minelevation)
+        np.ma.set_fill_value(elevations_normalized, 0)
+        elevations_normalized_corrected  = elevations_normalized.filled()
+        ul_lat, ul_lon = upper_left.to(LAT_LONG)
+        ul_row, ul_col = upper_left.to(self.EM.ROW_COL)
+        lr_lat, lr_lon = lower_right.to(LAT_LONG)
+        lr_row, lr_col = lower_right.to(self.EM.ROW_COL)
+
+        message = {
+            'dem': elevations_normalized_corrected.tolist(),
+            'upper_left': {
+                'latitude': ul_lat,
+                'longitude': ul_lon,
+                'row': ul_row,
+                'col': ul_col
+            },
+            'lower_right': {
+                'latitude': lr_lat,
+                'longitude': lr_lon,
+                'row': lr_row,
+                'col': lr_col
+            }
+        }
+        json_local_elevations = json.dumps(message)
+        print json_local_elevations
+        print self.socket_channel2.channelname
+        self.socket_channel2.emit(message)
 
     def recordAndSaveGPSPoint(self, lat, lon, alt, extraname=''):
         latlon_point = {
@@ -79,6 +126,7 @@ class GPSRecorderThread(StoppableThread):
             self.recorded_points[extraname] = [latlon_point]
 
         savefile_name = self.getSaveName(extraname)
+
         with open(savefile_name, 'w') as outfile:
             json.dump(self.recorded_points[extraname], outfile)
 
@@ -91,8 +139,8 @@ class GPSRecorderThread(StoppableThread):
 
 
 class GPSSerialThread(GPSRecorderThread):
-    def __init__(self, socket_channel, comport):
-        super(GPSSerialThread, self).__init__(socket_channel)
+    def __init__(self, socket_channel, socket_channel2, comport):
+        super(GPSSerialThread, self).__init__(socket_channel, socket_channel2)
         self.comport = comport
         self.baudrate = 4800
         self.serial_reference = None
@@ -136,11 +184,12 @@ class RandomThread(StoppableThread):
 
 
 class GPSSerialEmulator(GPSRecorderThread):
-    def __init__(self, socket_channel, comport):
+    def __init__(self, socket_channel, socket_channel2, comport):
         self.time = time()
-        super(GPSSerialEmulator, self).__init__(socket_channel)
+        super(GPSSerialEmulator, self).__init__(socket_channel, socket_channel2)
 
     def randomPointGenerator(self):
+        startime = time()
         while not self.stopped():
             newtime = time()
             deltat = newtime - self.time
@@ -148,7 +197,8 @@ class GPSSerialEmulator(GPSRecorderThread):
                 self.time = newtime
                 center = GeoPoint(LAT_LONG, 19.36479555, -155.20178273)
                 XY = Cartesian(center, 1)
-                randomPointLat, randomPointLong = GeoPoint(XY, randint(0, 100), randint(0, 100)).to(LAT_LONG)
+                totaldelta = newtime - startime
+                randomPointLat, randomPointLong = GeoPoint(XY, 0.5*totaldelta, 0.5*totaldelta).to(LAT_LONG)
                 self.newGPSPoint(randomPointLat, randomPointLong, 0)
 
             eventlet.sleep()
@@ -166,5 +216,5 @@ class FakeEmitter(object):
         print message
 
 if __name__ == '__main__':
-    gps = GPSSerialEmulator(FakeEmitter(), 'COM6')
+    gps = GPSSerialEmulator(FakeEmitter(), FakeEmitter(),'COM6')
     gps.start()
