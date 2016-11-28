@@ -86,6 +86,7 @@
       role="menu"
       aria-labelledby="dLabelLocalToc"><ul>
 <li><a class="reference internal" href="#">Docker</a><ul>
+<li><a class="reference internal" href="#ames-stereo-pipeline">Ames Stereo pipeline</a></li>
 <li><a class="reference internal" href="#cesium-terrain-server">Cesium terrain server</a></li>
 </ul>
 </li>
@@ -136,6 +137,19 @@
 <h1>Docker<a class="headerlink" href="#docker" title="Permalink to this headline">¶</a></h1>
 <p><a class="reference external" href="http://blog.mastermaps.com/2014/10/3d-terrains-with-cesium.html">http://blog.mastermaps.com/2014/10/3d-terrains-with-cesium.html</a></p>
 <p><a class="reference external" href="https://hub.docker.com/r/homme/cesium-terrain-builder/">https://hub.docker.com/r/homme/cesium-terrain-builder/</a></p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="c1"># can also get gdal from docker</span>
+<span class="n">docker</span> <span class="n">pull</span> <span class="n">geodata</span><span class="o">/</span><span class="n">gdal</span>
+
+<span class="n">docker</span> <span class="n">run</span> <span class="o">-</span><span class="n">v</span> <span class="s2">&quot;c:\Users\johan\Dropbox (MIT)\BASALT\pextant\pextant\maps&quot;</span><span class="p">:</span><span class="o">/</span><span class="n">data</span> <span class="o">-</span><span class="n">t</span> <span class="o">-</span><span class="n">i</span> <span class="n">homme</span><span class="o">/</span><span class="n">cesium</span><span class="o">-</span><span class="n">terrain</span><span class="o">-</span><span class="n">builder</span> <span class="n">bash</span>
+<span class="n">ctb</span><span class="o">-</span><span class="n">tile</span> <span class="o">-</span><span class="n">r</span> <span class="n">average</span> <span class="o">-</span><span class="n">o</span> <span class="o">/</span><span class="n">data</span><span class="o">/</span><span class="n">tilesets</span> <span class="o">/</span><span class="n">data</span><span class="o">/</span><span class="n">hwmidlow</span><span class="o">.</span><span class="n">tif</span>
+
+<span class="n">docker</span> <span class="n">run</span> <span class="o">-</span><span class="n">v</span> <span class="s2">&quot;c:\Users\johan\Desktop\Big maps&quot;</span><span class="p">:</span><span class="o">/</span><span class="n">data</span> <span class="o">-</span><span class="n">ti</span> <span class="n">spara</span><span class="o">/</span><span class="n">gdal_ef</span> <span class="n">bash</span>
+<span class="n">docker</span> <span class="n">run</span> <span class="o">-</span><span class="n">v</span> <span class="s2">&quot;c:\Users\johan\Dropbox (MIT)\BASALT\pextant\pextant\maps&quot;</span><span class="p">:</span><span class="o">/</span><span class="n">data</span> <span class="o">-</span><span class="n">t</span> <span class="o">-</span><span class="n">i</span> <span class="n">spara</span><span class="o">/</span><span class="n">gdal_ef</span> <span class="n">bash</span>
+</pre></div>
+</div>
+<div class="section" id="ames-stereo-pipeline">
+<h2>Ames Stereo pipeline<a class="headerlink" href="#ames-stereo-pipeline" title="Permalink to this headline">¶</a></h2>
+</div>
 <div class="section" id="cesium-terrain-server">
 <h2>Cesium terrain server<a class="headerlink" href="#cesium-terrain-server" title="Permalink to this headline">¶</a></h2>
 <div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">cesium</span><span class="o">-</span><span class="n">terrain</span><span class="o">-</span><span class="n">server</span> <span class="o">-</span><span class="nb">dir</span> <span class="s2">&quot;C:\Users\johan\Dropbox (MIT)\BASALT\pextant\pextant\maps</span><span class="se">\t</span><span class="s2">errain&quot;</span> <span class="o">-</span><span class="n">port</span> <span class="mi">9090</span>
@@ -169,7 +183,7 @@
     </p>
     <p>
         &copy; Copyright 2016, Johannes Norheim.<br/>
-      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.8.<br/>
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.4.9.<br/>
     </p>
   </div>
 </footer>

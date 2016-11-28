@@ -6,12 +6,21 @@ http://blog.mastermaps.com/2014/10/3d-terrains-with-cesium.html
 https://hub.docker.com/r/homme/cesium-terrain-builder/
 
 .. code-block:: python
+
 	# can also get gdal from docker
 	docker pull geodata/gdal
 
-	docker run -v "c:\Users\johan\Dropbox (MIT)\BASALT\pextant\pextant\maps":/data -t -i homme/cesium-terrain-builder:latest bash
+	docker run -v "c:\Users\johan\Dropbox (MIT)\BASALT\pextant\pextant\maps":/data -t -i homme/cesium-terrain-builder bash
 	ctb-tile -r average -o /data/tilesets /data/hwmidlow.tif
 
+	docker run -v "c:\Users\johan\Desktop\Big maps":/data -ti spara/gdal_ef bash
+	docker run -v "c:\Users\johan\Dropbox (MIT)\BASALT\pextant\pextant\maps":/data -t -i spara/gdal_ef bash
+
+Ames Stereo pipeline
+==================================
+
+.. code-block:: python
+	docker pull pgcumn/asp
 
 Cesium terrain server
 =====================================
@@ -35,3 +44,4 @@ https://rominirani.com/docker-on-windows-mounting-host-directories-d96f3f056a2c#
 
 later need to check out
 https://github.com/geo-data/cesium-terrain-server
+

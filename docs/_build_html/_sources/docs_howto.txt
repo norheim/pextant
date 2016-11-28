@@ -4,6 +4,8 @@ How to change this documentation
 
 Code snippets
 
+Make sure sphinx-autobuild, and mock are installed
+
 .. code-block:: python
 
 	activate pextant
