@@ -66,13 +66,13 @@ class SocketChannel:
 def getwaypoints(data):
     print('got waypoint request')
     print(data != "")
-    waypoints = loadPoints('waypoints/HI_15Nov16_MD9_A.json').to(LAT_LONG)
+    waypoints = loadPoints('waypoints/HI_13Nov16_MD7_A.json').to(LAT_LONG)
     print waypoints
     waypointsdict = {
         'latitude': list(waypoints[0]),
         'longitude' : list(waypoints[1])}
     if data != "":
-        with open('generated_paths/HI_15Nov16_MD9_A.json') as data_file:
+        with open('generated_paths/HI_13Nov16_MD7_A.json') as data_file:
             waypointsdict = json.load(data_file)
 
     print waypointsdict
@@ -116,9 +116,9 @@ def getpextant(data):
         waypoint =  json.dumps({"latitude":[waypoint0['latitude'], waypoint1['latitude']],
                      "longitude": [waypoint0['longitude'], waypoint1['longitude']]})
         print waypoint
-        waypoints = runpextant('waypoints/HI_15Nov16_MD9_A.json', waypoint)
+        waypoints = runpextant('waypoints/HI_13Nov16_MD7_A.json', waypoint)
     else:
-        waypoints = runpextant('waypoints/HI_15Nov16_MD9_A.json', waypoint)
+        waypoints = runpextant('waypoints/HI_13Nov16_MD7_A.json', waypoint)
     print waypoints
     waypointsdict = {
         'latitude': list(waypoints[0]),

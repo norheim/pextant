@@ -11,7 +11,7 @@ with open(filename) as data_file:
 jsonInput = json.dumps(data)
 
 waypoints = loadPoints(filename)
-dem_path = 'maps/test5-DEM.tif'
+dem_path = 'maps/HI_lowqual_DEM.tif'
 dataset, info = loadElevationsLite(dem_path)
 XY = Cartesian(info["nw_geo_point"], info["resolution"])
 nw_corner = waypoints.geoEnvelope().addMargin(XY,10).upper_left

@@ -119,6 +119,52 @@ def loadElevationsLite(file_path):
 
     return dataset, all_info
 
+def selectMapSection(dataset, info, geo_envelope=None, desired_res=None):
+    """
+
+    :param dataset:
+    :param info:
+    :param geo_envelope:
+    :type geo_envelope pextant.geoshapely.GeoEnvelope
+    :param desired_res:
+    :return:
+    """
+    nw_corner, se_corner = geo_envelope.getBounds()
+    width, height, resolution = info["width"], info["height"], info["resolution"]
+
+    map_nw_corner = info["nw_geo_point"]
+    XY = Cartesian(map_nw_corner, resolution)
+    map_se_corner = GeoPoint(XY, width, height)
+
+    selection_nw_corner = map_nw_corner if nw_corner is None else nw_corner
+    selection_se_corner = map_se_corner if se_corner is None else se_corner
+
+    map_box = GeoPolygon([map_nw_corner, map_se_corner]).envelope
+    selection_box = GeoEnvelope(selection_nw_corner, selection_se_corner).envelope
+    intersection_box = map_box.intersection(selection_box)
+
+    inter_easting, inter_northing = np.array(intersection_box.bounds).reshape((2, 2)).transpose()
+    intersection_box_geo = GeoPolygon(UTM(info["zone"]), inter_easting, inter_northing)
+    inter_x, inter_y = intersection_box_geo.to(XY)
+
+    x_offset, max_x = inter_x
+    max_y, y_offset = inter_y
+    x_size = max_x - x_offset
+    y_size = max_y - y_offset
+
+    buf_x = None
+    buf_y = None
+    if desired_res:
+        buf_x = int(x_size * resolution / desired_res)
+        buf_y = int(y_size * resolution / desired_res)
+    else:
+        desired_res = resolution
+
+    band = dataset.GetRasterBand(1)
+    map_array = band.ReadAsArray(x_offset, y_offset, x_size, y_size, buf_x, buf_y).astype(np.float)
+    nw_coord = GeoPoint(UTM(info["zone"]), inter_easting.min(), inter_northing.max())
+    return nw_coord, map_array
+
 def loadElevationMap(file_path, maxSlope=15, planet='Earth', nw_corner=None, se_corner=None, desired_res=None,
                      no_val=-10000):
     '''

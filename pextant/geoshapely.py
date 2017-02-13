@@ -117,7 +117,10 @@ class GeoObject(object):
 
     def to(self, other_reference, conversion_type=None):
         # assuming other_reference is not of type utm
-        return self.original_reference.transform(self.data, other_reference, conversion_type)
+        if isinstance(other_reference, UTM):
+            return np.array([self.easting, self.northing])
+        else:
+            return self.original_reference.transform(self.data, other_reference, conversion_type)
 
     def eastingnorthing(self):
         return self.easting, self.northing
@@ -178,3 +181,4 @@ class GeoEnvelope(GeoPolygon):
 
 LAT_LONG = LatLon()
 LONG_LAT = LatLon(True)
+UTM_AUTO = UTM(1) # used 1 because need an argument
