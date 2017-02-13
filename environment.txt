@@ -1,0 +1,20 @@
+This is a list of all higher level libraries installed
+conda:
+- jupyter
+- nb_conda
+- numpy
+- gdal
+- pyproj
+- pipdeptree
+- pandas
+- shapely
+- scipy
+pip:
+- docker
+- flask
+- flask-socketio
+- eventlet
+- pynmea2
+- pyserial
+- sphinx
+- sphinx bootstrap theme
