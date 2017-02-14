@@ -9,8 +9,10 @@ conda:
 - pandas
 - shapely
 - scipy
+- matplotlib
 pip:
 - docker
+- pypiwin32 (for docker)
 - flask
 - flask-socketio
 - eventlet
