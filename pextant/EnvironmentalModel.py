@@ -4,6 +4,7 @@ import re
 from generate_colormap import colormap
 import shutil
 import docker
+from astarSEXTANT import SearchKernel, MeshElement, MeshCollection
 
 class Mesh(object):
     def __init__(self, nw_geo_point, width, height, resolution, dataset, planet='Earth',
@@ -113,6 +114,7 @@ class EnvironmentalModel(Mesh):
         self.planet = planet
         self.ROW_COL = Cartesian(nw_geo_point, resolution, reverse=True)
         self.special_obstacles = set()  # a list of coordinates of obstacles are not identified by the slope
+        self.searchKernel = SearchKernel()
 
     def generateRelief(self, N=100):
         file_dir = 'C:\Users\johan\Dropbox (MIT)\BASALT\pextant\pextant\maps\\'
@@ -158,6 +160,25 @@ class EnvironmentalModel(Mesh):
         to_dir = output_dir + relief_name
         shutil.move(from_dir,
                     to_dir)
+
+    def getMeshElement(self, row, col):
+        if self._inBounds((row, col)):
+            return MeshElement(row, col, self)
+        else:
+            raise IndexError("The location (%s, %s) is out of bounds" % row, col)
+
+    def getNeighbours(self, mesh_element):
+        state = mesh_element.getCoordinates()
+        kernel = self.searchKernel
+        offset = kernel.getKernel()
+        children = MeshCollection()
+        for i in range(kernel.length):
+            offset_i = offset[:,i]
+            if tuple(offset_i) != (0,0):
+                new_state = state + offset_i
+                if self._inBounds(new_state):
+                    children.collection.append(MeshElement(new_state[0], new_state[1], self))
+        return children
 
     def getGravity(self):
         if self.planet == 'Earth':
@@ -226,4 +247,6 @@ if __name__ == '__main__':
     hi_low = GDALMesh('maps/HI_lowqual_DEM.tif')
     waypoints = loadPoints('waypoints/HI_13Nov16_MD7_A.json')
     env_model = hi_low.loadMapSection(waypoints.geoEnvelope())
-    env_model.generateRelief(50)
+    #env_model.generateRelief(50)
+    children = env_model.getMeshElement(1, 1).getNeighbours()
+    print children
