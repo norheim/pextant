@@ -1,7 +1,7 @@
 import heapq
 
 class aStarSearchNode(object):
-    def __init__(self, state, parent, cost=0):
+    def __init__(self, state, parent=None, cost=0):
         self.state = state
         self.parent = parent
         self.cost = cost
@@ -36,7 +36,7 @@ class aStarCostFunction(object):
         return 0
 
     def getEstimatedCost(self, fromnode, tonode):
-        actual_cost = self.getActualCost(fromnode, tonode)
+        actual_cost = fromnode.cost + self.getActualCost(fromnode, tonode)
         tonode.cost = actual_cost
         heuristic_cost = self.getHeuristicCost(tonode)
         estimated_cost = actual_cost + heuristic_cost
@@ -57,12 +57,13 @@ def aStarSearch(start_node, end_node, cost_function):
     As of right now 'Energy' just refers to metabolic energy.
     """
     if start_node.goalTest(end_node):
-        return start_node.getPath()
+        return (start_node, 0, 0)
 
     cost_function.setEndNode(end_node)
     start_node.cost = 0
     # agenda contains pairs (cost, node)
     agenda = []
+    node = start_node # needed in case of early exit of loop
     heapq.heappush(agenda, (0, start_node))
     expanded = set()
     while len(agenda) > 0:

@@ -436,3 +436,17 @@ class aStarSearchNode:
 
         path.reverse()
         return path
+if __name__ == '__main__':
+    from loadWaypoints import loadPoints
+    from ExplorerModel import Astronaut
+    from EnvironmentalModel import GDALMesh
+    from astarSEXTANT import MeshSearchElement
+    hi_low = GDALMesh('maps/HI_lowqual_DEM.tif')
+    waypoints = loadPoints('waypoints/HI_13Nov16_MD7_A.json')
+    env_model = hi_low.loadMapSection(waypoints.geoEnvelope())
+    astronaut = Astronaut(80)
+    pathfinder = Pathfinder(astronaut, env_model)
+    start_node = aStarSearchNode(env_model.getMeshElement(waypoints[0]).getTupleCoords(),None,0)
+    end_node = aStarSearchNode(env_model.getMeshElement(waypoints[1]).getTupleCoords(),None,0)
+    out = pathfinder.aStarSearch(start_node, end_node, 'Energy')
+    print out

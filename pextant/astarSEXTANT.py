@@ -24,6 +24,9 @@ class MeshElement(object):
     def getCoordinates(self):
         return np.array([self.row, self.col])
 
+    def getTupleCoords(self):
+        return (self.row, self.col)
+
     def getElevation(self):
         return self.parentMesh.dataset[self.row, self.col]
 
@@ -60,15 +63,6 @@ class astronautCost(aStarCostFunction):
         self.explorer = astronaut
         self.map = environment
         self.optimize_vector = self._vectorize(optimize_on)
-    """
-    Given the start and end states, returns the cost of travelling between them.
-    Allows for states which are not adjacent to each other.
-
-    Note that this uses start and end coordinates rather than nodes.
-
-    optimize_vector is a list or tuple of length 3, representing the weights of
-    Distance, Time, and Energy
-    """
 
     @staticmethod
     def _vectorize(optimize_on):
@@ -130,6 +124,15 @@ class astronautCost(aStarCostFunction):
         return heuristic_cost
 
     def getActualCost(self, fromnode, tonode):
+        """
+            Given the start and end states, returns the cost of travelling between them.
+            Allows for states which are not adjacent to each other.
+
+            Note that this uses start and end coordinates rather than nodes.
+
+            optimize_vector is a list or tuple of length 3, representing the weights of
+            Distance, Time, and Energy
+        """
         optimize_vector = self.optimize_vector
 
         r = self.map.resolution
@@ -168,6 +171,7 @@ if __name__ == '__main__':
     astronaut = Astronaut(80)
     cost_function = astronautCost(astronaut, env_model, "Energy")
     # env_model.generateRelief(50)
-    start_node = MeshSearchElement(env_model.getMeshElement(1, 1))
-    end_node = MeshSearchElement(env_model.getMeshElement(10, 10))
-    print aStarSearch(start_node, end_node, cost_function)
+    start_node = MeshSearchElement(env_model.getMeshElement(waypoints[0]))
+    end_node = MeshSearchElement(env_model.getMeshElement(waypoints[1]))
+    out = aStarSearch(start_node, end_node, cost_function)
+    print out

@@ -75,8 +75,9 @@ class GDALMesh(Mesh):
 
         x_offset, max_x = inter_x
         max_y, y_offset = inter_y
-        x_size = max_x - x_offset
-        y_size = max_y - y_offset
+        # need to explain the +1, comes from hack. Also, doesnt work when selecting full screen
+        x_size = max_x - x_offset + 1
+        y_size = max_y - y_offset + 1
 
         buf_x = None
         buf_y = None
@@ -88,7 +89,9 @@ class GDALMesh(Mesh):
 
         band = dataset.GetRasterBand(1)
         map_array = band.ReadAsArray(x_offset, y_offset, x_size, y_size, buf_x, buf_y).astype(np.float)
-        nw_coord = GeoPoint(UTM(zone), inter_easting.min(), inter_northing.max())
+        #TODO: this hack needs explanation
+        nw_coord_hack = GeoPoint(UTM(zone), inter_easting.min(), inter_northing.max()).to(XY)
+        nw_coord = GeoPoint(XY, nw_coord_hack[0], nw_coord_hack[1])
         return EnvironmentalModel(nw_coord, x_size, y_size, desired_res, map_array, self.planet,
                                   self, x_offset, y_offset)
 
@@ -110,11 +113,14 @@ class EnvironmentalModel(Mesh):
                                                  parentMesh, xoff, yoff)
         self.parent = self.parentMesh
         self.numRows, self.numCols = self.dataset.shape
+        self.slopes = None
         self.obstacles = None  # obstacles is a matrix with boolean values for passable squares
         self.planet = planet
         self.ROW_COL = Cartesian(nw_geo_point, resolution, reverse=True)
         self.special_obstacles = set()  # a list of coordinates of obstacles are not identified by the slope
         self.searchKernel = SearchKernel()
+        self.setSlopes()
+        self.maxSlopeObstacle(25)
 
     def generateRelief(self, N=100):
         file_dir = 'C:\Users\johan\Dropbox (MIT)\BASALT\pextant\pextant\maps\\'
@@ -161,7 +167,11 @@ class EnvironmentalModel(Mesh):
         shutil.move(from_dir,
                     to_dir)
 
-    def getMeshElement(self, row, col):
+    def getMeshElement(self, geo_point):
+        row, col = geo_point.to(self.ROW_COL)
+        return self._getMeshElement(row, col)
+
+    def _getMeshElement(self, row, col):
         if self._inBounds((row, col)):
             return MeshElement(row, col, self)
         else:
@@ -185,10 +195,12 @@ class EnvironmentalModel(Mesh):
             return 9.81
         elif self.planet == 'Moon':
             return 1.622
+
     def setSlopes(self):
         [gx, gy] = np.gradient(self.dataset, self.resolution, self.resolution)
         self.slopes = np.degrees(
             np.arctan(np.sqrt(np.add(np.square(gx), np.square(gy)))))  # Combining for now for less RAM usage
+
     def maxSlopeObstacle(self, maxSlope):
         self.obstacles = self.slopes <= maxSlope
         for obstacle in self.special_obstacles:
@@ -247,6 +259,7 @@ if __name__ == '__main__':
     hi_low = GDALMesh('maps/HI_lowqual_DEM.tif')
     waypoints = loadPoints('waypoints/HI_13Nov16_MD7_A.json')
     env_model = hi_low.loadMapSection(waypoints.geoEnvelope())
+    print waypoints[1].to(env_model.ROW_COL)
     #env_model.generateRelief(50)
-    children = env_model.getMeshElement(1, 1).getNeighbours()
+    children = env_model._getMeshElement(1, 1).getNeighbours()
     print children
