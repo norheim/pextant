@@ -1,31 +1,7 @@
-from geoshapely import *
-from osgeo import gdal, osr
 import re
-from generate_colormap import colormap
-import shutil
-import docker
-from astarSEXTANT import SearchKernel, MeshElement, MeshCollection
-import json
-
-class Mesh(object):
-    def __init__(self, nw_geo_point, width, height, resolution, dataset, planet='Earth',
-                 parentMesh=None, xoff=0, yoff=0):
-        self.nw_geo_point = nw_geo_point
-        self.width = width
-        self.height = height
-        self.resolution = resolution
-        self.parentMesh = parentMesh
-        self.xoff = xoff
-        self.yoff = yoff
-        self.dataset = dataset
-        self.planet = planet
-
-    def jsonify(self):
-        return json.dumps(self.__dict__)
-
-    def __str__(self):
-        return 'height: %s \nwidth: %s \nresolution: %s \nnw corner: %s' % \
-              (self.height, self.width, self.resolution, str(self.nw_geo_point))
+from pextant.lib.geoshapely import *
+from pextant.MeshModel import Mesh, MeshElement, MeshCollection, SearchKernel
+from osgeo import gdal, osr
 
 class GDALMesh(Mesh):
     def __init__(self, file_path):
@@ -103,15 +79,6 @@ class GDALMesh(Mesh):
 class EnvironmentalModel(Mesh):
     """
     This class ultimately represents an elevation map + all of the traversable spots on it.
-
-    Public functions:
-
-    setMaxSlope(slope) - sets the maximum slope that can be traversed
-    setObstacle(coordinates), eraseObstacle(coordinates) - set or erase an obstacle at certain coordinates
-    getElevation(coordinates), getSlope(coordinates) - get Elevation or Slope at certain coordinates
-    isPassable(coordinates) - determines if a certain coordinate can be traversed
-    convertToRowCol(coordinates), convertToUTM(coordinates), convertToLatLong(coordinates)
-    - converts from one coordinate system to another
     """
     def __init__(self, nw_geo_point, width, height, resolution, dataset, planet, parentMesh=None, xoff=0, yoff=0):
         super(EnvironmentalModel, self).__init__(nw_geo_point, width, height, resolution, dataset, planet,
@@ -126,55 +93,6 @@ class EnvironmentalModel(Mesh):
         self.searchKernel = SearchKernel()
         self.setSlopes()
         self.maxSlopeObstacle(25)
-        self.socket = None
-
-    def setSocketLink(self, socketObject):
-        self.socket = socketObject
-
-    def generateRelief(self, N=100):
-        file_dir = 'C:\Users\johan\Dropbox (MIT)\BASALT\pextant\pextant\maps\\'
-        output_dir = 'C:\Users\johan\Desktop\webapp\public\CustomMaps\\'
-
-        regex_result = re.search('.+\/((\w+)\.tif)', self.parent.file_path)
-        file_name = regex_result.group(2)
-        file_extension = regex_result.group(1)
-
-        dataset = self.dataset
-        clean_dataset = dataset[dataset > 0]
-        altitude_lower_bound, altitude_upper_bound = np.min(clean_dataset), np.max(clean_dataset)
-
-        # generate colormap.txt
-        colormap(N, altitude_lower_bound, altitude_upper_bound)
-
-        client = docker.from_env()
-        container = "spara/gdal_ef"
-        volume = {
-            '/c/Users/johan/Dropbox (MIT)/BASALT/pextant/pextant/maps':
-                {'bind': '/data',
-                 'mode': 'rw'},
-        }
-
-        # zoom into area this mesh covers
-        zoom_name = "%s_zoomed.tif" % file_name
-        zoom_command = 'gdal_translate %s %s -srcwin %s %s %s %s' \
-                       % (file_extension, zoom_name, self.xoff, self.yoff, self.width, self.height)
-        client.containers.run(container, zoom_command, volumes=volume)
-
-        # generate relief image tif
-        relief_name = "%s_relief_%s" % (file_name, N)
-        relief_extension = "%s.tif" % relief_name
-        colormap_command = "gdaldem color-relief %s colormap.txt %s -nearest_color_entry" \
-                  % (zoom_name, relief_extension)
-        client.containers.run(container, colormap_command, volumes=volume)
-
-        # tile it!
-        tile_command = "gdal2tiles.py %s" % relief_extension
-        client.containers.run(container, tile_command, volumes=volume)
-
-        from_dir = file_dir + relief_name
-        to_dir = output_dir + relief_name
-        shutil.move(from_dir,
-                    to_dir)
 
     def getMeshElement(self, geo_point):
         row, col = geo_point.to(self.ROW_COL)
@@ -197,7 +115,6 @@ class EnvironmentalModel(Mesh):
                 new_state = state + offset_i
                 if self._inBounds(new_state):
                     children.collection.append(MeshElement(new_state[0], new_state[1], self))
-                    #eventlet.sleep()
         return children
 
     def getGravity(self):
@@ -265,11 +182,10 @@ class EnvironmentalModel(Mesh):
 
 
 if __name__ == '__main__':
-    from loadWaypoints import loadPoints
-    hi_low = GDALMesh('maps/HI_lowqual_DEM.tif')
-    waypoints = loadPoints('waypoints/HI_13Nov16_MD7_A.json')
+    from pextant.analysis.loadWaypoints import loadPoints
+    hi_low = GDALMesh('../data/maps/HI_lowqual_DEM.tif')
+    waypoints = loadPoints('../data/waypoints/HI_13Nov16_MD7_A.json')
     env_model = hi_low.loadMapSection(waypoints.geoEnvelope())
     print waypoints[1].to(env_model.ROW_COL)
-    #env_model.generateRelief(50)
     children = env_model._getMeshElement(1, 1).getNeighbours()
     print children
