@@ -1,8 +1,10 @@
-from loadWaypoints import loadPoints
-from EnvironmentalModel import GDALMesh
-from ExplorerModel import Astronaut
 from astar import aStarSearch
 from astarSEXTANT import astronautCost, MeshSearchElement
+
+from pextant.EnvironmentalModel import GDALMesh
+from pextant.ExplorerModel import Astronaut
+from pextant.analysis.loadWaypoints import loadPoints
+
 
 def runpextant(socketlink=None):
     hi_low = GDALMesh('maps/HI_lowqual_DEM.tif')

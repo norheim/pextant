@@ -1,6 +1,6 @@
-from api import *
-from EnvironmentalModel import loadElevationMap
-from transform import LatLongCoord, latLongToUTM
+from pextant.api import *
+from pextant.EnvironmentalModel import loadElevationMap
+from pextant.transform import LatLongCoord, latLongToUTM
 import matplotlib.pyplot as plt
 from osgeo import gdal
 

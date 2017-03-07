@@ -11,3 +11,7 @@ Gravity is no longer part of an ExplorerModel
 v1.0.0 August 18, 2015 -- Added basic functionality for Field D*, although very buggy
 
 v1.0.1 November 19, 2015 -- some bug fixes
+
+v2.0 November 2016 -- HI deployment version
+
+v3.0 Spring 2017

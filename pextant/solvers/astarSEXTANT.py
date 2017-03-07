@@ -2,7 +2,7 @@ import numpy as np
 import numpy.matlib as matlib
 import math
 import json
-from geoshapely import GeoPoint, LAT_LONG
+from pextant.lib.geoshapely import GeoPoint, LAT_LONG
 from astar import aStarSearchNode, aStarCostFunction
 
 class SearchKernel(object):
@@ -22,12 +22,6 @@ class MeshElement(object):
         self.row = row
         self.col = col
         self.parentMesh = parentMesh
-        self.visual = False
-        if self.visual:
-            if self.parentMesh.socket is not None:
-                borders = self.getBorders()
-                print borders
-                self.parentMesh.socket.emit(borders)
 
     def getBorders(self):
         nw_corner = GeoPoint(self.parentMesh.ROW_COL, self.row, self.col)
@@ -201,9 +195,9 @@ def fullSearch(waypoints, env_model, cost_function):
 
 
 if __name__ == '__main__':
-    from loadWaypoints import loadPoints
-    from EnvironmentalModel import GDALMesh
-    from ExplorerModel import Astronaut
+    from pextant.analysis.loadWaypoints import loadPoints
+    from pextant.EnvironmentalModel import GDALMesh
+    from pextant.ExplorerModel import Astronaut
     from astar import aStarSearch
     hi_low = GDALMesh('maps/HI_lowqual_DEM.tif')
     waypoints = loadPoints('waypoints/HI_13Nov16_MD7_A.json')

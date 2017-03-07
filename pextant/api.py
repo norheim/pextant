@@ -1,14 +1,11 @@
-from ExplorationObjective import ActivityPoint
-from geoshapely import *
-import logging
 import csv
 import heapq
-import numpy as np
-import math
 import json
-from scipy.optimize import fmin_slsqp
+import logging
+import math
 
-from osgeo import gdal, osr
+from ExplorationObjective import ActivityPoint
+from pextant.lib.geoshapely import *
 
 logger = logging.getLogger()
 
@@ -437,10 +434,10 @@ class aStarSearchNode:
         path.reverse()
         return path
 if __name__ == '__main__':
-    from loadWaypoints import loadPoints
+    from pextant.analysis.loadWaypoints import loadPoints
     from ExplorerModel import Astronaut
     from EnvironmentalModel import GDALMesh
-    from astarSEXTANT import MeshSearchElement
+
     hi_low = GDALMesh('maps/HI_lowqual_DEM.tif')
     waypoints = loadPoints('waypoints/HI_13Nov16_MD7_A.json')
     env_model = hi_low.loadMapSection(waypoints.geoEnvelope())

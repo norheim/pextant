@@ -1,8 +1,10 @@
-from api import *
-from EnvironmentalModel import *
-from ExplorerModel import Astronaut
-from loadWaypoints import loadPoints
 from time import time
+
+from pextant.EnvironmentalModel import *
+from pextant.ExplorerModel import Astronaut
+from pextant.analysis.loadWaypoints import loadPoints
+from pextant.api import *
+
 
 def runpextant(filename, pointJSON=None):
     waypoints = loadPoints(filename)

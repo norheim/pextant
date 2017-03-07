@@ -1,7 +1,3 @@
-import numpy as np
-import math
-from geoshapely import *
-
 class ActivityPoint:
 	def __init__(self, coordinates, duration = 0, uuid = None):
 		self.coordinates = coordinates # coordinates is either a row/column tuple, a LatLongCoord, or a UTMCoord

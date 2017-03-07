@@ -1,9 +1,7 @@
-from api import *
-from EnvironmentalModel import *
-from ExplorerModel import Astronaut
-from bokeh.plotting import figure, output_file, show
-from bokeh.io import hplot
-from loadWaypoints import loadPoints
+from pextant.EnvironmentalModel import *
+from pextant.ExplorerModel import Astronaut
+from pextant.analysis.loadWaypoints import loadPoints
+from pextant.api import *
 
 filename = 'waypoints/HI_sextant_testing2_B.json'
 with open(filename) as data_file:

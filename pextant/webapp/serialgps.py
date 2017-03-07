@@ -1,15 +1,16 @@
-from time import time, sleep
+import json
 from threading import Thread, Event
+from time import time
+
+import eventlet
 import numpy as np
 import numpy.ma as ma
-import serial
 import pynmea2
-import json
+import serial
 from serial.tools import list_ports
-from geoshapely import GeoPoint, LAT_LONG, Cartesian, UTM, GeoEnvelope
-from EnvironmentalModel import GDALMesh
-from random import randint
-import eventlet
+
+from pextant.EnvironmentalModel import GDALMesh
+from pextant.lib.geoshapely import GeoPoint, LAT_LONG, Cartesian, UTM, GeoEnvelope
 
 eventlet.monkey_patch(thread=True)
 
