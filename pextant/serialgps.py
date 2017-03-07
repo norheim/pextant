@@ -7,8 +7,8 @@ import pynmea2
 import json
 from serial.tools import list_ports
 from geoshapely import GeoPoint, LAT_LONG, Cartesian, UTM, GeoEnvelope
+from EnvironmentalModel import GDALMesh
 from random import randint
-from EnvironmentalModel import loadElevationMap
 import eventlet
 
 eventlet.monkey_patch(thread=True)
@@ -34,6 +34,20 @@ class StoppableThread(Thread):
     def stopped(self):
         return self._stop.isSet()
 
+class GDALMeshServer(StoppableThread):
+    def __init__(self, socket_channel):
+        super(GDALMeshServer, self).__init__()
+        self.object = None
+        self.socket_channel = socket_channel
+        socket_channel.setSender(self.processMessage)
+
+    def processMessage(self, function, arguments):
+        if function == 'load':
+            self.object = GDALMesh(arguments)
+        elif function == 'selectarea':
+            self.object.loadMapSection(arguments[0], arguments[1])
+        elif function == 'getinfo':
+            self.object.jsonify()
 
 class GPSRecorderThread(StoppableThread):
     def __init__(self, socket_channel, socket_channel2):
@@ -50,9 +64,9 @@ class GPSRecorderThread(StoppableThread):
         self.most_recent_gps_point = None
         self.most_recent_gps_point_raw = None
         self.save_name_baseline = str(time())
-        EM = loadElevationMap('maps/HI_lowqual_DEM.tif',
-                                   nw_corner=GeoPoint(LAT_LONG, 19.370299271704212, -155.2175380561995),
-                                   se_corner=GeoPoint(LAT_LONG, 19.359626542672096, -155.19608451884082))
+        EM = GDALMesh('maps/HI_lowqual_DEM.tif').loadMapSection(
+            GeoEnvelope(GeoPoint(LAT_LONG, 19.370299271704212, -155.2175380561995),
+                        GeoPoint(LAT_LONG, 19.359626542672096, -155.19608451884082)))
         ma_el = ma.masked_array(EM.elevations, mask=EM.elevations < 0)
         self.EM = EM
         self.ma_el = ma_el

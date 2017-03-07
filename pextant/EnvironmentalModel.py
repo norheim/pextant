@@ -5,6 +5,7 @@ from generate_colormap import colormap
 import shutil
 import docker
 from astarSEXTANT import SearchKernel, MeshElement, MeshCollection
+import json
 
 class Mesh(object):
     def __init__(self, nw_geo_point, width, height, resolution, dataset, planet='Earth',
@@ -18,6 +19,9 @@ class Mesh(object):
         self.yoff = yoff
         self.dataset = dataset
         self.planet = planet
+
+    def jsonify(self):
+        return json.dumps(self.__dict__)
 
     def __str__(self):
         return 'height: %s \nwidth: %s \nresolution: %s \nnw corner: %s' % \
@@ -95,6 +99,7 @@ class GDALMesh(Mesh):
         return EnvironmentalModel(nw_coord, x_size, y_size, desired_res, map_array, self.planet,
                                   self, x_offset, y_offset)
 
+
 class EnvironmentalModel(Mesh):
     """
     This class ultimately represents an elevation map + all of the traversable spots on it.
@@ -121,6 +126,10 @@ class EnvironmentalModel(Mesh):
         self.searchKernel = SearchKernel()
         self.setSlopes()
         self.maxSlopeObstacle(25)
+        self.socket = None
+
+    def setSocketLink(self, socketObject):
+        self.socket = socketObject
 
     def generateRelief(self, N=100):
         file_dir = 'C:\Users\johan\Dropbox (MIT)\BASALT\pextant\pextant\maps\\'
@@ -188,6 +197,7 @@ class EnvironmentalModel(Mesh):
                 new_state = state + offset_i
                 if self._inBounds(new_state):
                     children.collection.append(MeshElement(new_state[0], new_state[1], self))
+                    #eventlet.sleep()
         return children
 
     def getGravity(self):

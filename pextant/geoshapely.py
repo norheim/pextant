@@ -164,13 +164,13 @@ class GeoEnvelope(GeoPolygon):
         self.lower_right = lower_right
         GeoPolygon.__init__(self, [upper_left, lower_right])
 
-    def addMargin(self, cartesian_geo_type, margin):
+    def addMargin(self, resolution, margin):
         # margin is in "units" of cartesian_geo_type, aka if 1m resolution, the one unit of margin
         # corresponds to one meter of margin
-        upper_left_easting = self.upper_left.easting - margin*cartesian_geo_type.resolution
-        upper_left_northing = self.upper_left.northing + margin*cartesian_geo_type.resolution
-        lower_right_easting = self.lower_right.easting + margin * cartesian_geo_type.resolution
-        lower_right_northing = self.lower_right.northing - margin * cartesian_geo_type.resolution
+        upper_left_easting = self.upper_left.easting - margin*resolution
+        upper_left_northing = self.upper_left.northing + margin*resolution
+        lower_right_easting = self.lower_right.easting + margin * resolution
+        lower_right_northing = self.lower_right.northing - margin * resolution
         new_upper_left = GeoPoint(self.utm_reference, upper_left_easting, upper_left_northing)
         new_lower_right =GeoPoint(self.utm_reference, lower_right_easting, lower_right_northing)
         return GeoEnvelope(new_upper_left, new_lower_right)
