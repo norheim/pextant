@@ -1,25 +1,25 @@
 import heapq
-from eventlet import sleep
-import time
 
 class aStarSearchNode(object):
-    def __init__(self, state, parent=None, cost=0):
+    def __init__(self, state, parent=None):
         self.state = state
         self.parent = parent
-        self.cost = cost
 
     def goalTest(self, goal):
         return self.state == goal.state
 
     def getPath(self):
-        path = [self.state]
         node = self
+        statepath = [node.state]
+        nodepath = [node]
         while node.parent:
-            path.append(node.parent.state)
+            statepath.append(node.parent.state)
+            nodepath.append(node.parent)
             node = node.parent
 
-        path.reverse()
-        return path
+        statepath.reverse()
+        nodepath.reverse()
+        return (statepath, nodepath)
 
     def getChildren(self):
         pass
@@ -34,17 +34,10 @@ class aStarCostFunction(object):
     def getHeuristicCost(self, node):
         return 0
 
-    def getActualCost(self, fromnode, tonode):
+    def getCostBetween(self, fromnode, tonode):
         return 0
 
-    def getEstimatedCost(self, fromnode, tonode):
-        actual_cost = fromnode.cost + self.getActualCost(fromnode, tonode)
-        tonode.cost = actual_cost
-        heuristic_cost = self.getHeuristicCost(tonode)
-        estimated_cost = actual_cost + heuristic_cost
-        return estimated_cost
-
-def aStarSearch(start_node, end_node, cost_function):
+def aStarSearch(start_node, end_node, cost_function, viz=None):
     """
     returns the path (as a list of coordinates), followed by the number of
     states expanded, followed by the total cost
@@ -65,19 +58,30 @@ def aStarSearch(start_node, end_node, cost_function):
     start_node.cost = 0
     # agenda contains pairs (cost, node)
     agenda = []
-    node = start_node # needed in case of early exit of loop
+    current_node = start_node # needed in case of early exit of loop
     heapq.heappush(agenda, (0, start_node))
+    g_cost = {start_node.state: 0}
     expanded = set()
-    while len(agenda) > 0:
-        priority, node = heapq.heappop(agenda)
-        if node.state not in expanded:
-            expanded.add(node.state)
-            if node.goalTest(end_node):
-                return (node.getPath(), len(expanded), node.cost)
-            for child_node in node.getChildren():
-                if child_node.state not in expanded:
-                    # calculate cost
-                    estimated_cost = cost_function.getEstimatedCost(node, child_node)
-                    heapq.heappush(agenda, (estimated_cost, child_node))
 
-    return (None, len(expanded), node.cost)
+    while agenda:
+        current_node = heapq.heappop(agenda)[1]
+        current_node_state = current_node.state
+        if current_node.goalTest(end_node):
+            return (current_node.getPath(), expanded, g_cost[current_node_state])
+        expanded.add(current_node_state)
+        for child_node in current_node.getChildren():
+            child_node_state = child_node.state
+            cost_to_node = g_cost[current_node_state] + cost_function.getCostBetween(current_node, child_node)
+            if child_node_state in expanded: #and cost_to_node >= g_cost.get(child_node_state,0):
+                continue
+            test = g_cost.get(child_node_state, float("inf"))
+            if cost_to_node < test:
+                # this if statement is a shortcut that does a lot of things at the same time
+                g_cost[child_node_state] = cost_to_node
+                estimated_cost = cost_to_node + cost_function.getHeuristicCost(child_node)
+                heapq.heappush(agenda, (estimated_cost, child_node))
+                if viz:
+                    viz.add(child_node_state, estimated_cost)
+
+    # if it can't find a solution
+    return (None, len(expanded), 0)

@@ -1,4 +1,4 @@
-#__BEGIN_LICENSE__
+# __BEGIN_LICENSE__
 # Copyright (c) 2015, United States Government, as represented by the
 # Administrator of the National Aeronautics and Space Administration.
 # All rights reserved.
@@ -12,7 +12,7 @@
 # under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 # CONDITIONS OF ANY KIND, either express or implied. See the License for the
 # specific language governing permissions and limitations under the License.
-#__END_LICENSE__
+# __END_LICENSE__
 import traceback
 import logging
 import json
@@ -20,34 +20,52 @@ import os
 
 from pextant.api import Pathfinder
 from pextant.ExplorerModel import Astronaut
-from pextant.ExplorationObjective import *
+from pextant.geoshapely import GeoPoint, LAT_LONG
 from pextant.EnvironmentalModel import EnvironmentalModel, loadElevationMap
 
-def getMap(site, desiredRes=0.5, maxSlope=15):
+
+def getCornersForMap(extent, zone, zoneLetter):
+    if extent:
+        nw_corner = GeoPoint(LAT_LONG, extent[3], extent[0])
+        se_corner = GeoPoint(LAT_LONG, extent[1], extent[2])
+        return nw_corner, se_corner
+    return None, None
+
+
+def getMap(site, maxSlope=15, extent=None):
     site_frame = site['name']
-    dem_name = site_frame.replace(' ', '_')+'.tif'
+    dem_name = site_frame.replace(' ', '_') + '.tif'
     fullPath = os.path.join(settings.STATIC_ROOT, 'basaltApp', 'dem', dem_name)
-    if os.path.isfile(fullPath): 
-        zone=site['alternateCrs']['properties']['zone']
-        zoneLetter=site['alternateCrs']['properties']['zoneLetter']
-        #TODO limit based on bounds of plan
-        dem = loadElevationMap(fullPath, maxSlope=maxSlope, zone=zone, zoneLetter=zoneLetter, desiredRes=desiredRes)
+    if os.path.isfile(fullPath):
+        zone = site['alternateCrs']['properties']['zone']
+        zoneLetter = site['alternateCrs']['properties']['zoneLetter']
+
+        if extent:
+            nw_corner, se_corner = getCornersForMap(extent, zone, zoneLetter)
+        else:
+            nw_corner = None
+            se_corner = None
+        cartesian = Cartesian(nw_corner, 0.5)
+        nw_corner_pad, se_corner_pad = GeoEnvelope(nw_corner, se_corner).addMargin(cartesian, 30).getBounds()
+        dem = loadElevationMap(fullPath, maxSlope=maxSlope, nw_corner=nw_corner_pad, se_corner=se_corner_pad)
         return dem
     return None
 
+
 def testJsonSegments(plan):
     prevStation = None
-    
+
     for index, entry in enumerate(plan.jsonPlan.sequence):
         if entry['type'] == 'Station':
             prevStation = entry['geometry']['coordinates']
         elif entry['type'] == 'Segment':
-            nextStation = plan.jsonPlan.sequence[index+1]['geometry']['coordinates']
+            nextStation = plan.jsonPlan.sequence[index + 1]['geometry']['coordinates']
             allCoords = [prevStation, nextStation]
             entry['geometry'] = {"coordinates": allCoords,
                                  "type": "LineString"}
             prevStation = nextStation
     return plan
+
 
 def clearSegmentGeometry(plan):
     for elt in plan.jsonPlan.sequence:
@@ -68,38 +86,39 @@ def clearSegmentGeometry(plan):
                 pass
     plan.save()
     return plan
-    
-def callPextant(request, plan, optimize=None, desiredRes=0.5, maxSlope=15):
+
+
+def callPextant(request, plan, optimize=None, maxSlope=15, extent=None):
     executions = plan.executions
     if not executions:
         msg = 'Plan %s not scheduled; could not call Sextant' % plan.name
         raise Exception(msg)
-    
+
     if not executions[0].ev:
         msg = 'No EV associated with plan %s; could not call Sextant' % plan.name
         raise Exception(msg)
 
-#    Per Kevin, BASALTExplorer is not the thing.  Astronaut is the thing
-#     explorer = BASALTExplorer(executions[0].ev.mass)
+    # Per Kevin, BASALTExplorer is not the thing.  Astronaut is the thing
+    #     explorer = BASALTExplorer(executions[0].ev.mass)
     explorer = Astronaut(executions[0].ev.mass)
-    
+
     site = plan.jsonPlan['site']
 
-    dem = getMap(site, desiredRes, maxSlope)
+    dem = getMap(site, maxSlope, extent)
     if not dem:
         raise Exception('Could not load DEM while calling Pextant for ' + site['name'])
-#      
+    #
     pathFinder = Pathfinder(explorer, dem)
     sequence = plan.jsonPlan.sequence
     jsonSequence = json.dumps(sequence)
     try:
-#         print 'about to call pathfinder'
+        #         print 'about to call pathfinder'
         if not optimize:
             optimize = str(plan.jsonPlan.optimization)
         else:
             plan.jsonPlan.optimization = optimize
         result = pathFinder.completeSearchFromJSON(optimize, jsonSequence)
-#         print 'actually came back from pathfinder'
+        #         print 'actually came back from pathfinder'
         if 'NaN' not in result and 'Infinity' not in result:
             plan.jsonPlan.sequence = json.loads(result)
             plan.save()
@@ -107,7 +126,6 @@ def callPextant(request, plan, optimize=None, desiredRes=0.5, maxSlope=15):
         traceback.print_exc()
         raise e
         pass
-    
+
     return plan
 
-    

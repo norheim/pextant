@@ -1,37 +1,54 @@
 import math
 import logging
-from pextant.solvers.astarSEXTANT import astronautCost
 import numpy as np
+from pextant.solvers.optimization import objectivefx, objectivize
 logger = logging.getLogger()
 
-
-class Explorer:
+class Explorer(object):
     '''
-	This class is a model for an arbitrary explorer model. It is very easily
-	extensible (in fact, this is what we do for the astronaut and rover)
+	This class is a model for an arbitrary explorer model
 	'''
 
-    def __init__(self, mass, uuid, parameters=None):  # we initialize with mass only
+    def __init__(self, mass, uuid=None, parameters=None):  # we initialize with mass only
         # There used to be a gravity parameter, but it makes more sense to put it into EnvironmentalModel
+        self.type = "N/A" #type for each explorer
         self.mass = mass
         self.UUID = uuid  # A type of ID system for every explorer
         self.parameters = parameters  # parameters object, used for shadowing
+        self.analytics = dict()
+        self.objectivefx = [
+            ['Distance',self.distance, 'min'],
+            ['Time', self.time, 'min'],
+            ['Energy', self.energyCost, 'min']
+        ]
+
+    def optimizevector(self, arg):
+        if isinstance(arg, str):
+            id = next((i for i, item in enumerate(self.objectivefx) if arg in item),None)
+            if id == None:
+                id = 2
+                #if the wrong syntax is passed in
+            vector = np.zeros(len(self.objectivefx))
+            vector[id] = 1
+        else:
+            vector = np.array(arg)
+        return vector
 
     def distance(self, path_length):
         return path_length
 
     def velocity(self, slope):
-        pass  # should return something that's purely
-        # a function of slope
+        pass  # should return something that's purely a function of slope
 
     def time(self, path_length, slope):
-        if self.velocity(slope) != 0:
-            return self.distance(path_length) / self.velocity(slope)
+        v = self.velocity(slope)
+        if v != 0:
+            return path_length / v
         else:
             return float('inf')  # Infinite time if zero velocity
 
     def energyRate(self, path_length, slope, g):
-        pass  # this depends on velocity, time
+        return 0  # this depends on velocity, time
 
     def energyCost(self, path_length, slope, g):
         return self.energyRate(path_length, slope, g) * self.time(path_length, slope)
@@ -39,26 +56,27 @@ class Explorer:
 
 class Astronaut(Explorer):  # Astronaut extends Explorer
     def __init__(self, mass, uuid=None, parameters=None):
-        Explorer.__init__(self, mass, uuid, parameters)
+        super(Astronaut, self).__init__(mass, uuid, parameters)
         self.type = 'Astronaut'
 
     def velocity(self, slope):  # slope is in degrees, Marquez 2008
         if np.logical_or((slope >25), (slope <-25)).any():
             logger.debug("WARNING, there are some slopes out of bounds")
+        if not isinstance(slope, np.ndarray):
+            slope = np.array([slope])
+        v = np.piecewise(slope,
+                     [slope <= -20, (slope > -20) & (slope <= -10), (slope > -10) & (slope <= 0),
+                      (slope > 0) & (slope <= 6 ), (slope>6) & (slope<=15), slope > 15],
+                     [0.05, lambda slope: 0.095 * slope + 1.95, lambda slope: 0.06 * slope + 1.6,
+                      lambda slope: -0.02 * slope + 1.6, lambda slope: -0.039 * slope + 0.634, 0.05])
 
-        return np.piecewise(slope,
-                     [slope <= -25, (slope > -25) & (slope <= -10), (slope > -10) & (slope <= 0),
-                      (slope > 0) & (slope <= 6 ), (slope>6) & (slope<=15), (slope > 15) & (slope < 25), slope > 25],
-                     [0, lambda slope: 0.095 * slope + 1.95, lambda slope: 0.06 * slope + 1.6,
-                      lambda slope: -0.02 * slope + 1.6, lambda slope: -0.039 * slope + 0.634, 0.05, 0])
+        return v
 
     def energyRate(self, path_length, slope, g):
         '''
 		Metabolic Rate Equations for a Suited Astronaut
 		From Santee, 2001
 		Literature review may be helpful?
-		
-		g is gravity
 		'''
         m = self.mass
         v = self.velocity(slope)
@@ -66,12 +84,10 @@ class Astronaut(Explorer):  # Astronaut extends Explorer
         if slope == 0:
             w_slope = 0
         elif slope > 0:
-            w_slope = 3.5 * m * g * v * math.sin(
-                math.radians(slope))  # math.sin and math.cos are meant for radian measures!
+            w_slope = 3.5 * m * g * v * math.sin(math.radians(slope))
         else:
             w_slope = 2.4 * m * g * v * math.sin(math.radians(slope)) * (0.3 ** (abs(slope) / 7.65))
         return w_level + w_slope
-
 
 class Rover(Explorer):  # Rover also extends explorer
     def __init__(self, mass, uuid=None, parameters=None, constant_speed=15, additional_energy=1500):
@@ -216,3 +232,12 @@ class explorerParameters:
             self.batterySpecificEnergy = p['batterySpecificEnergy']
             self.mBattery = p['mBattery']
             self.electronicsPower = p['electronicsPower']
+
+if __name__ == '__main__':
+    import numpy as np
+    import matplotlib.pyplot as plt
+    slopes = np.linspace(-30, 30, 100)
+    a = Astronaut(80)
+    v = a.velocity(slopes)
+    plt.plot(slopes, v)
+    plt.show()

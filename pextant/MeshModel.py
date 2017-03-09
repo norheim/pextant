@@ -1,5 +1,6 @@
 import numpy as np
 import numpy.matlib as matlib
+import math
 import json
 from pextant.lib.geoshapely import GeoPoint, LAT_LONG
 
@@ -39,6 +40,8 @@ class MeshElement(object):
     def __init__(self, row, col, parentMesh):
         self.row = row
         self.col = col
+        self.timedelta = 0
+        self.elt_width = parentMesh.resolution
         self.parentMesh = parentMesh
 
     def getBorders(self):
@@ -68,13 +71,38 @@ class MeshElement(object):
     def getNeighbours(self):
         return self.parentMesh.getNeighbours(self)
 
+    #TODO: need to add third dimension (other_elt.getElevation() - self.getElevation())**2
+    def distanceTo(self, other_elt):
+        path_length = self.elt_width * math.sqrt((self.row - other_elt.row) ** 2 + (self.col - other_elt.col) ** 2)
+        return path_length
+
+    def slopeTo(self, other_elt):
+        path_length = self.distanceTo(other_elt)
+        if path_length == 0:
+            print 'error'
+        slope = math.degrees(math.atan((other_elt.getElevation() - self.getElevation()) / path_length))
+        return slope, path_length
+
     def __str__(self):
         return '(%s, %s)' % (self.row, self.col)
 
+    def settime(self, time):
+        self.timedelta = time
+
+
+#TODO: need to make underlying representation bet rows/cols and not list of mesh_elts
 class MeshCollection(object):
     def __init__(self):
         self.collection = []
+
     def raw(self):
         return [(mesh_elt.row, mesh_elt.col) for mesh_elt in self.collection]
+
+    def distances(self):
+        pass
+
+    def velocities(self):
+        pass
+
     def __str__(self):
         return str(self.raw())
