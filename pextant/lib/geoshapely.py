@@ -156,6 +156,8 @@ class GeoPolygon(GeoObject, LineString):
     def __getitem__(self, index):
         return GeoPoint(self.utm_reference, self.easting[index], self.northing[index])
 
+    def __len__(self):
+        return len(self.coords)
 
 class GeoEnvelope(GeoPolygon):
     def __init__(self, upper_left, lower_right):
