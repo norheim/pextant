@@ -6,5 +6,4 @@ pextant/lines.html
 *.ipynb
 *.csv
 data/
-analysis/
 static/
