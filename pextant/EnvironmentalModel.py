@@ -3,7 +3,12 @@ from pextant.lib.geoshapely import *
 from pextant.MeshModel import Mesh, MeshElement, MeshCollection, SearchKernel
 from osgeo import gdal, osr
 
+
 class GDALMesh(Mesh):
+    """
+    This class should be used for loading all GDAL terrains, and any subset thereof
+    """
+
     def __init__(self, file_path):
         self.file_path = file_path
         gdal.UseExceptions()
@@ -50,7 +55,7 @@ class GDALMesh(Mesh):
         intersection_box = map_box.intersection(selection_box)
 
         inter_easting, inter_northing = np.array(intersection_box.bounds).reshape((2, 2)).transpose()
-        intersection_box_geo = GeoPolygon(UTM(zone), inter_easting, inter_northing) # could change to UTM_AUTO later
+        intersection_box_geo = GeoPolygon(UTM(zone), inter_easting, inter_northing)  # could change to UTM_AUTO later
         inter_x, inter_y = intersection_box_geo.to(XY)
 
         x_offset, max_x = inter_x
@@ -69,7 +74,7 @@ class GDALMesh(Mesh):
 
         band = dataset.GetRasterBand(1)
         map_array = band.ReadAsArray(x_offset, y_offset, x_size, y_size, buf_x, buf_y).astype(np.float)
-        #TODO: this hack needs explanation
+        # TODO: this hack needs explanation
         nw_coord_hack = GeoPoint(UTM(zone), inter_easting.min(), inter_northing.max()).to(XY)
         nw_coord = GeoPoint(XY, nw_coord_hack[0], nw_coord_hack[1])
         return EnvironmentalModel(nw_coord, x_size, y_size, desired_res, map_array, self.planet,
@@ -80,6 +85,7 @@ class EnvironmentalModel(Mesh):
     """
     This class ultimately represents an elevation map + all of the traversable spots on it.
     """
+
     def __init__(self, nw_geo_point, width, height, resolution, dataset, planet, parentMesh=None, xoff=0, yoff=0):
         super(EnvironmentalModel, self).__init__(nw_geo_point, width, height, resolution, dataset, planet,
                                                  parentMesh, xoff, yoff)
@@ -110,8 +116,8 @@ class EnvironmentalModel(Mesh):
         offset = kernel.getKernel()
         children = MeshCollection()
         for i in range(kernel.length):
-            offset_i = offset[:,i]
-            if tuple(offset_i) != (0,0):
+            offset_i = offset[:, i]
+            if tuple(offset_i) != (0, 0):
                 new_state = state + offset_i
                 if self._inBounds(new_state):
                     children.collection.append(MeshElement(new_state[0], new_state[1], self))
@@ -181,8 +187,14 @@ class EnvironmentalModel(Mesh):
             return coordinates.to(self.ROW_COL)
 
 
+def loadElevationMap(fullPath, maxSlope=15, zone=None, zoneLetter=None, desiredRes=None):
+    dem = GDALMesh(fullPath)
+    return dem.loadMapSection(desired_res=desiredRes)
+
+
 if __name__ == '__main__':
     from pextant.analysis.loadWaypoints import loadPoints
+
     hi_low = GDALMesh('../data/maps/HI_lowqual_DEM.tif')
     waypoints = loadPoints('../data/waypoints/HI_13Nov16_MD7_A.json')
     env_model = hi_low.loadMapSection(waypoints.geoEnvelope())
