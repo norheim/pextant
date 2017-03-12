@@ -67,7 +67,7 @@ def aStarSearch(start_node, end_node, cost_function, viz=None):
         current_node = heapq.heappop(agenda)[1]
         current_node_state = current_node.state
         if current_node.goalTest(end_node):
-            return (current_node.getPath(), expanded, g_cost[current_node_state])
+            return (current_node.getPath(), expanded)
         expanded.add(current_node_state)
         for child_node in current_node.getChildren():
             child_node_state = child_node.state
@@ -84,4 +84,4 @@ def aStarSearch(start_node, end_node, cost_function, viz=None):
                     viz.add(child_node_state, estimated_cost)
 
     # if it can't find a solution
-    return (None, len(expanded), 0)
+    return (None, len(expanded))

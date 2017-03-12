@@ -8,6 +8,31 @@ from pextant.solvers.astarSEXTANT import fullSearch, ExplorerCost
 from pextant.analysis.loadWaypoints import loadPointsOld
 logger = logging.getLogger()
 
+class Segment:
+    def __init__(self):
+        self.json = ""
+        self.coordinates = []
+        self.distancelist = []
+        self.energylist = []
+        self.timelist = []
+
+    def to_JSON(self):
+        return {
+            "type": "Segment",
+            "geometry": {
+                "type": "LineString",
+                "coordinates": self.coordinates
+            },
+            "derivedInfo": {
+                "distanceList": self.distancelist,
+                "energyList": self.energylist,
+                "timeList": self.timelist,
+                "totalDistance": sum(self.distancelist),
+                "totalTime": sum(self.timelist),
+                "totalEnergy": sum(self.energylist)
+            }
+        }
+
 
 class Pathfinder:
     """

@@ -69,8 +69,10 @@ class Astronaut(Explorer):  # Astronaut extends Explorer
                       (slope > 0) & (slope <= 6 ), (slope>6) & (slope<=15), slope > 15],
                      [0.05, lambda slope: 0.095 * slope + 1.95, lambda slope: 0.06 * slope + 1.6,
                       lambda slope: -0.02 * slope + 1.6, lambda slope: -0.039 * slope + 0.634, 0.05])
-
-        return v
+        if v.shape[0] == 1:
+            return v[0]
+        else:
+            return v.tolist()
 
     def energyRate(self, path_length, slope, g):
         '''
