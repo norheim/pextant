@@ -1,9 +1,7 @@
 import math
-from astar import aStarSearchNode, aStarCostFunction
 import numpy as np
-from collections import defaultdict
+from astar import aStarSearchNode, aStarCostFunction, aStarSearch
 from pextant.lib.geoshapely import GeoPoint, GeoPolygon, LONG_LAT
-from shapely.geometry import mapping
 
 class MeshSearchElement(aStarSearchNode):
     def __init__(self, mesh_element, parent=None):
@@ -159,7 +157,7 @@ def fullSearch(waypoints, env_model, cost_function, viz=None):
     itemssrchd = []
     for i in range(len(waypoints)-1):
         search_result = search(env_model, waypoints[i], waypoints[i+1], cost_function, viz)
-        segment_searches.append(search_result.tojson())
+        segment_searches.append(search_result)
         rawpoints += search_result.raw
         itemssrchd += search_result.expanded_items
     return segment_searches, rawpoints, itemssrchd
@@ -186,28 +184,24 @@ if __name__ == '__main__':
     from pextant.analysis.loadWaypoints import JSONloader
     from pextant.EnvironmentalModel import GDALMesh
     from pextant.ExplorerModel import Astronaut
-    from astar import aStarSearch
+    import matplotlib.pyplot as plt
     import numpy.ma as ma
     hi_low = GDALMesh('../../data/maps/Hawaii/HI_air_imagery.tif')
     jloader = JSONloader.from_file('../../data/waypoints/HI_13Nov16_MD7_A.json')
     waypoints = jloader.get_waypoints()
     env_model = hi_low.loadMapSection(waypoints.geoEnvelope())
-    import matplotlib.pyplot as plt
     elevations = env_model.dataset
+    # env_model.generateRelief(50)
     elv = ma.masked_array(elevations, elevations < 0)
     plt.matshow(elv)
     plt.show()
     astronaut = Astronaut(80)
     cost_function = ExplorerCost(astronaut, env_model, "Energy")
-    # env_model.generateRelief(50)
     waypointseasy = [GeoPoint(env_model.ROW_COL, 1,1), GeoPoint(env_model.ROW_COL, 5,10),
                      GeoPoint(env_model.ROW_COL, 5,15)]
-    waypointsproblem = [waypoints[2], waypoints[3]]
     viz = ExpandViz(env_model.numRows, env_model.numCols)
     segmentsout, rawpoints, items = fullSearch(waypoints, env_model, cost_function, viz)
     jsonout = jloader.add_search_sol(segmentsout, True)
-    #out = [(51, 283), (50, 283), (50, 282), (49, 281), (48, 280), (47, 280), (47, 279), (46, 279), (45, 279),
-    # (44, 278), (44, 277), (44, 276), (43, 275), (42, 274), (41, 273), (40, 272), (40, 271), (40, 270), (40, 269), (40, 268), (40, 267), (40, 266), (39, 265), (38, 264), (37, 263), (36, 262), (35, 261), (35, 260), (34, 259), (34, 258), (34, 257), (34, 256), (33, 255), (32, 255), (31, 255), (30, 255), (29, 255), (28, 255), (27, 255), (26, 255), (26, 254), (25, 253), (24, 253), (23, 253), (22, 253), (21, 252), (20, 252), (19, 252), (18, 252), (17, 251), (16, 251), (15, 251), (14, 252), (13, 252), (12, 252), (11, 252), (10, 252), (9, 251), (8, 251), (8, 250), (8, 249), (7, 249), (6, 250), (6, 249), (6, 248), (5, 249), (4, 250), (4, 249), (3, 249), (3, 248), (3, 247), (2, 246), (1, 247), (0, 248), (0, 247), (0, 246)]
     solgrid = np.zeros((env_model.numRows, env_model.numCols))
     for i in rawpoints:
         solgrid[i] = 1

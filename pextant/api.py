@@ -61,13 +61,13 @@ class Pathfinder:
             return rows
 
 
-    def completeSearchFromJSON(self, optimize_on, jsonInput, returnType="JSON", fileName=None, algorithm="A*",
+    def completeSearchFromJSON(self, optimize_on, jsonInput, filepath=None, algorithm="A*",
                                numTestPoints=0):
         jloader = JSONloader(jsonInput)
         waypoints = jloader.get_waypoints()
 
         #if algorithm == "A*":
-        segmentsout = self.completeSearch(optimize_on, waypoints, returnType, fileName)
+        segmentsout = self.completeSearch(optimize_on, waypoints, filepath)
         updatedjson = jloader.add_search_sol(segmentsout)
 
         return updatedjson
