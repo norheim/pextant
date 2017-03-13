@@ -70,6 +70,10 @@ class LatLon(GeoType):
     def to_utm(self, geo_point):
         np_longitude = np.array(geo_point["longitude"])
         zones = (((np_longitude + 180).round() / 6.0) % 60 + 1).astype(int)
+        # TODO: check if this is needed:
+        #UTMzdlChars = "CDEFGHJKLMNPQRSTUVWXX"
+        #if -80 <= lat and lat <= 84:
+        #    zone_letter = UTMzdlChars[((np_latitude + 80) / 8).astype(int)]
         zone = zones[0] if isinstance(zones, np.ndarray) else zones
         return UTM(zone)
 
