@@ -2,8 +2,6 @@ import csv
 import json
 import logging
 import re
-from ExplorationObjective import ActivityPoint
-from pextant.lib.geoshapely import *
 from pextant.solvers.astarSEXTANT import fullSearch, ExplorerCost
 from pextant.analysis.loadWaypoints import JSONloader
 logger = logging.getLogger()

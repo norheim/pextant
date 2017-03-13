@@ -187,9 +187,10 @@ class EnvironmentalModel(Mesh):
             return coordinates.to(self.ROW_COL)
 
 
-def loadElevationMap(fullPath, maxSlope=15, zone=None, zoneLetter=None, desiredRes=None):
+def loadElevationMap(fullPath, maxSlope=15, nw_corner=None, se_corner=None, desiredRes=None):
+    geoenvelope = GeoEnvelope(nw_corner, se_corner)
     dem = GDALMesh(fullPath)
-    return dem.loadMapSection(desired_res=desiredRes)
+    return dem.loadMapSection(geoenvelope, desired_res=desiredRes)
 
 
 if __name__ == '__main__':
