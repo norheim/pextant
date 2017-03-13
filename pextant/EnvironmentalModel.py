@@ -2,7 +2,7 @@ import re
 from pextant.lib.geoshapely import *
 from pextant.MeshModel import Mesh, MeshElement, MeshCollection, SearchKernel
 from osgeo import gdal, osr
-
+import numpy.ma as ma
 
 class GDALMesh(Mesh):
     """
@@ -60,9 +60,12 @@ class GDALMesh(Mesh):
 
         x_offset, max_x = inter_x
         max_y, y_offset = inter_y
-        # need to explain the +1, comes from hack. Also, doesnt work when selecting full screen
+        # TODO: need to explain the +1, comes from hack. Also, doesnt work when selecting full screen
         x_size = max_x - x_offset + 1
         y_size = max_y - y_offset + 1
+        if geo_envelope is None:
+            x_size -= 1
+            y_size -= 1
 
         buf_x = None
         buf_y = None
@@ -74,10 +77,12 @@ class GDALMesh(Mesh):
 
         band = dataset.GetRasterBand(1)
         map_array = band.ReadAsArray(x_offset, y_offset, x_size, y_size, buf_x, buf_y).astype(np.float)
+        map_array_clean = ma.masked_array(map_array, np.isnan(map_array)).filled(-99999)
+        map_array_clean = ma.masked_array(map_array_clean, map_array_clean < 0)
         # TODO: this hack needs explanation
         nw_coord_hack = GeoPoint(UTM(zone), inter_easting.min(), inter_northing.max()).to(XY)
         nw_coord = GeoPoint(XY, nw_coord_hack[0], nw_coord_hack[1])
-        return EnvironmentalModel(nw_coord, x_size, y_size, desired_res, map_array, self.planet,
+        return EnvironmentalModel(nw_coord, x_size, y_size, desired_res, map_array_clean, self.planet,
                                   self, x_offset, y_offset)
 
 
@@ -92,13 +97,13 @@ class EnvironmentalModel(Mesh):
         self.parent = self.parentMesh
         self.numRows, self.numCols = self.dataset.shape
         self.slopes = None
-        self.obstacles = None  # obstacles is a matrix with boolean values for passable squares
+        self.obstacles = self.dataset.mask  # obstacles is a matrix with boolean values for passable squares
         self.planet = planet
         self.ROW_COL = Cartesian(nw_geo_point, resolution, reverse=True)
         self.special_obstacles = set()  # a list of coordinates of obstacles are not identified by the slope
         self.searchKernel = SearchKernel()
         self.setSlopes()
-        self.maxSlopeObstacle(25)
+        self.maxSlopeObstacle(20)
 
     def getMeshElement(self, geo_point):
         row, col = geo_point.to(self.ROW_COL)
@@ -119,7 +124,7 @@ class EnvironmentalModel(Mesh):
             offset_i = offset[:, i]
             if tuple(offset_i) != (0, 0):
                 new_state = state + offset_i
-                if self._inBounds(new_state):
+                if self.isPassable(new_state):
                     children.collection.append(MeshElement(new_state[0], new_state[1], self))
         return children
 
@@ -174,17 +179,17 @@ class EnvironmentalModel(Mesh):
 
     def isPassable(self, coordinates):
         # determines if coordinates can be passed through
-        row, col = coordinates
-        if self._inBounds(coordinates):
+        row, col = self.convertToRowCol(coordinates)
+        if self._inBounds((row,col)):
             return self.obstacles[row][col]
         else:
             return False
 
     def convertToRowCol(self, coordinates):
-        if isinstance(coordinates, tuple):
-            return coordinates
-        else:
+        if isinstance(coordinates, GeoPoint):
             return coordinates.to(self.ROW_COL)
+        else:
+            return coordinates
 
 
 def loadElevationMap(fullPath, maxSlope=15, nw_corner=None, se_corner=None, desiredRes=None):
