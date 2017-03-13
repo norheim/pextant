@@ -62,7 +62,7 @@ class ExplorerCost(aStarCostFunction):
         d += energy_weight *  r * optimize_vector[2]
 
         # Patel 2010. See page 49 of Aaron's thesis
-        heuristic_cost = 10*(d * math.sqrt(2) * h_diagonal + d * (h_straight - 2 * h_diagonal))
+        heuristic_cost = 1*(d * math.sqrt(2) * h_diagonal + d * (h_straight - 2 * h_diagonal))
         # This is just Euclidean distance
         #heuristic_cost = d * math.sqrt((start_row - end_row) ** 2 + (start_col - end_col) ** 2)
 
@@ -137,12 +137,15 @@ class sextantSearch:
         return sequence
 
 def search(env_model, geopoint1, geopoint2, cost_function, viz):
-    node1, node2  = MeshSearchElement(env_model.getMeshElement(geopoint1)), \
+    if env_model.isPassable(geopoint1) and env_model.isPassable(geopoint2):
+        node1, node2  = MeshSearchElement(env_model.getMeshElement(geopoint1)), \
                     MeshSearchElement(env_model.getMeshElement(geopoint2))
-    solution_path, expanded_items = aStarSearch(node1, node2, cost_function, viz)
-    raw, nodes = solution_path
-    geopolygon = GeoPolygon(env_model.ROW_COL, *np.array(raw).transpose())
-    return sextantSearch(raw, nodes, geopolygon, expanded_items)
+        solution_path, expanded_items = aStarSearch(node1, node2, cost_function, viz)
+        raw, nodes = solution_path
+        geopolygon = GeoPolygon(env_model.ROW_COL, *np.array(raw).transpose())
+        return sextantSearch(raw, nodes, geopolygon, expanded_items)
+
+    raise ValueError("Start or end point out of map bounds, or in unreachable terrain")
     #self.searches.append({
     #    'raw': raw,
     #    'geopolygon': geopolygon,
