@@ -99,23 +99,26 @@ class ExplorerCost(aStarCostFunction):
         return cost
 
 class sextantSearch:
-    def __init__(self, env_model):
+    def __init__(self, raw, nodes, geopolygon, expanded_items):
         self.namemap = {
             'time': ['timeList','totalTime'],
             'pathlength': ['distanceList','totalDistance'],
             'energy': ['energyList','totalEnergy']
         }
-        self.searches = []
-        self.env_model = env_model
+        #self.searches = []
+        self.nodes = nodes
+        self.raw = raw
+        self.geopolygon = geopolygon
+        self.expanded_items = expanded_items
 
-    def tojson(self, geopolygon, nodes):
+    def tojson(self):
         out = {}
         out["geometry"] = {
             'type': 'LineString',
-            'coordinates': geopolygon.to(LONG_LAT).transpose().tolist()
+            'coordinates': self.geopolygon.to(LONG_LAT).transpose().tolist()
         }
         results = {}
-        for i, mesh_srch_elt in enumerate(nodes):
+        for i, mesh_srch_elt in enumerate(self.nodes):
             derived = mesh_srch_elt.derived
             for k, v in derived.items():
                 results.setdefault(self.namemap[k][0],[]).append(v)
@@ -124,32 +127,42 @@ class sextantSearch:
         out["derivedInfo"] = results
         return out
 
-    def search(self, geopoint1, geopoint2, cost_function, viz):
-        node1, node2  = MeshSearchElement(self.env_model.getMeshElement(geopoint1)), \
-                        MeshSearchElement(self.env_model.getMeshElement(geopoint2))
-        solution_path, expanded_items = aStarSearch(node1, node2, cost_function, viz)
-        raw, nodes = solution_path
-        geopolygon = GeoPolygon(self.env_model.ROW_COL, *np.array(raw).transpose())
-        self.searches.append({
-            'raw': raw,
-            'geopolygon': geopolygon,
-            'nodes': nodes,
-            'expanded_items':expanded_items,
-        })
-        return raw, geopolygon, nodes, expanded_items
+    def tocsv(self):
+        sequence = []
+        coords = self.geopolygon.to(LONG_LAT).transpose().tolist()
+        for i, mesh_srch_elt in enumerate(self.nodes):
+            row_entry = [i==1 or i==len(coords)-1] #True if it's the first or last entry
+            row_entry += coords + [mesh_srch_elt.mesh_element.getElevevation()]
+            derived = mesh_srch_elt.derived
+            row_entry += [derived['pathlength'], derived['time'], derived['energy']]
+            sequence += [row_entry]
+        return sequence
+
+def search(env_model, geopoint1, geopoint2, cost_function, viz):
+    node1, node2  = MeshSearchElement(env_model.getMeshElement(geopoint1)), \
+                    MeshSearchElement(env_model.getMeshElement(geopoint2))
+    solution_path, expanded_items = aStarSearch(node1, node2, cost_function, viz)
+    raw, nodes = solution_path
+    geopolygon = GeoPolygon(env_model.ROW_COL, *np.array(raw).transpose())
+    return sextantSearch(raw, nodes, geopolygon, expanded_items)
+    #self.searches.append({
+    #    'raw': raw,
+    #    'geopolygon': geopolygon,
+    #    'nodes': nodes,
+    #    'expanded_items':expanded_items,
+    #})
 
 
 def fullSearch(waypoints, env_model, cost_function, viz=None):
-    segments = []
+    segment_searches = []
     rawpoints = []
     itemssrchd = []
-    solver = sextantSearch(env_model)
     for i in range(len(waypoints)-1):
-        raw, geopolygon, nodes, expanded_items = solver.search(waypoints[i], waypoints[i+1], cost_function, viz)
-        segments.append(solver.tojson(geopolygon, nodes))
-        rawpoints += raw
-        itemssrchd += expanded_items
-    return segments, rawpoints, itemssrchd
+        search_result = search(env_model, waypoints[i], waypoints[i+1], cost_function, viz)
+        segment_searches.append(search_result.tojson())
+        rawpoints += search_result.raw
+        itemssrchd += search_result.expanded_items
+    return segment_searches, rawpoints, itemssrchd
 
 import matplotlib.pyplot as plt
 class ExpandViz(object):
@@ -176,7 +189,7 @@ if __name__ == '__main__':
     from astar import aStarSearch
     import numpy.ma as ma
     hi_low = GDALMesh('../../data/maps/Hawaii/HI_air_imagery.tif')
-    jloader = JSONloader('../../data/waypoints/HI_13Nov16_MD7_A.json')
+    jloader = JSONloader.from_file('../../data/waypoints/HI_13Nov16_MD7_A.json')
     waypoints = jloader.get_waypoints()
     env_model = hi_low.loadMapSection(waypoints.geoEnvelope())
     import matplotlib.pyplot as plt

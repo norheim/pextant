@@ -17,14 +17,17 @@ def loadPointsOld(filename):
 
     return waypoints, parsed_json
 
-
 class JSONloader:
-    def __init__(self, filepath):
-        self.filepath = filepath
+    def __init__(self, jsondata, filename=None):
         self.extension = '_plan.json'
-        self.filename = re.search('^(.+\/[^/]+)(\.\w+)$', filepath).group(1)
+        self.filename = None
+        self.jsondata = jsondata
+
+    @classmethod
+    def from_file(cls, filepath):
+        filename = re.search('^(.+\/[^/]+)(\.\w+)$', filepath).group(1)
         with open(filepath) as data_file:
-            self.jsondata = json.load(data_file)
+            return cls(json.load(data_file), filename)
 
     def get_waypoints(self):
         ways_and_segments = self.jsondata['sequence']
@@ -52,15 +55,16 @@ class JSONloader:
         segment_iter = iter(segments)
         for i, element in enumerate(ways_and_segments):
             if element["type"] == "Segment":
-                segment = segment_iter.next()
+                segment = segment_iter.next().tojson()
                 ways_and_segments[i]["derivedInfo"].update(segment["derivedInfo"]) #merges our new info
                 ways_and_segments[i]["geometry"] = segment["geometry"]
         raw_json = json.dumps(search_json_data)
         formatted_json = json.dumps(search_json_data, indent=4, sort_keys=True)
-        if write_to_file:
+        if write_to_file and self.filename:
             new_filename = self.filename + self.extension
             with open(new_filename, 'w') as outfile:
                 outfile.write(formatted_json)
+
         return raw_json
 
 
