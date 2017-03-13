@@ -30,7 +30,7 @@ class GDALMesh(Mesh):
 
         super(GDALMesh, self).__init__(nw_geo_point, width, height, resolution, dataset)
 
-    def loadMapSection(self, geo_envelope=None, desired_res=None):
+    def loadMapSection(self, geo_envelope=None, maxSlope=15, desired_res=None):
         """
 
 
@@ -83,7 +83,7 @@ class GDALMesh(Mesh):
         nw_coord_hack = GeoPoint(UTM(zone), inter_easting.min(), inter_northing.max()).to(XY)
         nw_coord = GeoPoint(XY, nw_coord_hack[0], nw_coord_hack[1])
         return EnvironmentalModel(nw_coord, x_size, y_size, desired_res, map_array_clean, self.planet,
-                                  self, x_offset, y_offset)
+                                  maxSlope, self, x_offset, y_offset)
 
 
 class EnvironmentalModel(Mesh):
@@ -91,7 +91,7 @@ class EnvironmentalModel(Mesh):
     This class ultimately represents an elevation map + all of the traversable spots on it.
     """
 
-    def __init__(self, nw_geo_point, width, height, resolution, dataset, planet, parentMesh=None, xoff=0, yoff=0):
+    def __init__(self, nw_geo_point, width, height, resolution, dataset, planet, maxSlope=15, parentMesh=None, xoff=0, yoff=0):
         super(EnvironmentalModel, self).__init__(nw_geo_point, width, height, resolution, dataset, planet,
                                                  parentMesh, xoff, yoff)
         self.parent = self.parentMesh
@@ -103,7 +103,8 @@ class EnvironmentalModel(Mesh):
         self.special_obstacles = set()  # a list of coordinates of obstacles are not identified by the slope
         self.searchKernel = SearchKernel()
         self.setSlopes()
-        self.maxSlopeObstacle(20)
+        #TODO: make max slope a once only argument (right now it gets passed along several times)
+        self.maxSlopeObstacle(maxSlope)
 
     def getMeshElement(self, geo_point):
         row, col = geo_point.to(self.ROW_COL)
@@ -192,10 +193,10 @@ class EnvironmentalModel(Mesh):
             return coordinates
 
 
-def loadElevationMap(fullPath, maxSlope=15, nw_corner=None, se_corner=None, desiredRes=None):
+def loadElevationMap(fullPath, maxSlope=20, nw_corner=None, se_corner=None, desiredRes=None):
     geoenvelope = GeoEnvelope(nw_corner, se_corner)
     dem = GDALMesh(fullPath)
-    return dem.loadMapSection(geoenvelope, desired_res=desiredRes)
+    return dem.loadMapSection(geoenvelope, maxSlope=maxSlope, desired_res=desiredRes)
 
 
 if __name__ == '__main__':
