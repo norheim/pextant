@@ -41,7 +41,10 @@ class Pathfinder:
         cost_function = ExplorerCost(explorer_model, env_model, optimize_on)
         segmentsout, rawpoints, items = fullSearch(waypoints, env_model, cost_function)
 
-        extension = re.search('^(.+\/[^/]+)\.(\w+)$', filepath).group(2)
+        if filepath:
+            extension = re.search('^(.+\/[^/]+)\.(\w+)$', filepath).group(2)
+        else:
+            extension = None
 
         if extension == "json":
             jsonout = []
@@ -57,7 +60,7 @@ class Pathfinder:
                 for row in rows:
                     writer.writerow(row)
             return rows
-
+        return segmentsout, rawpoints, items
 
     def completeSearchFromJSON(self, optimize_on, jsonInput, filepath=None, algorithm="A*",
                                numTestPoints=0):
@@ -65,7 +68,7 @@ class Pathfinder:
         waypoints = jloader.get_waypoints()
 
         #if algorithm == "A*":
-        segmentsout = self.completeSearch(optimize_on, waypoints, filepath)
+        segmentsout,_,_ = self.completeSearch(optimize_on, waypoints, filepath)
         updatedjson = jloader.add_search_sol(segmentsout)
 
         return updatedjson
