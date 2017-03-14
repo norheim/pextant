@@ -1,6 +1,7 @@
 import re
 from pextant.lib.geoshapely import *
 from pextant.MeshModel import Mesh, MeshElement, MeshCollection, SearchKernel
+
 from osgeo import gdal, osr
 import numpy.ma as ma
 
@@ -30,7 +31,7 @@ class GDALMesh(Mesh):
 
         super(GDALMesh, self).__init__(nw_geo_point, width, height, resolution, dataset)
 
-    def loadMapSection(self, geo_envelope=None, maxSlope=15, desired_res=None):
+    def loadMapSection(self, geo_envelope=None, maxSlope=35, desired_res=None):
         """
 
 
@@ -91,15 +92,17 @@ class EnvironmentalModel(Mesh):
     This class ultimately represents an elevation map + all of the traversable spots on it.
     """
 
-    def __init__(self, nw_geo_point, width, height, resolution, dataset, planet, maxSlope=15, parentMesh=None, xoff=0, yoff=0):
+    def __init__(self, nw_geo_point, width, height, resolution, dataset, planet, maxSlope=35, parentMesh=None, xoff=0, yoff=0):
         super(EnvironmentalModel, self).__init__(nw_geo_point, width, height, resolution, dataset, planet,
                                                  parentMesh, xoff, yoff)
         self.parent = self.parentMesh
-        self.numRows, self.numCols = self.dataset.shape
+        self.numRows, self.numCols = dataset.shape
         self.slopes = None
-        self.obstacles = self.dataset.mask  # obstacles is a matrix with boolean values for passable squares
+        self.ismissingdata = self.dataset.mask
+        self.obstacles = np.zeros(dataset.shape, dtype=bool)  # obstacles is a matrix with boolean values for passable squares
         self.planet = planet
         self.ROW_COL = Cartesian(nw_geo_point, resolution, reverse=True)
+        self.COL_ROW = Cartesian(nw_geo_point, resolution)
         self.special_obstacles = set()  # a list of coordinates of obstacles are not identified by the slope
         self.searchKernel = SearchKernel()
         self.setSlopes()
@@ -111,7 +114,7 @@ class EnvironmentalModel(Mesh):
         return self._getMeshElement(row, col)
 
     def _getMeshElement(self, row, col):
-        if self._inBounds((row, col)):
+        if self._inBounds(row, col):
             return MeshElement(row, col, self)
         else:
             raise IndexError("The location (%s, %s) is out of bounds" % row, col)
@@ -120,14 +123,10 @@ class EnvironmentalModel(Mesh):
         state = mesh_element.getCoordinates()
         kernel = self.searchKernel
         offset = kernel.getKernel()
-        children = MeshCollection()
-        for i in range(kernel.length):
-            offset_i = offset[:, i]
-            if tuple(offset_i) != (0, 0):
-                new_state = state + offset_i
-                if self.isPassable(new_state):
-                    children.collection.append(MeshElement(new_state[0], new_state[1], self))
-        return children
+        potential_neighbours = offset + state
+        children = [MeshElement(row, col, self) for (row, col) in potential_neighbours
+                    if self._isPassable(row, col)]
+        return MeshCollection(children)
 
     def getGravity(self):
         if self.planet == 'Earth':
@@ -165,26 +164,31 @@ class EnvironmentalModel(Mesh):
         row, col = self.convertToRowCol(coordinates)
         return self.slopes[row][col]
 
-    def setNoVal(self, noValResult):
-        for i, row in enumerate(self.dataset):
-            for j, item in enumerate(row):
-                if item == noValResult:
-                    self.dataset[i][j] = None
-                    self.obstacles[i][j] = True
+    def in_bounds(self, coordinates):
+        row, col = self.convertToRowCol(coordinates)
+        return self._inBounds(row, col)
 
-    def _inBounds(self, coordinates):
-        # determines if a state is within the boundaries of the environmental model
-        # a state is a tuple of the form (row, column)
-        row, col = coordinates
+    def has_data(self, coordinates):
+        row, col = self.convertToRowCol(coordinates)
+        return self._hasdata(row, col)
+
+    def _inBounds(self, row, col):
+        # determines if a coordinate is within the boundaries of the environmental model
         return (0 <= row < self.numRows) and (0 <= col < self.numCols)
+
+    def _hasdata(self, row, col):
+        return self._inBounds(row, col) and not self.ismissingdata[row, col] #use lazy evaluation in case out of bounds
+
+    def _isPassable(self, row, col):
+        if self._hasdata(row,col):
+            return self.obstacles[row][col]
+        else:
+            return False
 
     def isPassable(self, coordinates):
         # determines if coordinates can be passed through
         row, col = self.convertToRowCol(coordinates)
-        if self._inBounds((row,col)):
-            return self.obstacles[row][col]
-        else:
-            return False
+        return self._isPassable(row, col)
 
     def convertToRowCol(self, coordinates):
         if isinstance(coordinates, GeoPoint):
@@ -193,18 +197,24 @@ class EnvironmentalModel(Mesh):
             return coordinates
 
 
-def loadElevationMap(fullPath, maxSlope=20, nw_corner=None, se_corner=None, desiredRes=None):
+def loadElevationMap(fullPath, maxSlope=35, nw_corner=None, se_corner=None, desiredRes=None):
     geoenvelope = GeoEnvelope(nw_corner, se_corner)
+    maxSlope=35 #TODO: need to fix this
     dem = GDALMesh(fullPath)
     return dem.loadMapSection(geoenvelope, maxSlope=maxSlope, desired_res=desiredRes)
 
 
 if __name__ == '__main__':
-    from pextant.analysis.loadWaypoints import loadPoints
-
+    from pextant.analysis.loadWaypoints import JSONloader
+    from pextant.ExplorerModel import Astronaut
+    from pextant.solvers.astarSEXTANT import ExplorerCost, ExpandViz, fullSearch
     hi_low = GDALMesh('../data/maps/HI_lowqual_DEM.tif')
-    waypoints = loadPoints('../data/waypoints/HI_13Nov16_MD7_A.json')
-    env_model = hi_low.loadMapSection(waypoints.geoEnvelope())
-    print waypoints[1].to(env_model.ROW_COL)
-    children = env_model._getMeshElement(1, 1).getNeighbours()
-    print children
+    waypoints = JSONloader.from_file('../data/waypoints/HI_13Nov16_MD7_A.json').get_waypoints()
+    geoenvelope = waypoints.geoEnvelope()
+    env_model = hi_low.loadMapSection(geoenvelope)
+    nw_corner, se_corner = geoenvelope.getBounds()
+    env_model2 = loadElevationMap('../data/maps/HI_lowqual_DEM.tif',
+                                  nw_corner=nw_corner, se_corner=se_corner)
+    astronaut = Astronaut(80)
+    cost_function = ExplorerCost(astronaut, env_model, "Energy")
+    fullSearch(waypoints, env_model2, cost_function, viz=ExpandViz(env_model.numRows, env_model.numCols))

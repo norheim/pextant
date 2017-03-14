@@ -29,12 +29,15 @@ class SearchKernel(object):
         searchvector = range(-(kernelrange / 2), kernelrange / 2 + 1)
         col_off = matlib.repmat(searchvector, len(searchvector), 1)
         row_off = np.transpose(col_off)
+        col_off_clean = np.delete(col_off.flatten(), (kernelrange**2 - 1)/2)
+        row_off_clean = np.delete(row_off.flatten(), (kernelrange**2 - 1) / 2)
         self.length = kernelrange**2
-        self.col_off = col_off.flatten()
-        self.row_off = row_off.flatten()
+        self.col_off = col_off_clean
+        self.row_off = row_off_clean
+        self.kernel = np.array([row_off_clean, col_off_clean]).transpose()
 
     def getKernel(self):
-        return np.array([self.col_off, self.row_off])
+        return self.kernel
 
 class MeshElement(object):
     def __init__(self, row, col, parentMesh):
@@ -92,8 +95,8 @@ class MeshElement(object):
 
 #TODO: need to make underlying representation bet rows/cols and not list of mesh_elts
 class MeshCollection(object):
-    def __init__(self):
-        self.collection = []
+    def __init__(self, collection):
+        self.collection = collection
 
     def raw(self):
         return [(mesh_elt.row, mesh_elt.col) for mesh_elt in self.collection]
