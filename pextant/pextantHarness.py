@@ -14,15 +14,18 @@
 # specific language governing permissions and limitations under the License.
 # __END_LICENSE__
 import traceback
-import logging
 import json
 import os
 
 from pextant.api import Pathfinder
 from pextant.ExplorerModel import Astronaut
-from pextant.lib.geoshapely import GeoPoint, LAT_LONG
+from pextant.lib.geoshapely import GeoPoint, GeoEnvelope, LAT_LONG
 from pextant.EnvironmentalModel import loadElevationMap
 
+class SettingsTest:
+    def __init__(self, root):
+        self.DATA_ROOT = root
+settings = SettingsTest(os.path.join('..','..','data','maps'))
 
 def getCornersForMap(extent, zone, zoneLetter):
     if extent:
@@ -35,7 +38,7 @@ def getCornersForMap(extent, zone, zoneLetter):
 def getMap(site, maxSlope=15, extent=None):
     site_frame = site['name']
     dem_name = site_frame.replace(' ', '_') + '.tif'
-    fullPath = os.path.join(settings.STATIC_ROOT, 'basaltApp', 'dem', dem_name)
+    fullPath = os.path.join(settings.DATA_ROOT, 'dem', dem_name)
     if os.path.isfile(fullPath):
         zone = site['alternateCrs']['properties']['zone']
         zoneLetter = site['alternateCrs']['properties']['zoneLetter']
@@ -45,8 +48,7 @@ def getMap(site, maxSlope=15, extent=None):
         else:
             nw_corner = None
             se_corner = None
-        cartesian = Cartesian(nw_corner, 0.5)
-        nw_corner_pad, se_corner_pad = GeoEnvelope(nw_corner, se_corner).addMargin(cartesian, 30).getBounds()
+        nw_corner_pad, se_corner_pad = GeoEnvelope(nw_corner, se_corner).addMargin(0.5, 30).getBounds()
         dem = loadElevationMap(fullPath, maxSlope=maxSlope, nw_corner=nw_corner_pad, se_corner=se_corner_pad)
         return dem
     return None
@@ -102,7 +104,7 @@ def callPextant(request, plan, optimize=None, maxSlope=15, extent=None):
     #     explorer = BASALTExplorer(executions[0].ev.mass)
     explorer = Astronaut(executions[0].ev.mass)
 
-    site = plan.jsonPlan['site']
+    site = plan.jsonPlan.site
 
     dem = getMap(site, maxSlope, extent)
     if not dem:
@@ -128,4 +130,5 @@ def callPextant(request, plan, optimize=None, maxSlope=15, extent=None):
         pass
 
     return plan
+
 
