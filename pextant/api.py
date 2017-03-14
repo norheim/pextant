@@ -4,6 +4,7 @@ import logging
 import re
 from pextant.solvers.astarSEXTANT import fullSearch, ExplorerCost
 from pextant.analysis.loadWaypoints import JSONloader
+import matplotlib.pyplot as plt
 logger = logging.getLogger()
 
 

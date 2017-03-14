@@ -62,7 +62,7 @@ class ExplorerCost(aStarCostFunction):
         d += energy_weight *  r * optimize_vector[2]
 
         # Patel 2010. See page 49 of Aaron's thesis
-        heuristic_cost = 1*(d * math.sqrt(2) * h_diagonal + d * (h_straight - 2 * h_diagonal))
+        heuristic_cost = 10*(d * math.sqrt(2) * h_diagonal + d * (h_straight - 2 * h_diagonal))
         # This is just Euclidean distance
         #heuristic_cost = d * math.sqrt((start_row - end_row) ** 2 + (start_col - end_col) ** 2)
 
@@ -137,7 +137,7 @@ class sextantSearch:
         return sequence
 
 def search(env_model, geopoint1, geopoint2, cost_function, viz):
-    if env_model.isPassable(geopoint1) and env_model.isPassable(geopoint2):
+    if env_model.has_data(geopoint1) and env_model.has_data(geopoint2):
         node1, node2  = MeshSearchElement(env_model.getMeshElement(geopoint1)), \
                     MeshSearchElement(env_model.getMeshElement(geopoint2))
         solution_path, expanded_items = aStarSearch(node1, node2, cost_function, viz)
@@ -154,6 +154,8 @@ def search(env_model, geopoint1, geopoint2, cost_function, viz):
     #})
 
 
+from pextant.ExplorerModel import Astronaut
+from pextant.EnvironmentalModel import GDALMesh
 def fullSearch(waypoints, env_model, cost_function, viz=None):
     segment_searches = []
     rawpoints = []
@@ -167,9 +169,16 @@ def fullSearch(waypoints, env_model, cost_function, viz=None):
 
 import matplotlib.pyplot as plt
 class ExpandViz(object):
-    def __init__(self, rows, cols):
-        self.expandedgrid = np.zeros((rows, cols))
+    def __init__(self, env_model):
+        self.env_model = env_model
+        self.expandedgrid = np.zeros((env_model.numRows, env_model.numCols))
         self.counter = 0
+
+    def draw(self):
+        plt.matshow(self.env_model.slopes)
+        #print(waypoints.to(env_model.COL_ROW))
+        #plt.scatter(*waypoints.to(env_model.COL_ROW), c='r')
+        plt.show()
 
     def add(self, state, cost):
         self.expandedgrid[state] = cost
@@ -178,8 +187,8 @@ class ExpandViz(object):
         if self.counter % 100 == 0:
             print self.counter
 
-        if self.counter % 10000 == 0 and False:
-            plt.matshow(viz.expandedgrid)
+        if self.counter % 1000 == 0:
+            plt.matshow(self.expandedgrid)
             plt.show()
 
 
@@ -189,20 +198,16 @@ if __name__ == '__main__':
     from pextant.ExplorerModel import Astronaut
     import matplotlib.pyplot as plt
     import numpy.ma as ma
-    hi_low = GDALMesh('../../data/maps/Hawaii/HI_air_imagery.tif')
+    hi_low = GDALMesh('../../data/maps/HI_lowqual_DEM.tif')
     jloader = JSONloader.from_file('../../data/waypoints/HI_13Nov16_MD7_A.json')
     waypoints = jloader.get_waypoints()
-    env_model = hi_low.loadMapSection(waypoints.geoEnvelope())
-    elevations = env_model.dataset
+    env_model = hi_low.loadMapSection(waypoints.geoEnvelope().addMargin(0.5,30),35)
     # env_model.generateRelief(50)
-    elv = ma.masked_array(elevations, elevations < 0)
-    plt.matshow(elv)
-    plt.show()
     astronaut = Astronaut(80)
     cost_function = ExplorerCost(astronaut, env_model, "Energy")
     waypointseasy = [GeoPoint(env_model.ROW_COL, 1,1), GeoPoint(env_model.ROW_COL, 5,10),
                      GeoPoint(env_model.ROW_COL, 5,15)]
-    viz = ExpandViz(env_model.numRows, env_model.numCols)
+    viz = ExpandViz(env_model)
     segmentsout, rawpoints, items = fullSearch(waypoints, env_model, cost_function, viz)
     jsonout = jloader.add_search_sol(segmentsout, True)
     solgrid = np.zeros((env_model.numRows, env_model.numCols))
