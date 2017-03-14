@@ -4,6 +4,7 @@ import pandas as pd
 from copy import deepcopy
 from pextant.lib.geoshapely import *
 import re
+import os
 
 def loadPointsOld(filename):
     parsed_json = json.loads(jsonInput)
@@ -21,13 +22,15 @@ class JSONloader:
     def __init__(self, jsondata, filename=None):
         self.extension = '_plan.json'
         self.filename = None
-        self.jsondata = jsondata
+        self.jsondata = json.loads(jsondata)
 
     @classmethod
     def from_file(cls, filepath):
-        filename = re.search('^(.+\/[^/]+)(\.\w+)$', filepath).group(1)
+        filename = os.path.basename(filepath).split('.')[0]
+        dirname = os.path.dirname(filepath)
+        fullfilename = os.path.join(dirname, filename)
         with open(filepath) as data_file:
-            return cls(json.load(data_file), filename)
+            return cls(data_file.read(), fullfilename)
 
     def get_waypoints(self):
         ways_and_segments = self.jsondata['sequence']
