@@ -3,6 +3,7 @@ import json
 import pandas as pd
 from copy import deepcopy
 from pextant.lib.geoshapely import *
+import numpy as np
 import re
 import os
 
@@ -25,6 +26,10 @@ class JSONloader:
         self.sequence = sequence
 
     @classmethod
+    def from_string(cls, str):
+        return cls(json.loads(str))
+
+    @classmethod
     def from_file(cls, filepath):
         filename = os.path.basename(filepath).split('.')[0]
         dirname = os.path.dirname(filepath)
@@ -42,9 +47,8 @@ class JSONloader:
         waypoints = s[s['type'] == 'Station']['geometry']
         w = waypoints.values.tolist()
         latlongFull = pd.DataFrame(w)
-        latlongInter = latlongFull['coordinates'].values.tolist()
-        waypointslatlong = pd.DataFrame(latlongInter, columns=['longitude', 'latitude'])
-        return GeoPolygon(LAT_LONG, waypointslatlong['latitude'].values, waypointslatlong['longitude'].values)
+        latlongInter = np.array(latlongFull['coordinates'].values.tolist()).transpose()
+        return GeoPolygon(LONG_LAT, *latlongInter)
 
     def get_segments(self):
         ways_and_segments = self.sequence

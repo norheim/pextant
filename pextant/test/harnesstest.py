@@ -47,7 +47,7 @@ class EVTest:
 class JsonPlanTest:
     def __init__(self, map, jsonpath):
         self.jsonPlan = JSONloader.from_file(jsonpath)
-        self.sequence = self.jsonPlan.jsondata
+        self.sequence = self.jsonPlan.sequence
         self.optimization = "Energy"
         self.site = generate_site(map)
 

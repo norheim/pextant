@@ -65,7 +65,7 @@ class Pathfinder:
 
     def completeSearchFromJSON(self, optimize_on, jsonInput, filepath=None, algorithm="A*",
                                numTestPoints=0):
-        jloader = JSONloader(jsonInput)
+        jloader = JSONloader.from_string(jsonInput)
         waypoints = jloader.get_waypoints()
 
         #if algorithm == "A*":

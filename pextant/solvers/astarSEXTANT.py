@@ -62,7 +62,8 @@ class ExplorerCost(aStarCostFunction):
         d += energy_weight *  r * optimize_vector[2]
 
         # Patel 2010. See page 49 of Aaron's thesis
-        heuristic_cost = 1*(d * math.sqrt(2) * h_diagonal + d * (h_straight - 2 * h_diagonal))
+        heuristic_weight = 10
+        heuristic_cost = heuristic_weight*(d * math.sqrt(2) * h_diagonal + d * (h_straight - 2 * h_diagonal))
         # This is just Euclidean distance
         #heuristic_cost = d * math.sqrt((start_row - end_row) ** 2 + (start_col - end_col) ** 2)
 
