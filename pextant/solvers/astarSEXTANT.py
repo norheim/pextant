@@ -62,7 +62,7 @@ class ExplorerCost(aStarCostFunction):
         d += energy_weight *  r * optimize_vector[2]
 
         # Patel 2010. See page 49 of Aaron's thesis
-        heuristic_cost = 10*(d * math.sqrt(2) * h_diagonal + d * (h_straight - 2 * h_diagonal))
+        heuristic_cost = 1*(d * math.sqrt(2) * h_diagonal + d * (h_straight - 2 * h_diagonal))
         # This is just Euclidean distance
         #heuristic_cost = d * math.sqrt((start_row - end_row) ** 2 + (start_col - end_col) ** 2)
 
@@ -174,10 +174,18 @@ class ExpandViz(object):
         self.expandedgrid = np.zeros((env_model.numRows, env_model.numCols))
         self.counter = 0
 
+    #cmap = 'viridis'
     def draw(self):
-        plt.matshow(self.env_model.slopes)
+        plt.matshow(self.env_model.dataset)
         #print(waypoints.to(env_model.COL_ROW))
         #plt.scatter(*waypoints.to(env_model.COL_ROW), c='r')
+        plt.show()
+
+    def drawsolution(self, rawpoints):
+        np_rawpoints = GeoPolygon(self.env_model.ROW_COL, *np.array(rawpoints).transpose())
+        plt.matshow(self.env_model.dataset)
+        #plt.scatter(*waypoints.to(env_model.COL_ROW), c='r')
+        plt.scatter(*np_rawpoints.to(self.env_model.COL_ROW), c='b')
         plt.show()
 
     def add(self, state, cost):
