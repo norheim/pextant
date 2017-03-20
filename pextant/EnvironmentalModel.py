@@ -180,10 +180,7 @@ class EnvironmentalModel(Mesh):
         return self._inBounds(row, col) and not self.ismissingdata[row, col] #use lazy evaluation in case out of bounds
 
     def _isPassable(self, row, col):
-        if self._hasdata(row,col):
-            return self.obstacles[row][col]
-        else:
-            return False
+        return self._hasdata(row,col) and self.obstacles[row, col]
 
     def isPassable(self, coordinates):
         # determines if coordinates can be passed through
