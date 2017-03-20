@@ -33,6 +33,7 @@ class JSONloader:
             return cls(data_file.read(), fullfilename)
 
     def get_waypoints(self):
+        print self.jsondata['sequence']
         ways_and_segments = self.jsondata['sequence']
         s = pd.DataFrame(ways_and_segments)
         waypoints = s[s['type'] == 'Station']['geometry']
