@@ -1,6 +1,7 @@
 import pyproj
 import numpy as np
 from shapely.geometry import Point, LineString
+import shapely.coords
 
 
 class GeoType(object):
@@ -52,7 +53,8 @@ class GeoType(object):
 
 
 class UTM(GeoType):
-    def __init__(self, zone):
+    def __init__(self, zone_inter):
+        zone = zone_inter if not isinstance(zone_inter, GeoPoint) else zone_inter.utm_reference.proj_param["zone"]
         super(UTM, self).__init__("utm", ["easting", "northing"], {"proj": "utm", "zone": zone},
                                   ["easting", "northing"])
 
@@ -143,6 +145,10 @@ class GeoPolygon(GeoObject, LineString):
             x= [p.x for p in firstarg]
             y = [p.y for p in firstarg]
             geo_type = firstarg[0].utm_reference
+        elif isinstance(args[0], shapely.coords.CoordinateSequence):
+            # TODO: check that there is indeed an optional argument supplied
+            x, y = np.array(args[0]).transpose()
+            geo_type = firstarg
         else:
             x, y = args
             geo_type = firstarg
@@ -187,4 +193,3 @@ class GeoEnvelope(GeoPolygon):
 
 LAT_LONG = LatLon()
 LONG_LAT = LatLon(True)
-UTM_AUTO = UTM(1) # used 1 because need an argument
