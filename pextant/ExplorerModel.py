@@ -40,12 +40,10 @@ class Explorer(object):
     def velocity(self, slope):
         pass  # should return something that's purely a function of slope
 
-    def time(self, path_length, slope):
-        v = self.velocity(slope)
-        if v != 0:
-            return path_length / v
-        else:
-            return float('inf')  # Infinite time if zero velocity
+    def time(self, path_lengths, slopes):
+        # TODO: put back warning for divide by zero?
+        v = self.velocity(slopes)
+        return path_lengths / v
 
     def energyRate(self, path_length, slope, g):
         return 0  # this depends on velocity, time
@@ -59,37 +57,37 @@ class Astronaut(Explorer):  # Astronaut extends Explorer
         super(Astronaut, self).__init__(mass, uuid, parameters)
         self.type = 'Astronaut'
 
-    def velocity(self, slope):  # slope is in degrees, Marquez 2008
-        if np.logical_or((slope >25), (slope <-25)).any():
+    def velocity(self, slopes):  # slope is in degrees, Marquez 2008
+        if np.logical_or((slopes >25), (slopes <-25)).any():
             logger.debug("WARNING, there are some slopes out of bounds")
-        if not isinstance(slope, np.ndarray):
-            slope = np.array([slope])
-        v = np.piecewise(slope,
-                     [slope <= -20, (slope > -20) & (slope <= -10), (slope > -10) & (slope <= 0),
-                      (slope > 0) & (slope <= 6 ), (slope>6) & (slope<=15), slope > 15],
+
+        v = np.piecewise(slopes,
+                     [slopes <= -20, (slopes > -20) & (slopes <= -10), (slopes > -10) & (slopes <= 0),
+                      (slopes > 0) & (slopes <= 6 ), (slopes>6) & (slopes<=15), slopes > 15],
                      [0.05, lambda slope: 0.095 * slope + 1.95, lambda slope: 0.06 * slope + 1.6,
                       lambda slope: -0.02 * slope + 1.6, lambda slope: -0.039 * slope + 0.634, 0.05])
-        if v.shape[0] == 1:
-            return v[0]
-        else:
-            return v.tolist()
+        return v
 
-    def energyRate(self, path_length, slope, g):
+    def energyRate(self, path_lengths, slopes, g):
         '''
 		Metabolic Rate Equations for a Suited Astronaut
 		From Santee, 2001
 		Literature review may be helpful?
 		'''
         m = self.mass
-        v = self.velocity(slope)
-        w_level = (3.28 * m + 71.1) * (0.661 * v * math.cos(math.radians(slope)) + 0.115)
-        if slope == 0:
-            w_slope = 0
-        elif slope > 0:
-            w_slope = 3.5 * m * g * v * math.sin(math.radians(slope))
-        else:
-            w_slope = 2.4 * m * g * v * math.sin(math.radians(slope)) * (0.3 ** (abs(slope) / 7.65))
-        return w_level + w_slope
+        v = self.velocity(slopes)
+        w_level = (3.28 * m + 71.1) * (0.661 * v * np.cos(np.radians(slopes)) + 0.115)
+        w_total = np.zeros(slopes.shape[0])
+        for idx, slope in enumerate(slopes):
+            if slope == 0:
+                w_slope = 0
+            elif slope > 0:
+                w_slope = 3.5 * m * g * v[idx] * np.sin(np.radians(slope))
+            else:
+                w_slope = 2.4 * m * g * v[idx] * np.sin(np.radians(slope)) * (0.3 ** (abs(slope) / 7.65))
+            w_total[idx] = w_level[idx] + w_slope
+
+        return w_total
 
 class Rover(Explorer):  # Rover also extends explorer
     def __init__(self, mass, uuid=None, parameters=None, constant_speed=15, additional_energy=1500):
@@ -240,6 +238,7 @@ if __name__ == '__main__':
     import matplotlib.pyplot as plt
     slopes = np.linspace(-30, 30, 100)
     a = Astronaut(80)
-    v = a.velocity(slopes)
-    plt.plot(slopes, v)
+    nrg = a.energyRate(1,slopes,9.81)/a.velocity(slopes)
+    plt.plot(slopes, nrg)
     plt.show()
+    print(min(nrg))

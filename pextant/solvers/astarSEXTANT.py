@@ -1,24 +1,43 @@
 import math
 import numpy as np
-from astar import aStarSearchNode, aStarCostFunction, aStarSearch
+from astar import aStarSearchNode, aStarNodeCollection, aStarCostFunction, aStarSearch
 from pextant.lib.geoshapely import GeoPoint, GeoPolygon, LONG_LAT
+from pextant.EnvironmentalModel import EnvironmentalModel
+from pextant.MeshModel import MeshCollection
 
 class MeshSearchElement(aStarSearchNode):
-    def __init__(self, mesh_element, parent=None):
+    def __init__(self, mesh_element, parent=None, cost_from_parent=0):
         self.mesh_element = mesh_element
         state = (mesh_element.row, mesh_element.col)
         self.derived = {} #the point of this is to store in memory expensive calculations we might need later
-        super(MeshSearchElement, self).__init__(state, parent)
+        super(MeshSearchElement, self).__init__(state, parent, cost_from_parent)
 
     def getChildren(self):
-        return [MeshSearchElement(mesh_element, self)
-                for mesh_element in self.mesh_element.getNeighbours().collection]
+        return MeshSearchCollection(self.mesh_element.getNeighbours(), self)
 
     def __str__(self):
         return str(self.mesh_element)
 
+class MeshSearchCollection(aStarNodeCollection):
+    def __init__(self, collection, parent=None):
+        super(MeshSearchCollection, self).__init__(collection)
+        self.derived = None
+        self.parent = parent
+
+    def __getitem__(self, index):
+        mesh_search_element = MeshSearchElement(self.collection.__getitem__(index), self.parent)
+        mesh_search_element.derived = dict(zip(['pathlength','time','energy'],self.derived[:,index]))
+        return mesh_search_element
+
 class ExplorerCost(aStarCostFunction):
     def __init__(self, astronaut, environment, optimize_on):
+        """
+
+        :param astronaut:
+        :param environment:
+        :type environment: EnvironmentalModel
+        :param optimize_on:
+        """
         super(ExplorerCost, self).__init__()
         self.explorer = astronaut
         self.map = environment
@@ -62,40 +81,53 @@ class ExplorerCost(aStarCostFunction):
         d += energy_weight *  r * optimize_vector[2]
 
         # Patel 2010. See page 49 of Aaron's thesis
-        heuristic_weight = 1
+        heuristic_weight = 10
         heuristic_cost = heuristic_weight*(d * math.sqrt(2) * h_diagonal + d * (h_straight - 2 * h_diagonal))
         # This is just Euclidean distance
         #heuristic_cost = d * math.sqrt((start_row - end_row) ** 2 + (start_col - end_col) ** 2)
 
         return heuristic_cost
 
-    def getCostBetween(self, fromnode, tonode):
+    def getCostBetween(self, fromnode, tonodes):
+        optimize_weights = self.optimize_vector
+        optimize_vector = self.calculateCostBetween(fromnode.mesh_element, tonodes.collection)
+        costs = np.dot(optimize_vector.transpose(), optimize_weights)
+        tonodes.derived = optimize_vector
+
+        return costs
+
+    def calculateCostBetween(self, fromnode, tonodes):
         """
             Given the start and end states, returns the cost of travelling between them.
             Allows for states which are not adjacent to each other.
 
             optimize_vector is a list or tuple of length 3, representing the weights of
             Distance, Time, and Energy
+            Performance optimization: tonodes instead of tonode, potentially numpy optimized, only need to load info
+            from fromnode once
         """
-        optimize_weights = self.optimize_vector
         explorer  = self.explorer
-        from_elt, to_elt = fromnode.mesh_element, tonode.mesh_element
-        slope, path_length = from_elt.slopeTo(to_elt)
-        time = explorer.time(path_length, slope)
+        from_elt, to_elts = fromnode, tonodes #tonodes is a meshcollection
+        slopes, path_lengths = from_elt.slopeTo(to_elts)
+        times = explorer.time(path_lengths, slopes)
 
         #TODO: rewrite this so not all functions need to get evaluated(expensive)
         optimize_vector = np.array([
-            path_length,
-            time,
-            explorer.energyCost(path_length, slope, self.map.getGravity())
+            path_lengths,
+            times,
+            explorer.energyCost(path_lengths, slopes, self.map.getGravity())
         ])
-        cost = np.dot(optimize_vector, optimize_weights)
-        tonode.derived = {
-            'time': time,
-            'energy': cost,
-            'pathlength': path_length
-        }
-        return cost
+        return optimize_vector
+
+    def cacheCosts(self, cache_neighbours):
+        s2 = np.zeros((self.map.numRows * self.map.numCols, self.map.searchKernel.length, 3))
+        for row_idx in range(self.map.numRows):
+            for col_idx in range(self.map.numCols):
+                idx = row_idx * self.map.numRows + col_idx
+                cached_costs = self.calculateCostBetween(
+                    self.map.getMeshElement((row_idx, col_idx)),
+                    cache_neighbours[(row_idx, col_idx)])
+                s2[idx, 0:cached_costs.shape[1], :] = cached_costs.transpose()
 
 class sextantSearch:
     def __init__(self, raw, nodes, geopolygon, expanded_items):
@@ -205,13 +237,11 @@ if __name__ == '__main__':
     from pextant.analysis.loadWaypoints import JSONloader
     from pextant.EnvironmentalModel import GDALMesh
     from pextant.ExplorerModel import Astronaut
-    import matplotlib.pyplot as plt
-    import numpy.ma as ma
+
     hi_low = GDALMesh('../../data/maps/HI_lowqual_DEM.tif')
     jloader = JSONloader.from_file('../../data/waypoints/HI_13Nov16_MD7_A.json')
     waypoints = jloader.get_waypoints()
     env_model = hi_low.loadMapSection(waypoints.geoEnvelope().addMargin(0.5,30),35)
-    # env_model.generateRelief(50)
     astronaut = Astronaut(80)
     cost_function = ExplorerCost(astronaut, env_model, "Energy")
     waypointseasy = [GeoPoint(env_model.ROW_COL, 1,1), GeoPoint(env_model.ROW_COL, 5,10),

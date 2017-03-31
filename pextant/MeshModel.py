@@ -1,12 +1,13 @@
 import numpy as np
 import numpy.matlib as matlib
-import math
 import json
 from pextant.lib.geoshapely import GeoPoint, LAT_LONG
 
 class Mesh(object):
-    def __init__(self, nw_geo_point, width, height, resolution, dataset, planet='Earth',
-                 parentMesh=None, xoff=0, yoff=0):
+    def __init__(self, nw_geo_point, dataset, resolution=1, planet='Earth',
+                 parentMesh=None, xoff=0, yoff=0, width=0, height=0):
+        if not (width and height):
+            width, height = dataset.shape
         self.nw_geo_point = nw_geo_point
         self.width = width
         self.height = height
@@ -63,8 +64,9 @@ class MeshElement(object):
         return borderjson
 
     def getCoordinates(self):
-        return np.array([self.row, self.col])
+        return self.row, self.col
 
+    #TODO: remove
     def getTupleCoords(self):
         return (self.row, self.col)
 
@@ -75,16 +77,29 @@ class MeshElement(object):
         return self.parentMesh.getNeighbours(self)
 
     #TODO: need to add third dimension (other_elt.getElevation() - self.getElevation())**2
-    def distanceTo(self, other_elt):
-        path_length = self.elt_width * math.sqrt((self.row - other_elt.row) ** 2 + (self.col - other_elt.col) ** 2)
+    def distanceTo(self, other_elts):
+        """
+
+        :param other_elts:
+        :type other_elts: MeshCollection
+        :return:
+        """
+        path_length = self.elt_width * np.sqrt(
+            (self.row - other_elts.getrows()) ** 2 +
+            (self.col - other_elts.getcols()) ** 2)
         return path_length
 
-    def slopeTo(self, other_elt):
-        path_length = self.distanceTo(other_elt)
-        if path_length == 0:
-            print 'error'
-        slope = math.degrees(math.atan((other_elt.getElevation() - self.getElevation()) / path_length))
-        return slope, path_length
+    def slopeTo(self, other_elts):
+        """
+
+        :param other_elts:
+        :type other_elts: MeshCollection
+        :return:
+        """
+        path_length = self.distanceTo(other_elts)
+        #TODO: how to avoid divide by zero?
+        slopes = np.degrees(np.arctan((other_elts.get_elevations() - self.getElevation()) / path_length))
+        return slopes, path_length
 
     def __str__(self):
         return '(%s, %s)' % (self.row, self.col)
@@ -93,13 +108,32 @@ class MeshElement(object):
         self.timedelta = time
 
 
-#TODO: need to make underlying representation bet rows/cols and not list of mesh_elts
 class MeshCollection(object):
-    def __init__(self, collection):
+    def __init__(self, parentmesh, collection):
+        self.parentmesh = parentmesh
         self.collection = collection
+        self.rows, self.cols = collection.transpose()
+
+    def add_element(self, elt):
+        row, col = elt
+        self.rows.append(row)
+        self.cols.append(col)
+        self.collection.append((row, col))
+
+    def __getitem__(self, index):
+        return MeshElement(self.rows[index],self.cols[index],self.parentmesh)
+
+    def getrows(self):
+        return self.rows
+
+    def getcols(self):
+        return self.cols
+
+    def get_elevations(self):
+        return self.parentmesh.dataset[self.rows, self.cols]
 
     def raw(self):
-        return [(mesh_elt.row, mesh_elt.col) for mesh_elt in self.collection]
+        return np.array(self.collection)
 
     def distances(self):
         pass
@@ -109,3 +143,4 @@ class MeshCollection(object):
 
     def __str__(self):
         return str(self.raw())
+

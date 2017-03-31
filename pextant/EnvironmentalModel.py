@@ -1,5 +1,6 @@
 import re
 from pextant.lib.geoshapely import *
+from pextant.lib.geoutils import filled_circle
 from pextant.MeshModel import Mesh, MeshElement, MeshCollection, SearchKernel
 
 from osgeo import gdal, osr
@@ -29,7 +30,7 @@ class GDALMesh(Mesh):
         zone_number = regex_result.group(1)  # zone letter is group(2)
         nw_geo_point = GeoPoint(UTM(zone_number), nw_easting, nw_northing)
 
-        super(GDALMesh, self).__init__(nw_geo_point, width, height, resolution, dataset)
+        super(GDALMesh, self).__init__(nw_geo_point, dataset, resolution, width=width, height=height)
 
     def loadMapSection(self, geo_envelope=None, maxSlope=35, desired_res=None):
         """
@@ -78,12 +79,11 @@ class GDALMesh(Mesh):
 
         band = dataset.GetRasterBand(1)
         map_array = band.ReadAsArray(x_offset, y_offset, x_size, y_size, buf_x, buf_y).astype(np.float)
-        map_array_clean = ma.masked_array(map_array, np.isnan(map_array)).filled(-99999)
-        map_array_clean = ma.masked_array(map_array_clean, map_array_clean < 0)
+
         # TODO: this hack needs explanation
         nw_coord_hack = GeoPoint(UTM(zone), inter_easting.min(), inter_northing.max()).to(XY)
         nw_coord = GeoPoint(XY, nw_coord_hack[0], nw_coord_hack[1])
-        return EnvironmentalModel(nw_coord, x_size, y_size, desired_res, map_array_clean, self.planet,
+        return EnvironmentalModel(nw_coord, map_array, desired_res, self.planet,
                                   maxSlope, self, x_offset, y_offset)
 
 
@@ -92,13 +92,16 @@ class EnvironmentalModel(Mesh):
     This class ultimately represents an elevation map + all of the traversable spots on it.
     """
 
-    def __init__(self, nw_geo_point, width, height, resolution, dataset, planet, maxSlope=35, parentMesh=None, xoff=0, yoff=0):
-        super(EnvironmentalModel, self).__init__(nw_geo_point, width, height, resolution, dataset, planet,
+    def __init__(self, nw_geo_point, dataset, resolution, planet='Earth', maxSlope=35, parentMesh=None, xoff=0, yoff=0):
+        dataset_clean = ma.masked_array(dataset, np.isnan(dataset)).filled(-99999)
+        dataset_clean = ma.masked_array(dataset_clean, dataset_clean < 0)
+        super(EnvironmentalModel, self).__init__(nw_geo_point, dataset_clean, resolution, planet,
                                                  parentMesh, xoff, yoff)
         self.parent = self.parentMesh
         self.numRows, self.numCols = dataset.shape
         self.slopes = None
         self.ismissingdata = self.dataset.mask
+        #TODO: should obstacles be a set? since its a sparse matrix
         self.obstacles = np.zeros(dataset.shape, dtype=bool)  # obstacles is a matrix with boolean values for passable squares
         self.planet = planet
         self.ROW_COL = Cartesian(nw_geo_point, resolution, reverse=True)
@@ -109,8 +112,8 @@ class EnvironmentalModel(Mesh):
         #TODO: make max slope a once only argument (right now it gets passed along several times)
         self.maxSlopeObstacle(maxSlope)
 
-    def getMeshElement(self, geo_point):
-        row, col = geo_point.to(self.ROW_COL)
+    def getMeshElement(self, coordinates):
+        row, col = self.convertToRowCol(coordinates)
         return self._getMeshElement(row, col)
 
     def _getMeshElement(self, row, col):
@@ -120,13 +123,15 @@ class EnvironmentalModel(Mesh):
             raise IndexError("The location (%s, %s) is out of bounds" % row, col)
 
     def getNeighbours(self, mesh_element):
-        state = mesh_element.getCoordinates()
+        return self._getNeighbours(*mesh_element.getCoordinates())
+
+    def _getNeighbours(self, row, col):
+        state = np.array([row, col])
         kernel = self.searchKernel
         offset = kernel.getKernel()
         potential_neighbours = offset + state
-        children = [MeshElement(row, col, self) for (row, col) in potential_neighbours
-                    if self._isPassable(row, col)]
-        return MeshCollection(children)
+        passable_neighbours = np.array(filter(self._isPassable, potential_neighbours))
+        return MeshCollection(self, passable_neighbours)
 
     def getGravity(self):
         if self.planet == 'Earth':
@@ -149,6 +154,10 @@ class EnvironmentalModel(Mesh):
         self.obstacles[row][col] = False
         if coordinates not in self.special_obstacles:
             self.special_obstacles.add(coordinates)
+
+    def setRadialKeepOutZone(self, center, radius):
+        circlex, circley = filled_circle(self.ROW_COL, center, radius)
+        self.obstacles[circlex, circley] = 1
 
     def eraseObstacle(self, coordinates):
         row, col = self.convertToRowCol(coordinates)
@@ -179,13 +188,14 @@ class EnvironmentalModel(Mesh):
     def _hasdata(self, row, col):
         return self._inBounds(row, col) and not self.ismissingdata[row, col] #use lazy evaluation in case out of bounds
 
-    def _isPassable(self, row, col):
+    def _isPassable(self, rowcol):
+        row, col = rowcol
         return self._hasdata(row,col) and self.obstacles[row, col]
 
     def isPassable(self, coordinates):
         # determines if coordinates can be passed through
         row, col = self.convertToRowCol(coordinates)
-        return self._isPassable(row, col)
+        return self._isPassable((row, col))
 
     def convertToRowCol(self, coordinates):
         if isinstance(coordinates, GeoPoint):
@@ -202,16 +212,7 @@ def loadElevationMap(fullPath, maxSlope=35, nw_corner=None, se_corner=None, desi
 
 
 if __name__ == '__main__':
-    from pextant.analysis.loadWaypoints import JSONloader
-    from pextant.ExplorerModel import Astronaut
-    from pextant.solvers.astarSEXTANT import ExplorerCost, ExpandViz, fullSearch
-    hi_low = GDALMesh('../data/maps/HI_lowqual_DEM.tif')
-    waypoints = JSONloader.from_file('../data/waypoints/HI_13Nov16_MD7_A.json').get_waypoints()
-    geoenvelope = waypoints.geoEnvelope()
-    env_model = hi_low.loadMapSection(geoenvelope)
-    nw_corner, se_corner = geoenvelope.getBounds()
-    env_model2 = loadElevationMap('../data/maps/HI_lowqual_DEM.tif',
-                                  nw_corner=nw_corner, se_corner=se_corner)
-    astronaut = Astronaut(80)
-    cost_function = ExplorerCost(astronaut, env_model, "Energy")
-    fullSearch(waypoints, env_model2, cost_function, viz=ExpandViz(env_model.numRows, env_model.numCols))
+    from pextant.settings import AMES_DEM
+    ames_em = GDALMesh('../data/maps/Ames/Ames.tif').loadMapSection()
+    n = ames_em._getNeighbours(1,1)
+    print(n)

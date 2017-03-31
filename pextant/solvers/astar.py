@@ -1,9 +1,10 @@
 import heapq
 
 class aStarSearchNode(object):
-    def __init__(self, state, parent=None):
+    def __init__(self, state, parent=None, cost_from_parent=0):
         self.state = state
         self.parent = parent
+        self.cost_from_parent = cost_from_parent
 
     def goalTest(self, goal):
         return self.state == goal.state
@@ -23,6 +24,20 @@ class aStarSearchNode(object):
 
     def getChildren(self):
         pass
+
+class aStarNodeCollection(object):
+    """
+    class to be overwritten
+    """
+    def __init__(self, collection):
+        self.collection = collection
+
+    def __getitem__(self, index):
+        return aStarSearchNode(self.collection[index])
+
+    #TODO: need to enforce this
+    def get_states(self):
+        return self.collection.collection
 
 class aStarCostFunction(object):
     def __init__(self):
@@ -69,9 +84,12 @@ def aStarSearch(start_node, end_node, cost_function, viz=None):
         if current_node.goalTest(end_node):
             return (current_node.getPath(), expanded)
         expanded.add(current_node_state)
-        for child_node in current_node.getChildren():
-            child_node_state = child_node.state
-            cost_to_node = g_cost[current_node_state] + cost_function.getCostBetween(current_node, child_node)
+        children = current_node.getChildren()
+        costs_to_node = g_cost[current_node_state] + cost_function.getCostBetween(current_node, children)
+        children_states = children.get_states()
+        for idx, child_node in enumerate(children):
+            child_node_state = tuple(children_states[idx])
+            cost_to_node = costs_to_node[idx]
             if child_node_state in expanded: #and cost_to_node >= g_cost.get(child_node_state,0):
                 continue
             test = g_cost.get(child_node_state, float("inf"))
