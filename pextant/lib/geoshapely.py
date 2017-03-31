@@ -92,6 +92,12 @@ class Cartesian(GeoType):
         self.origin_easting, self.origin_northing = origin.x, origin.y
         self.resolution = resolution
 
+        self.origin = origin # needed for reversal
+        self.reversed = reverse # needed for reversal too
+
+    def reverse(self):
+        return Cartesian(self.origin, self.resolution, not self.reversed)
+
     def to_utm(self, geo_point):
         return  UTM(self.zone)
 

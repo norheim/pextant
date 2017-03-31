@@ -10,6 +10,7 @@ conda:
 - shapely
 - scipy
 - matplotlib
+- bokeh
 pip:
 - docker
 - pypiwin32 (for docker)
