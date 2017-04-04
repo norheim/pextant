@@ -6,6 +6,7 @@ from pextant.lib.geoshapely import *
 import numpy as np
 import re
 import os
+pd.options.display.max_rows = 5
 
 def loadPointsOld(filename):
     parsed_json = json.loads(jsonInput)
@@ -19,6 +20,31 @@ def loadPointsOld(filename):
 
     return waypoints, parsed_json
 
+def get_gps_data(filename):
+    """
+    Gets GPS time series gathered from a traversal
+    :param filename: <String> csv file from GPS team in format |date|time|name|latitude|longitude|heading
+    :return: <pandas DataFrame> time_stamp|latitude|longitude
+    """
+    delimiter = r"\s+" # some of the columns are separated by a space, others by tabs, use regex to include both
+    header_row = 0     # the first row has all the header names
+    df = pd.read_csv(filename, sep=delimiter, header=header_row)
+    df['date_time'] = pd.to_datetime(df['epoch timestamp'], unit='s')
+    time_lat_long = df[['date_time', 'latitude', 'longitude']]
+    gp = GeoPolygon(LAT_LONG, *df[['latitude', 'longitude']].as_matrix().transpose())
+    return gp
+
+#TODO: Need to move this over to test file
+#filename = '../../data/ev_tracks/20161104A_EV1.csv'
+#time_lat_long = get_gps_data(filename)
+
+def sextant_loader(filepath):
+    with open(filepath) as data_file:
+        jsondata = json.load(data_file)
+        latlongInter = np.array(jsondata['geometry']['coordinates']).transpose()
+        return GeoPolygon(LONG_LAT, *latlongInter)
+
+#this really is a xpjson loader
 class JSONloader:
     def __init__(self, sequence, filename=None):
         self.extension = '_plan.json'
