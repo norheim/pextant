@@ -30,7 +30,7 @@ class MeshSearchCollection(aStarNodeCollection):
         return mesh_search_element
 
 class ExplorerCost(aStarCostFunction):
-    def __init__(self, astronaut, environment, optimize_on):
+    def __init__(self, astronaut, environment, optimize_on, heuristic_accelerate=1):
         """
 
         :param astronaut:
@@ -42,6 +42,7 @@ class ExplorerCost(aStarCostFunction):
         self.explorer = astronaut
         self.map = environment
         self.optimize_vector = astronaut.optimizevector(optimize_on)
+        self.heuristic_accelerate = heuristic_accelerate
 
     def getHeuristicCost(self, node):
         start_row, start_col = node.state
@@ -81,7 +82,7 @@ class ExplorerCost(aStarCostFunction):
         d += energy_weight *  r * optimize_vector[2]
 
         # Patel 2010. See page 49 of Aaron's thesis
-        heuristic_weight = 10
+        heuristic_weight = self.heuristic_accelerate
         heuristic_cost = heuristic_weight*(d * math.sqrt(2) * h_diagonal + d * (h_straight - 2 * h_diagonal))
         # This is just Euclidean distance
         #heuristic_cost = d * math.sqrt((start_row - end_row) ** 2 + (start_col - end_col) ** 2)
@@ -118,6 +119,7 @@ class ExplorerCost(aStarCostFunction):
             explorer.energyCost(path_lengths, slopes, self.map.getGravity())
         ])
         return optimize_vector
+
 
     def cacheCosts(self, cache_neighbours):
         s2 = np.zeros((self.map.numRows * self.map.numCols, self.map.searchKernel.length, 3))
@@ -179,16 +181,7 @@ def search(env_model, geopoint1, geopoint2, cost_function, viz):
         return sextantSearch(raw, nodes, geopolygon, expanded_items)
 
     raise ValueError("Start or end point out of map bounds, or in unreachable terrain")
-    #self.searches.append({
-    #    'raw': raw,
-    #    'geopolygon': geopolygon,
-    #    'nodes': nodes,
-    #    'expanded_items':expanded_items,
-    #})
 
-
-from pextant.ExplorerModel import Astronaut
-from pextant.EnvironmentalModel import GDALMesh
 def fullSearch(waypoints, env_model, cost_function, viz=None):
     segment_searches = []
     rawpoints = []
@@ -200,44 +193,12 @@ def fullSearch(waypoints, env_model, cost_function, viz=None):
         itemssrchd += search_result.expanded_items
     return segment_searches, rawpoints, itemssrchd
 
-import matplotlib.pyplot as plt
-class ExpandViz(object):
-    def __init__(self, env_model):
-        self.env_model = env_model
-        self.expandedgrid = np.zeros((env_model.numRows, env_model.numCols))
-        self.counter = 0
-
-    #cmap = 'viridis'
-    def draw(self):
-        plt.matshow(self.env_model.dataset)
-        #print(waypoints.to(env_model.COL_ROW))
-        #plt.scatter(*waypoints.to(env_model.COL_ROW), c='r')
-        plt.show()
-
-    def drawsolution(self, rawpoints):
-        np_rawpoints = GeoPolygon(self.env_model.ROW_COL, *np.array(rawpoints).transpose())
-        plt.matshow(self.env_model.dataset)
-        #plt.scatter(*waypoints.to(env_model.COL_ROW), c='r')
-        plt.scatter(*np_rawpoints.to(self.env_model.COL_ROW), c='b')
-        plt.show()
-
-    def add(self, state, cost):
-        self.expandedgrid[state] = cost
-        self.counter += 1
-
-        if self.counter % 100 == 0:
-            print self.counter
-
-        if self.counter % 1000 == 0:
-            plt.matshow(self.expandedgrid)
-            plt.show()
-
 
 if __name__ == '__main__':
     from pextant.analysis.loadWaypoints import JSONloader
     from pextant.EnvironmentalModel import GDALMesh
     from pextant.ExplorerModel import Astronaut
-
+    from pextant.MeshVisualizer import ExpandViz, MeshVizM
     hi_low = GDALMesh('../../data/maps/HI_lowqual_DEM.tif')
     jloader = JSONloader.from_file('../../data/waypoints/HI_13Nov16_MD7_A.json')
     waypoints = jloader.get_waypoints()
@@ -247,11 +208,11 @@ if __name__ == '__main__':
     waypointseasy = [GeoPoint(env_model.ROW_COL, 1,1), GeoPoint(env_model.ROW_COL, 5,10),
                      GeoPoint(env_model.ROW_COL, 5,15)]
     viz = ExpandViz(env_model)
+    matviz = MeshVizM()
     segmentsout, rawpoints, items = fullSearch(waypoints, env_model, cost_function, viz)
     jsonout = jloader.add_search_sol(segmentsout, True)
     solgrid = np.zeros((env_model.numRows, env_model.numCols))
     for i in rawpoints:
         solgrid[i] = 1
-    plt.matshow(solgrid)
-    plt.show()
+    matviz.viz(solgrid)
     print(jsonout)
