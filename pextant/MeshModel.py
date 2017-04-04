@@ -1,7 +1,8 @@
 import numpy as np
 import numpy.matlib as matlib
 import json
-from pextant.lib.geoshapely import GeoPoint, LAT_LONG
+from pextant.lib.geoshapely import GeoPoint, Cartesian, LAT_LONG
+from skimage.draw import circle
 
 class Mesh(object):
     def __init__(self, nw_geo_point, dataset, resolution=1, planet='Earth',
@@ -11,6 +12,8 @@ class Mesh(object):
         self.nw_geo_point = nw_geo_point
         self.width = width
         self.height = height
+        self.ROW_COL = Cartesian(nw_geo_point, resolution, reverse=True)
+        self.COL_ROW = Cartesian(nw_geo_point, resolution)
         self.resolution = resolution
         self.parentMesh = parentMesh
         self.xoff = xoff
@@ -35,10 +38,14 @@ class SearchKernel(object):
         self.length = kernelrange**2
         self.col_off = col_off_clean
         self.row_off = row_off_clean
+        self.kernelrange = kernelrange
         self.kernel = np.array([row_off_clean, col_off_clean]).transpose()
 
     def getKernel(self):
         return self.kernel
+
+    def getCircularKernel(self):
+        return np.array(circle(0, 0, 6)).transpose()
 
 class MeshElement(object):
     def __init__(self, row, col, parentMesh):
@@ -112,7 +119,7 @@ class MeshCollection(object):
     def __init__(self, parentmesh, collection):
         self.parentmesh = parentmesh
         self.collection = collection
-        self.rows, self.cols = collection.transpose()
+        self.rows, self.cols = collection.transpose() if collection.size else np.array([[],[]])
 
     def add_element(self, elt):
         row, col = elt

@@ -5,6 +5,7 @@ from pextant.MeshModel import Mesh, MeshElement, MeshCollection, SearchKernel
 
 from osgeo import gdal, osr
 import numpy.ma as ma
+from numba import jit
 
 class GDALMesh(Mesh):
     """
@@ -97,18 +98,15 @@ class EnvironmentalModel(Mesh):
         dataset_clean = ma.masked_array(dataset_clean, dataset_clean < 0)
         super(EnvironmentalModel, self).__init__(nw_geo_point, dataset_clean, resolution, planet,
                                                  parentMesh, xoff, yoff)
-        self.parent = self.parentMesh
         self.numRows, self.numCols = dataset.shape
         self.slopes = None
         self.ismissingdata = self.dataset.mask
         #TODO: should obstacles be a set? since its a sparse matrix
         self.obstacles = np.zeros(dataset.shape, dtype=bool)  # obstacles is a matrix with boolean values for passable squares
-        self.planet = planet
-        self.ROW_COL = Cartesian(nw_geo_point, resolution, reverse=True)
-        self.COL_ROW = Cartesian(nw_geo_point, resolution)
         self.special_obstacles = set()  # a list of coordinates of obstacles are not identified by the slope
         self.searchKernel = SearchKernel()
         self.setSlopes()
+        self.maxSlope = maxSlope
         #TODO: make max slope a once only argument (right now it gets passed along several times)
         self.maxSlopeObstacle(maxSlope)
 
@@ -123,12 +121,12 @@ class EnvironmentalModel(Mesh):
             raise IndexError("The location (%s, %s) is out of bounds" % row, col)
 
     def getNeighbours(self, mesh_element):
-        return self._getNeighbours(*mesh_element.getCoordinates())
+        return self._getNeighbours(mesh_element.getCoordinates())
 
-    def _getNeighbours(self, row, col):
-        state = np.array([row, col])
+    def _getNeighbours(self, rowcol):
+        state = np.array(rowcol)
         kernel = self.searchKernel
-        offset = kernel.getKernel()
+        offset = kernel.getCircularKernel()
         potential_neighbours = offset + state
         passable_neighbours = np.array(filter(self._isPassable, potential_neighbours))
         return MeshCollection(self, passable_neighbours)
@@ -203,6 +201,12 @@ class EnvironmentalModel(Mesh):
         else:
             return coordinates
 
+    def cache_neighbours(self):
+        s = dict()
+        for i in range(self.numRows):
+            for j in range(self.numCols):
+                s[(i,j)] = self._getNeighbours((i,j))
+        return s
 
 def loadElevationMap(fullPath, maxSlope=35, nw_corner=None, se_corner=None, desiredRes=None):
     geoenvelope = GeoEnvelope(nw_corner, se_corner)
@@ -213,6 +217,7 @@ def loadElevationMap(fullPath, maxSlope=35, nw_corner=None, se_corner=None, desi
 
 if __name__ == '__main__':
     from pextant.settings import AMES_DEM
+    import cProfile
     ames_em = GDALMesh('../data/maps/Ames/Ames.tif').loadMapSection()
-    n = ames_em._getNeighbours(1,1)
-    print(n)
+    cProfile.run('ames_em.cache_neighbours()')
+    print(ames_em.numCols*ames_em.numRows)
