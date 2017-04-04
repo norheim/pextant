@@ -1,4 +1,5 @@
 import heapq
+import warnings
 
 class aStarSearchNode(object):
     def __init__(self, state, parent=None, cost_from_parent=0):
@@ -102,4 +103,7 @@ def aStarSearch(start_node, end_node, cost_function, viz=None):
                     viz.add(child_node_state, estimated_cost)
 
     # if it can't find a solution
-    return (None, len(expanded))
+    warnings.warn('no solution found')
+    if viz:
+        viz.draw()
+    return ((None,None), expanded)
