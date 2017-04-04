@@ -79,6 +79,41 @@ class LatLon(GeoType):
         zone = zones[0] if isinstance(zones, np.ndarray) else zones
         return UTM(zone)
 
+# doesn't round of
+class XY(GeoType):
+    def __init__(self, origin, resolution, reverse=False):
+        if reverse:
+            order = ["y", "x"]
+        else:
+            order = ["x", "y"]
+
+        self.zone = origin.utm_reference.proj_param["zone"]
+        super(XY, self).__init__("coord", order, {"proj": "utm", "zone": self.zone}, ["x", "y"])
+        # doing conversion early on will save use from redoing it later, we don't expect our origin to change too much
+        self.origin_easting, self.origin_northing = origin.x, origin.y
+        self.resolution = resolution
+
+        self.origin = origin # needed for reversal
+        self.reversed = reverse # needed for reversal too
+
+    def reverse(self):
+        return Cartesian(self.origin, self.resolution, not self.reversed)
+
+    def to_utm(self, geo_point):
+        return  UTM(self.zone)
+
+    def getargs(self, geo_points):
+        # next line should ideally be super.getargs, but we overwrite the fx so not sure if possible
+        x, y = geo_points["x"], geo_points["y"]
+        delta_easting, delta_northing = np.array([x, y]) * self.resolution
+        return self.origin_easting + delta_easting, self.origin_northing - delta_northing
+
+    def post_process(self, transformed_points):
+        points_easting, points_northing = transformed_points
+        delta_easting, delta_northing = points_easting - self.origin_easting, self.origin_northing - points_northing
+        coords = np.array([delta_easting, delta_northing]) / self.resolution
+        return self.reorder(coords)
+
 class Cartesian(GeoType):
     def __init__(self, origin, resolution, reverse=False):
         if reverse:
