@@ -1,6 +1,7 @@
 from geoshapely import GeoPolygon, GeoPoint, UTM, LAT_LONG, Cartesian
 import numpy as np
 
+# TODO: use skimage.draw.circle instead
 def filled_circle(ROW_COL, center, radius):
     """
 
