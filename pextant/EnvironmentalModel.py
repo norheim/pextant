@@ -5,7 +5,6 @@ from pextant.MeshModel import Mesh, MeshElement, MeshCollection, SearchKernel
 
 from osgeo import gdal, osr
 import numpy.ma as ma
-from numba import jit
 
 class GDALMesh(Mesh):
     """
