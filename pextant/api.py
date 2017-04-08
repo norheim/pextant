@@ -39,7 +39,8 @@ class Pathfinder:
         """
         env_model = self.map
         explorer_model = self.explorer
-        cost_function = ExplorerCost(explorer_model, env_model, optimize_on)
+        cheating = 10
+        cost_function = ExplorerCost(explorer_model, env_model, optimize_on, cheating)
         segmentsout, rawpoints, items = fullSearch(waypoints, env_model, cost_function)
 
         if filepath:

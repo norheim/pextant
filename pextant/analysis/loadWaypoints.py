@@ -48,7 +48,7 @@ def sextant_loader(filepath):
 class JSONloader:
     def __init__(self, sequence, filename=None):
         self.extension = '_plan.json'
-        self.filename = None
+        self.filename = filename
         self.sequence = sequence
 
     @classmethod
