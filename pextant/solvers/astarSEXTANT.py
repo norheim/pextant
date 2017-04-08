@@ -12,6 +12,10 @@ class MeshSearchElement(aStarSearchNode):
         self.derived = {} #the point of this is to store in memory expensive calculations we might need later
         super(MeshSearchElement, self).__init__(state, parent, cost_from_parent)
 
+    def goalTest(self, goal):
+        if self.mesh_element.distanceToElt(goal.mesh_element) < self.mesh_element.parentMesh.resolution*3:
+            return True
+
     def getChildren(self):
         return MeshSearchCollection(self.mesh_element.getNeighbours(), self)
 
@@ -132,7 +136,7 @@ class ExplorerCost(aStarCostFunction):
                 s2[idx, 0:cached_costs.shape[1], :] = cached_costs.transpose()
 
 class sextantSearch:
-    def __init__(self, raw, nodes, geopolygon, expanded_items):
+    def __init__(self, raw, nodes, coordinates, expanded_items):
         self.namemap = {
             'time': ['timeList','totalTime'],
             'pathlength': ['distanceList','totalDistance'],
@@ -141,20 +145,22 @@ class sextantSearch:
         #self.searches = []
         self.nodes = nodes
         self.raw = raw
-        self.geopolygon = geopolygon
+        self.coordinates = coordinates
         self.expanded_items = expanded_items
 
     def tojson(self):
         out = {}
         out["geometry"] = {
             'type': 'LineString',
-            'coordinates': self.geopolygon.to(LONG_LAT).transpose().tolist()
+            'coordinates': self.coordinates
         }
         results = {}
+        for k, v in self.namemap.items():
+            results.update({v[0]:[],v[1]:0})
         for i, mesh_srch_elt in enumerate(self.nodes):
             derived = mesh_srch_elt.derived
             for k, v in derived.items():
-                results.setdefault(self.namemap[k][0],[]).append(v)
+                results[self.namemap[k][0]].append(v)
         for k, v in self.namemap.items():
             results[v[1]] = sum(results[v[0]])
         out["derivedInfo"] = results
@@ -162,7 +168,7 @@ class sextantSearch:
 
     def tocsv(self):
         sequence = []
-        coords = self.geopolygon.to(LONG_LAT).transpose().tolist()
+        coords = self.coordinates
         for i, mesh_srch_elt in enumerate(self.nodes):
             row_entry = [i==1 or i==len(coords)-1] #True if it's the first or last entry
             row_entry += coords + [mesh_srch_elt.mesh_element.getElevevation()]
@@ -177,8 +183,11 @@ def search(env_model, geopoint1, geopoint2, cost_function, viz):
                     MeshSearchElement(env_model.getMeshElement(geopoint2))
         solution_path, expanded_items = aStarSearch(node1, node2, cost_function, viz)
         raw, nodes = solution_path
-        geopolygon = GeoPolygon(env_model.ROW_COL, *np.array(raw).transpose())
-        return sextantSearch(raw, nodes, geopolygon, expanded_items)
+        if len(raw) == 0:
+            coordinates = []
+        else:
+            coordinates = GeoPolygon(env_model.ROW_COL, *np.array(raw).transpose()).to(LONG_LAT).transpose().tolist()
+        return sextantSearch(raw, nodes, coordinates, expanded_items)
 
     raise ValueError("Start or end point out of map bounds, or in unreachable terrain")
 

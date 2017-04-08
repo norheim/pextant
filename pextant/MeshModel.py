@@ -96,6 +96,18 @@ class MeshElement(object):
             (self.col - other_elts.getcols()) ** 2)
         return path_length
 
+    def distanceToElt(self, other_elts):
+        """
+
+        :param other_elts:
+        :type other_elts: MeshElement
+        :return:
+        """
+        path_length = self.elt_width * np.sqrt(
+            (self.row - other_elts.row) ** 2 +
+            (self.col - other_elts.col) ** 2)
+        return path_length
+
     def slopeTo(self, other_elts):
         """
 
