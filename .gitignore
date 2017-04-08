@@ -2,8 +2,9 @@
 pextant/lines.html
 .*
 !/.gitignore
-*.tif
 *.ipynb
 *.csv
 data/
 static/
+pextant/notebooks
+!pextant/notebooks/*.py
