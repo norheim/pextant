@@ -1,9 +1,8 @@
 from flask import Flask
 from flask_socketio import SocketIO
 from serialgps import GPSSerialThread, serial_ports, GPSSerialEmulator, RandomThread
-from geoshapely import LAT_LONG, GeoPoint, Cartesian, UTM
-from loadWaypoints import loadPoints
-from hawaiiclean2 import runpextant
+from pextant.lib.geoshapely import LAT_LONG, GeoPoint, Cartesian, UTM
+from pextant.analysis.loadWaypoints import JSONloader
 
 import json
 from threading import Thread
@@ -72,14 +71,11 @@ class SocketChannel:
 def getwaypoints(data):
     print('got waypoint request')
     print(data != "")
-    waypoints = loadPoints('waypoints/HI_13Nov16_MD7_A.json').to(LAT_LONG)
-    print waypoints
+    waypoints = JSONloader('../../data/waypoints/HI_13Nov16_MD7_A.json').get_waypoints()
+
     waypointsdict = {
         'latitude': list(waypoints[0]),
         'longitude' : list(waypoints[1])}
-    if data != "":
-        with open('generated_paths/HI_13Nov16_MD7_A.json') as data_file:
-            waypointsdict = json.load(data_file)
 
     print waypointsdict
     waypointsstr = json.dumps(waypointsdict)
@@ -115,28 +111,28 @@ def getpextant(data):
     global thread
     global meshmessenger
     waypoint = None
-    if data != "":
-        waypoint0 = json.loads(thread.most_recent_gps_point)
-        waypoint1 = json.loads(data)
-        print waypoint1['latitude']
-        print waypoint0['latitude']
-        waypoint =  json.dumps({"latitude":[waypoint0['latitude'], waypoint1['latitude']],
-                     "longitude": [waypoint0['longitude'], waypoint1['longitude']]})
-        print waypoint
-        waypoints = runpextant(meshmessenger)
-    else:
+    #if data != "":
+    #waypoint0 = json.loads(thread.most_recent_gps_point)
+    #waypoint1 = json.loads(data)
+    #print waypoint1['latitude']
+    #print waypoint0['latitude']
+    #waypoint =  json.dumps({"latitude":[waypoint0['latitude'], waypoint1['latitude']],
+    #             "longitude": [waypoint0['longitude'], waypoint1['longitude']]})
+    #print waypoint
+        #waypoints = runpextant(meshmessenger)
+    #else:
 
-        waypoints = runpextant(meshmessenger)
+        #waypoints = runpextant(meshmessenger)
 
 
-    print waypoints
-    waypointsdict = {
-        'latitude': list(waypoints[0]),
-        'longitude': list(waypoints[1])}
+    #print waypoints
+    #waypointsdict = {
+    #    'latitude': list(waypoint[0]),
+    #    'longitude': list(waypoint[1])}
 
-    print waypointsdict
-    waypointsstr = json.dumps(waypointsdict)
-    print waypointsstr
+    #print waypointsdict
+    #waypointsstr = json.dumps(waypointsdict)
+    #print waypointsstr
     socketio.emit('pextant', waypointsstr)
 
 @socketio.on('disconnect')
