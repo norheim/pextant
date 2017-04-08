@@ -106,4 +106,4 @@ def aStarSearch(start_node, end_node, cost_function, viz=None):
     warnings.warn('no solution found')
     if viz:
         viz.draw()
-    return ((None,None), expanded)
+    return (([],[]), expanded)
