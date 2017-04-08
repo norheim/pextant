@@ -65,7 +65,7 @@ class Astronaut(Explorer):  # Astronaut extends Explorer
                      [slopes <= -20, (slopes > -20) & (slopes <= -10), (slopes > -10) & (slopes <= 0),
                       (slopes > 0) & (slopes <= 6 ), (slopes>6) & (slopes<=15), slopes > 15],
                      [0.05, lambda slope: 0.095 * slope + 1.95, lambda slope: 0.06 * slope + 1.6,
-                      lambda slope: -0.02 * slope + 1.6, lambda slope: -0.039 * slope + 0.634, 0.05])
+                      lambda slope: -0.2 * slope + 1.6, lambda slope: -0.039 * slope + 0.634, 0.05])
         return v
 
     def energyRate(self, path_lengths, slopes, g):
@@ -236,9 +236,13 @@ class explorerParameters:
 if __name__ == '__main__':
     import numpy as np
     import matplotlib.pyplot as plt
-    slopes = np.linspace(-30, 30, 100)
+    plt.rcParams['font.size'] = 14
+    slopes = np.linspace(-25, 25, 100)
     a = Astronaut(80)
-    nrg = a.energyRate(1,slopes,9.81)/a.velocity(slopes)
-    plt.plot(slopes, nrg)
+    nrg = a.energyRate(np.ones_like(slopes),slopes,9.81)/a.velocity(slopes)
+    plt.plot(slopes, a.energyRate(np.ones_like(slopes),slopes,9.81))
+    plt.xlabel('slope [degrees]')
+    plt.ylabel('Power [W]')
+    plt.title('Power output [Santee et al 2001], mass=80kg')
     plt.show()
-    print(min(nrg))
+    #print(min(nrg))

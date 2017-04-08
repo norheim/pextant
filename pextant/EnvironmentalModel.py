@@ -126,7 +126,7 @@ class EnvironmentalModel(Mesh):
     def _getNeighbours(self, rowcol):
         state = np.array(rowcol)
         kernel = self.searchKernel
-        offset = kernel.getCircularKernel()
+        offset = kernel.getKernel()
         potential_neighbours = offset + state
         passable_neighbours = np.array(filter(self._isPassable, potential_neighbours))
         return MeshCollection(self, passable_neighbours)
