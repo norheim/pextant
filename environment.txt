@@ -12,6 +12,8 @@ conda:
 - matplotlib
 - bokeh
 - ipyleaflet (overrided py folium?)
+-c menpo/label/master cyassimp (for pymesh)
+-c conda-forge rtree shapely embree (for pymesh) shapely already installed technically
 pip:
 - docker
 - pypiwin32 (for docker)
