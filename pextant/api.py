@@ -2,7 +2,7 @@ import csv
 import json
 import logging
 import re
-from pextant.solvers.astarSEXTANT import fullSearch, ExplorerCost
+from pextant.solvers.astarMesh import fullSearch, ExplorerCost
 from pextant.analysis.loadWaypoints import JSONloader
 import matplotlib.pyplot as plt
 logger = logging.getLogger()
@@ -82,7 +82,7 @@ if __name__ == '__main__':
 
     hi_low = GDALMesh('maps/HI_lowqual_DEM.tif')
     waypoints = loadPoints('waypoints/HI_13Nov16_MD7_A.json')
-    env_model = hi_low.loadMapSection(waypoints.geoEnvelope())
+    env_model = hi_low.loadSubSection(waypoints.geoEnvelope())
     astronaut = Astronaut(80)
     pathfinder = Pathfinder(astronaut, env_model)
     out = pathfinder.aStarCompletePath('Energy', waypoints)

@@ -62,7 +62,7 @@ for traverse in traversesallowed:
     df = pd.read_csv(csv_filename, sep=delimiter, header=header_row)
     gp = GeoPolygon(LAT_LONG,*df[['latitude', 'longitude']].as_matrix().transpose())
     wp = JSONloader.from_file(json_filename).get_waypoints()
-    em = gm.loadMapSection(gp.geoEnvelope())
+    em = gm.loadSubSection(gp.geoEnvelope())
     rr = df['cumulative distance (m)'].as_matrix()
     df['date_time'] = pd.to_datetime(df['epoch timestamp'],unit='s')
     time = df['date_time']-df['date_time'][0]
