@@ -22,7 +22,7 @@ def generate_site(sitename):
 
 
 def testGetCornersForMap():
-    env_model = GDALMesh(AMES_DEM).loadMapSection()
+    env_model = GDALMesh(AMES_DEM).loadSubSection()
     rows, cols = [2, 50], [2, 60]
     lat, long = GeoPolygon(env_model.ROW_COL, rows, cols).to(LAT_LONG)
     extent = generateExtent(lat, long)
@@ -31,7 +31,7 @@ def testGetCornersForMap():
 
 def testGetMap():
     site = generate_site('Ames')
-    env_model = GDALMesh(AMES_DEM).loadMapSection()
+    env_model = GDALMesh(AMES_DEM).loadSubSection()
     rows, cols = [2,50],[2,60]
     lat, long = GeoPolygon(env_model.ROW_COL, rows, cols).to(LAT_LONG)
     extent = generateExtent(lat, long)
