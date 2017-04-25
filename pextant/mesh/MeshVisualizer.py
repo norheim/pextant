@@ -1,15 +1,44 @@
-import MeshModel
-from ipywidgets import interact
+from bokeh.io import push_notebook, show, output_notebook
+import matplotlib.pyplot as plt
+import numpy as np
 from bokeh.io import push_notebook, show, output_notebook
 from bokeh.plotting import figure
-import numpy as np
-import matplotlib.pyplot as plt
+
 from pextant.lib.geoshapely import GeoPolygon
+
+class TriExpandViz(object):
+    def __init__(self, env_model, start_point, end_point, counter_interval=10):
+        self.mesh = env_model.dataset.mesh
+        self.env_model = env_model
+        self.points = GeoPolygon([start_point, end_point])
+        self.y, self.x = self.mesh.vertices[:, :2].transpose()
+        self.zfaces = np.zeros(env_model.size)
+        self.counter = 0
+        self.counter_interval = counter_interval
+
+    def draw(self):
+        px,py = self.points.to(self.env_model.ROW_COL)
+        plt.tripcolor(self.x, self.y, self.mesh.faces, facecolors=self.zfaces, edgecolors='k')
+        plt.plot(px, py, 'o')
+        plt.axis('equal')
+        plt.show()
+
+    def addcount(self):
+        self.counter += 1
+
+        if self.counter % self.counter_interval == 0:
+            print self.counter
+
+        if self.counter % self.counter_interval == 0:
+            self.draw()
+
+    def add(self, state, cost):
+        self.zfaces[state] = cost
 
 class ExpandViz(object):
     def __init__(self, env_model, counter_interval=1000):
         self.env_model = env_model
-        self.expandedgrid = np.zeros((env_model.numRows, env_model.numCols))
+        self.expandedgrid = np.zeros((env_model.y_size, env_model.x_size))
         self.counter = 0
         self.counter_interval = counter_interval
         self.expanded = []
@@ -34,16 +63,18 @@ class ExpandViz(object):
         plt.scatter(*np_rawpoints.to(self.env_model.COL_ROW), c='b')
         plt.show()
 
-    def add(self, state, cost):
-        self.expanded.append(np.array(state))
-        self.expandedgrid[state] = cost
+    def addcount(self):
         self.counter += 1
 
-        if self.counter % self.counter_interval == 0:
+        if self.counter % 100 == 0:
             print self.counter
 
         if self.counter % self.counter_interval == 0:
             self.draw()
+
+    def add(self, state, cost):
+        self.expanded.append(np.array(state))
+        self.expandedgrid[state] = cost
 
 class MeshViz:
     def __init__(self, notebook=False):
@@ -60,8 +91,8 @@ class MeshViz:
         self.p = figure(webgl=True, title="MD2", x_axis_label='x', y_axis_label='y', x_range=[0, size], y_range=[0, size])
         self.p.image(image=[mesh[::-1, :]], x=0, y=0, dw=dw, dh=dh, palette=palette)
         if not x is None:
-            #self.p.line(x, self.dh - np.array(y), line_color="green", line_width=3)
-            self.p.circle(x, self.dh - np.array(y), fill_color="green", line_color="black", size=10)
+            self.p.line(x, self.dh - np.array(y), line_color="green", line_width=3)
+            #self.p.circle(x, self.dh - np.array(y), fill_color="green", line_color="black", size=10)
         if self.notebook and viz:
             self.t = show(self.p, notebook_handle = self.notebook)
         else:
