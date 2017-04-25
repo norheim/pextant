@@ -9,4 +9,4 @@ static/
 pextant/notebooks
 !pextant/notebooks/*.py
 *.ply
-*_*/*
+_build_html
