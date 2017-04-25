@@ -1,11 +1,12 @@
-from pextant.MeshModel import Mesh
-from pextant.solvers.astarSEXTANT import ExpandViz
-from pextant.lib.geoshapely import GeoPoint, LAT_LONG
 import numpy as np
+
+from pextant.lib.geoshapely import GeoPoint, LAT_LONG
+from pextant.mesh.abstractmesh import MetaMesh
+from pextant.solvers.astarMesh import ExpandViz
 
 origin = GeoPoint(LAT_LONG, 43.461621,-113.572019)
 data = np.zeros([30,30])
-mm = Mesh(origin, data)
+mm = MetaMesh(origin, data)
 ev = ExpandViz(mm)
 ev.add((3,4),5)
 ev.add((2,2),5)
