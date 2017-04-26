@@ -66,7 +66,7 @@ class ExpandViz(object):
     def addcount(self):
         self.counter += 1
 
-        if self.counter % 100 == 0:
+        if self.counter % 1000 == 0:
             print self.counter
 
         if self.counter % self.counter_interval == 0:

@@ -48,6 +48,7 @@ class EnvironmentalModel(MetaMesh):
         super(EnvironmentalModel, self).__init__(nw_geo_point, dataset, resolution, planet,
                  parent_mesh, xoff, yoff)
         self.maxSlope = maxSlope
+        self.dataset_unmasked = dataset.filled(0)
         self.isvaliddata = np.logical_not(dataset.mask)
         self.slopes = []
         self.obstacles = []  # obstacles is a list with boolean values for non-passable squares

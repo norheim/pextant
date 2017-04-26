@@ -132,7 +132,7 @@ class astarSolver(SEXTANTSolver):
 
     def solve(self, startpoint, endpoint):
         env_model = self.env_model
-        if env_model.has_data(startpoint) and env_model.has_data(endpoint):
+        if env_model.elt_hasdata(startpoint) and env_model.elt_hasdata(endpoint):
             search = sextantSearch(startpoint, endpoint)
             node1, node2 = MeshSearchElement(env_model.getMeshElement(startpoint)), \
                            MeshSearchElement(env_model.getMeshElement(endpoint))

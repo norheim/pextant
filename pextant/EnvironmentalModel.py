@@ -114,8 +114,9 @@ class GridMeshModel(EnvironmentalModel):
         self.COL_ROW = Cartesian(self.nw_geo_point, self.resolution)
 
     def _getMeshElement(self, mesh_coordinates):
-        if self._inBounds(mesh_coordinates):
+        if len(self._inBounds(mesh_coordinates))>0:
             #TODO: need to make this a function:
+            mesh_coordinates = mesh_coordinates[0]
             geo_coordinates = mesh_coordinates[::-1]*self.resolution
             return MeshElement(self, mesh_coordinates, geo_coordinates)
         else:
@@ -142,8 +143,9 @@ class GridMeshModel(EnvironmentalModel):
         self.obstacles[center+circlex, center+circley] = 1
 
     def getElevations(self, mesh_coordinates):
+        #IMPORTANT assumes the elevation requested is not masked
         row, col = mesh_coordinates
-        return self.dataset[row,col]
+        return self.dataset_unmasked[row,col]
 
     @coordinate_transform
     def getSlope(self, coordinates):
@@ -162,6 +164,10 @@ class GridMeshModel(EnvironmentalModel):
         row, col = bounded.transpose()
         return bounded[self.isvaliddata[row, col]]
 
+    @coordinate_transform
+    def elt_hasdata(self, mesh_coordinate):
+        return len(self._hasdata(mesh_coordinate)) > 0
+
     def maxSlopeObstacle(self, maxSlope):
         self.obstacles = self.slopes > maxSlope
         self.passable = np.logical_not(self.obstacles)
@@ -177,7 +183,7 @@ class GridMeshModel(EnvironmentalModel):
         elif isinstance(coordinates, np.ndarray):
             return coordinates
         else:
-            return np.array(coordinates)
+            return np.array([coordinates])
 
     def cache_neighbours(self):
         s = dict()
