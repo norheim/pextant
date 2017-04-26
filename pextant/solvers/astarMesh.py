@@ -126,7 +126,8 @@ class ExplorerCost(aStarCostFunction):
 
 
 class astarSolver(SEXTANTSolver):
-    def __init__(self, env_model, cost_function, viz=None):
+    def __init__(self, env_model, explorer_model, viz=None, optimize_on='Energy', heuristic_accelerate=1):
+        cost_function = ExplorerCost(explorer_model, env_model, optimize_on, heuristic_accelerate)
         super(astarSolver, self).__init__(env_model, cost_function, viz)
 
     def solve(self, startpoint, endpoint):

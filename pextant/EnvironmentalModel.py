@@ -127,7 +127,7 @@ class GridMeshModel(EnvironmentalModel):
         kernel = self.searchKernel
         offset = kernel.getKernel()
         potential_neighbours = offset + state
-        passable_neighbours = np.array(filter(self._isPassable, potential_neighbours))
+        passable_neighbours = self._isPassable(potential_neighbours)
         # TODO: need to make this a function:
         coordsxy =  np.fliplr(passable_neighbours)*self.resolution
         return MeshCollection(self, passable_neighbours.transpose(), coordsxy.transpose())
@@ -150,21 +150,26 @@ class GridMeshModel(EnvironmentalModel):
         row, col = coordinates
         return self.slopes[row,col]
 
-    def _inBounds(self, coordinates):
+    def _inBounds(self, mesh_coordinates):
         # determines if a coordinate is within the boundaries of the environmental model
-        row, col = coordinates
-        return (0 <= row < self.y_size) and (0 <= col < self.x_size)
+        below_bounds = mesh_coordinates < self.shape
+        over_bounds = mesh_coordinates >= np.zeros(2)
+        boolean = np.logical_and(below_bounds, over_bounds).all(1)
+        return mesh_coordinates[boolean]
 
-    def _hasdata(self, coordinates):
-        row, col = coordinates
-        return self._inBounds(coordinates) and not self.ismissingdata[row, col]
+    def _hasdata(self, mesh_coordinates):
+        bounded = self._inBounds(mesh_coordinates)
+        row, col = bounded.transpose()
+        return bounded[self.isvaliddata[row, col]]
 
     def maxSlopeObstacle(self, maxSlope):
         self.obstacles = self.slopes > maxSlope
+        self.passable = np.logical_not(self.obstacles)
 
     def _isPassable(self, mesh_coordinates):
-        row, col = mesh_coordinates
-        return self._hasdata(mesh_coordinates) and not self.obstacles[row, col]
+        valid_data = self._hasdata(mesh_coordinates)
+        row, col = valid_data.transpose()
+        return valid_data[self.passable[row, col]]
 
     def convert_coordinates(self, coordinates):
         if isinstance(coordinates, GeoPoint):

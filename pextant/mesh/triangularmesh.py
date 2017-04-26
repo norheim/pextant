@@ -209,7 +209,7 @@ class TriMeshModel(EnvironmentalModel):
         return coordinates
 
     def _hasdata(self, coordinates):
-        return not self.ismissingdata[coordinates]
+        return self.isvaliddata[coordinates]
 
     def convert_coordinates(self, coordinates):
         if isinstance(coordinates, GeoPoint):
