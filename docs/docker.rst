@@ -16,13 +16,17 @@ https://hub.docker.com/r/homme/cesium-terrain-builder/
 	docker run -v "c:\Users\johan\Desktop\Big maps":/data -ti spara/gdal_ef bash
 	docker run -v "c:\Users\johan\Dropbox (MIT)\BASALT\pextant\pextant\maps":/data -t -i spara/gdal_ef bash
 
+	gdaldem color-relief HI_lowqual_DEM.tif colormap.txt HI_lowqual_relief.tif -nearest_color_entry
+
+	gdal2tiles.py HI_lowqual_relief.tif
+
 Ames Stereo pipeline
 ==================================
 
 .. code-block:: python
 	docker pull pgcumn/asp
 
-Cesium terrain server
+Cesium terrain server (deprecated)
 =====================================
 
 .. code-block:: python
@@ -42,6 +46,4 @@ And in cesium
 Need to actually make the C drive available for sharing
 https://rominirani.com/docker-on-windows-mounting-host-directories-d96f3f056a2c#.rsfkrhqur
 
-later need to check out
-https://github.com/geo-data/cesium-terrain-server
 

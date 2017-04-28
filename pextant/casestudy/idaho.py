@@ -1,5 +1,5 @@
-from api import *
-from EnvironmentalModel import *
+from pextant.api import *
+from pextant.EnvironmentalModel import *
 from osgeo import gdal
 
 dem_path = 'maps/hwmidlow.tif'

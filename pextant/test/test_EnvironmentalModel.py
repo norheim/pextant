@@ -23,25 +23,25 @@ class TestEnvironmentalModelMethods(unittest.TestCase):
 		self.assertTrue(self.EM.obstacles[2][3])
 	
 	def test_obstacleFunctions(self):
-		self.EM.setMaxSlope(25)
+		self.EM.maxSlopeObstacle(25)
 		self.assertTrue(self.EM.obstacles[0][3])
 		self.assertTrue(self.EM.obstacles[2][3])
 		
-		self.EM.setMaxSlope(10)
+		self.EM.maxSlopeObstacle(10)
 		self.assertFalse(self.EM.obstacles[0][3])
 		self.assertFalse(self.EM.obstacles[2][3])
 		
-		self.EM.setMaxSlope(15)
+		self.EM.maxSlopeObstacle(15)
 		self.assertFalse(self.EM.obstacles[0][3])
 		self.assertTrue(self.EM.obstacles[2][3])
 		
 		self.EM.setObstacle((2, 3))
 		self.assertFalse(self.EM.obstacles[2][3])
 		
-		self.EM.setMaxSlope(20)
+		self.EM.maxSlopeObstacle(20)
 		self.assertFalse(self.EM.obstacles[2][3])
 		
-		self.EM.setMaxSlope(15)
+		self.EM.maxSlopeObstacle(15)
 		self.assertFalse(self.EM.obstacles[2][3])
 		
 		self.EM.eraseObstacle((2, 3))

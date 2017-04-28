@@ -1,9 +1,7 @@
-from api import *
-from EnvironmentalModel import *
-from ExplorerModel import Astronaut
-from bokeh.plotting import figure, output_file, show
-from bokeh.io import hplot
-from loadWaypoints import loadPoints
+from pextant.EnvironmentalModel import *
+from pextant.ExplorerModel import Astronaut
+from pextant.analysis.loadWaypoints import loadPoints
+from pextant.api import *
 
 filename = 'waypoints/HI_sextant_testing2_B.json'
 with open(filename) as data_file:
@@ -11,7 +9,7 @@ with open(filename) as data_file:
 jsonInput = json.dumps(data)
 
 waypoints = loadPoints(filename)
-dem_path = 'maps/test5-DEM.tif'
+dem_path = 'maps/HI_lowqual_DEM.tif'
 dataset, info = loadElevationsLite(dem_path)
 XY = Cartesian(info["nw_geo_point"], info["resolution"])
 nw_corner = waypoints.geoEnvelope().addMargin(XY,10).upper_left

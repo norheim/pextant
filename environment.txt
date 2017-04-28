@@ -1,0 +1,25 @@
+This is a list of all higher level libraries installed
+conda:
+- jupyter
+- nb_conda
+- numpy
+- gdal
+- pyproj
+- pipdeptree
+- pandas
+- shapely
+- scipy
+- matplotlib
+- bokeh
+- ipyleaflet (overrided py folium?)
+pip:
+- docker
+- pypiwin32 (for docker)
+- flask
+- flask-socketio
+- eventlet
+- pynmea2
+- pyserial
+- sphinx
+- sphinx bootstrap theme
+- folium

@@ -1,6 +1,7 @@
 import pyproj
 import numpy as np
 from shapely.geometry import Point, LineString
+import shapely.coords
 
 
 class GeoType(object):
@@ -52,7 +53,8 @@ class GeoType(object):
 
 
 class UTM(GeoType):
-    def __init__(self, zone):
+    def __init__(self, zone_inter):
+        zone = zone_inter if not isinstance(zone_inter, GeoPoint) else zone_inter.utm_reference.proj_param["zone"]
         super(UTM, self).__init__("utm", ["easting", "northing"], {"proj": "utm", "zone": zone},
                                   ["easting", "northing"])
 
@@ -70,8 +72,47 @@ class LatLon(GeoType):
     def to_utm(self, geo_point):
         np_longitude = np.array(geo_point["longitude"])
         zones = (((np_longitude + 180).round() / 6.0) % 60 + 1).astype(int)
+        # TODO: check if this is needed:
+        #UTMzdlChars = "CDEFGHJKLMNPQRSTUVWXX"
+        #if -80 <= lat and lat <= 84:
+        #    zone_letter = UTMzdlChars[((np_latitude + 80) / 8).astype(int)]
         zone = zones[0] if isinstance(zones, np.ndarray) else zones
         return UTM(zone)
+
+# doesn't round of
+class XY(GeoType):
+    def __init__(self, origin, resolution, reverse=False):
+        if reverse:
+            order = ["y", "x"]
+        else:
+            order = ["x", "y"]
+
+        self.zone = origin.utm_reference.proj_param["zone"]
+        super(XY, self).__init__("coord", order, {"proj": "utm", "zone": self.zone}, ["x", "y"])
+        # doing conversion early on will save use from redoing it later, we don't expect our origin to change too much
+        self.origin_easting, self.origin_northing = origin.x, origin.y
+        self.resolution = resolution
+
+        self.origin = origin # needed for reversal
+        self.reversed = reverse # needed for reversal too
+
+    def reverse(self):
+        return Cartesian(self.origin, self.resolution, not self.reversed)
+
+    def to_utm(self, geo_point):
+        return  UTM(self.zone)
+
+    def getargs(self, geo_points):
+        # next line should ideally be super.getargs, but we overwrite the fx so not sure if possible
+        x, y = geo_points["x"], geo_points["y"]
+        delta_easting, delta_northing = np.array([x, y]) * self.resolution
+        return self.origin_easting + delta_easting, self.origin_northing - delta_northing
+
+    def post_process(self, transformed_points):
+        points_easting, points_northing = transformed_points
+        delta_easting, delta_northing = points_easting - self.origin_easting, self.origin_northing - points_northing
+        coords = np.array([delta_easting, delta_northing]) / self.resolution
+        return self.reorder(coords)
 
 class Cartesian(GeoType):
     def __init__(self, origin, resolution, reverse=False):
@@ -85,6 +126,12 @@ class Cartesian(GeoType):
         # doing conversion early on will save use from redoing it later, we don't expect our origin to change too much
         self.origin_easting, self.origin_northing = origin.x, origin.y
         self.resolution = resolution
+
+        self.origin = origin # needed for reversal
+        self.reversed = reverse # needed for reversal too
+
+    def reverse(self):
+        return Cartesian(self.origin, self.resolution, not self.reversed)
 
     def to_utm(self, geo_point):
         return  UTM(self.zone)
@@ -117,7 +164,10 @@ class GeoObject(object):
 
     def to(self, other_reference, conversion_type=None):
         # assuming other_reference is not of type utm
-        return self.original_reference.transform(self.data, other_reference, conversion_type)
+        if isinstance(other_reference, UTM):
+            return np.array([self.easting, self.northing])
+        else:
+            return self.original_reference.transform(self.data, other_reference, conversion_type)
 
     def eastingnorthing(self):
         return self.easting, self.northing
@@ -136,6 +186,10 @@ class GeoPolygon(GeoObject, LineString):
             x= [p.x for p in firstarg]
             y = [p.y for p in firstarg]
             geo_type = firstarg[0].utm_reference
+        elif isinstance(args[0], shapely.coords.CoordinateSequence):
+            # TODO: check that there is indeed an optional argument supplied
+            x, y = np.array(args[0]).transpose()
+            geo_type = firstarg
         else:
             x, y = args
             geo_type = firstarg
@@ -153,6 +207,8 @@ class GeoPolygon(GeoObject, LineString):
     def __getitem__(self, index):
         return GeoPoint(self.utm_reference, self.easting[index], self.northing[index])
 
+    def __len__(self):
+        return len(self.coords)
 
 class GeoEnvelope(GeoPolygon):
     def __init__(self, upper_left, lower_right):
@@ -161,13 +217,13 @@ class GeoEnvelope(GeoPolygon):
         self.lower_right = lower_right
         GeoPolygon.__init__(self, [upper_left, lower_right])
 
-    def addMargin(self, cartesian_geo_type, margin):
+    def addMargin(self, resolution, margin):
         # margin is in "units" of cartesian_geo_type, aka if 1m resolution, the one unit of margin
         # corresponds to one meter of margin
-        upper_left_easting = self.upper_left.easting - margin*cartesian_geo_type.resolution
-        upper_left_northing = self.upper_left.northing + margin*cartesian_geo_type.resolution
-        lower_right_easting = self.lower_right.easting + margin * cartesian_geo_type.resolution
-        lower_right_northing = self.lower_right.northing - margin * cartesian_geo_type.resolution
+        upper_left_easting = self.upper_left.easting - margin*resolution
+        upper_left_northing = self.upper_left.northing + margin*resolution
+        lower_right_easting = self.lower_right.easting + margin * resolution
+        lower_right_northing = self.lower_right.northing - margin * resolution
         new_upper_left = GeoPoint(self.utm_reference, upper_left_easting, upper_left_northing)
         new_lower_right =GeoPoint(self.utm_reference, lower_right_easting, lower_right_northing)
         return GeoEnvelope(new_upper_left, new_lower_right)
