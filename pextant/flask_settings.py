@@ -1,6 +1,6 @@
 import os
 
-GEOTIFF_PATH = '../../data/dem/'
+GEOTIFF_PATH = '../../../data/dem/'
 
 AMES = 'Ames.tif'
 COTM_HIGHWAY = 'COTM_Highway.tif'

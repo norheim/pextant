@@ -58,12 +58,18 @@ def crossdomain(origin=None, methods=None, headers=None,
     return decorator
 
 def main(argv):
+    print 'STARTING SEXTANT'
     try:
         geotiff_full_path = argv[0]
     except IndexError:
         # print 'Syntax is "sextant <inputfile>"'
+        pass
+    
+    if not geotiff_full_path or geotiff_full_path == 'sextant:app':
         geotiff_full_path = GEOTIFF_FULL_PATH
 
+    print geotiff_full_path
+    
     gdal_mesh = GDALMesh(geotiff_full_path)
 
     @app.route('/', methods=['GET', 'POST'])
@@ -81,8 +87,9 @@ def main(argv):
         #search_results, rawpoints, itemssrchd = solver.solvemultipoint(waypoints)
         return json.dumps({'status': 'OK', 'shape': environmental_model.size})
 
-    app.run(host='localhost', port=5000)
+    if argv[0] != 'sextant:app':
+        app.run(host='localhost', port=5000)
 
 
-if __name__ == "__main__":
-    main(sys.argv[1:])
+# if __name__ == "__main__":
+main(sys.argv[1:])
