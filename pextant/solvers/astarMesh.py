@@ -9,7 +9,7 @@ class MeshSearchElement(aStarSearchNode):
     def __init__(self, mesh_element, parent=None, cost_from_parent=0):
         self.mesh_element = mesh_element
         self.derived = {} #the point of this is to store in memory expensive calculations we might need later
-        super(MeshSearchElement, self).__init__(mesh_element.state, parent, cost_from_parent)
+        super(MeshSearchElement, self).__init__(mesh_element.mesh_coordinate, parent, cost_from_parent)
 
     def goalTest(self, goal):
         if self.mesh_element.distanceToElt(goal.mesh_element) < self.mesh_element.parentMesh.resolution*3:
@@ -17,6 +17,12 @@ class MeshSearchElement(aStarSearchNode):
 
     def getChildren(self):
         return MeshSearchCollection(self.mesh_element.getNeighbours(), self)
+
+    def __getattr__(self, item):
+        try:
+            return MeshSearchElement.__getattribute__(self, item)
+        except AttributeError:
+            return getattr(self.mesh_element, item)
 
     def __str__(self):
         return str(self.mesh_element)
@@ -150,21 +156,18 @@ class astarSolver(SEXTANTSolver):
             return False
 
 if __name__ == '__main__':
-    from pextant.settings import *
+    from pextant.settings import WP_HI, HI_DEM_LOWQUAL_PATH
     from pextant.EnvironmentalModel import GDALMesh
     from pextant.ExplorerModel import Astronaut
     from pextant.mesh.MeshVisualizer import ExpandViz, MeshVizM
+
     jloader = WP_HI[7]
     waypoints = jloader.get_waypoints()
     envelope = waypoints.geoEnvelope()#.addMargin(0.5, 30)
-    env_model = HI_DEM_LOWQUAL.loadSubSection(envelope, maxSlope=35)
+    env_model = GDALMesh(HI_DEM_LOWQUAL_PATH).loadSubSection(envelope, maxSlope=35)
     astronaut = Astronaut(80)
-    cost_function = ExplorerCost(astronaut, env_model, "Energy", 1)
-    solver = astarSolver(env_model, cost_function, ExpandViz(env_model, 10000))
 
-    waypointseasy = [GeoPoint(env_model.ROW_COL, 1,1), GeoPoint(env_model.ROW_COL, 5,10),
-                     GeoPoint(env_model.ROW_COL, 5,15)]
-
+    solver = astarSolver(env_model, astronaut, ExpandViz(env_model, 10000))
     segmentsout, rawpoints, items = solver.solvemultipoint(waypoints)
     jsonout = jloader.add_search_sol(segmentsout, True)
 

@@ -2,11 +2,10 @@ import csv
 import json
 import logging
 import re
-from pextant.solvers.astarMesh import fullSearch, ExplorerCost
+from pextant.solvers.astarMesh import astarSolver
 from pextant.analysis.loadWaypoints import JSONloader
 import matplotlib.pyplot as plt
 logger = logging.getLogger()
-
 
 class Pathfinder:
     """
@@ -21,8 +20,9 @@ class Pathfinder:
     difficult because they depend on shadowing and was not implemented by Aaron.
     """
     def __init__(self, explorer_model, environmental_model):
-        self.explorer = explorer_model
-        self.map = environmental_model
+        cheating = 10
+        self.solver = astarSolver(environmental_model, explorer_model,
+                                  optimize_on = 'Energy', heuristic_accelerate = cheating)
 
     def aStarCompletePath(self, optimize_on, waypoints, returnType="JSON", dh=None, fileName=None ):
         pass
@@ -37,11 +37,7 @@ class Pathfinder:
         used when we would like to write stuff to a file and is currently necessary
         for csv return types.
         """
-        env_model = self.map
-        explorer_model = self.explorer
-        cheating = 10
-        cost_function = ExplorerCost(explorer_model, env_model, optimize_on, cheating)
-        segmentsout, rawpoints, items = fullSearch(waypoints, env_model, cost_function)
+        segmentsout, rawpoints, items = self.solver.solvemultipoint(waypoints)
 
         if filepath:
             extension = re.search('^(.+\/[^/]+)\.(\w+)$', filepath).group(2)

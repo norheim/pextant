@@ -1,13 +1,12 @@
 import numpy as np
-import json
 
 class MeshElement(object):
-    def __init__(self, parentMesh, state, representative_point):
-        if isinstance(state, np.ndarray):
-            state = tuple(state)
-        self.state = state
+    def __init__(self, parentMesh, mesh_coordinate, representative_point):
+        if isinstance(mesh_coordinate, np.ndarray):
+            mesh_coordinate = tuple(mesh_coordinate)
+        self.mesh_coordinate = mesh_coordinate
         self.x, self.y = representative_point
-        self.z = parentMesh.getElevations(state)
+        self.z = parentMesh.getElevations(mesh_coordinate)
         self.timedelta = 0
         self.resolution = parentMesh.resolution
         self.parentMesh = parentMesh
@@ -15,11 +14,8 @@ class MeshElement(object):
     def getBorders(self):
         pass
 
-    def getState(self):
-        return self.state
-
     def getNeighbours(self):
-        return self.parentMesh._getNeighbours(self.state)
+        return self.parentMesh._getNeighbours(self.mesh_coordinate)
 
     #TODO: need to add third dimension (other_elt.getElevation() - self.getElevation())**2
     def distanceTo(self, other_elts):
@@ -41,8 +37,8 @@ class MeshElement(object):
         :type other_elt: MeshElement
         :return:
         """
-        if isinstance(other_elt.state, int): #TODO: make custom element
-            path_length = (other_elt.state != self.state)*self.parentMesh.resolution*3
+        if isinstance(other_elt.mesh_coordinate, int): #TODO: make custom element
+            path_length = (other_elt.mesh_coordinate != self.mesh_coordinate) * self.parentMesh.resolution * 3
         else:
             path_length = np.sqrt(
                 (self.x - other_elt.x) ** 2 +
@@ -62,7 +58,7 @@ class MeshElement(object):
         return slopes, path_length
 
     def __str__(self):
-        return '(%s, %s, %s, %s)' % (self.state, self.x, self.y, self.z)
+        return '(%s, %s, %s, %s)' % (self.mesh_coordinate, self.x, self.y, self.z)
 
     def settime(self, time):
         self.timedelta = time

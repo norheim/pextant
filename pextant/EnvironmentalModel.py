@@ -179,7 +179,7 @@ class GridMeshModel(EnvironmentalModel):
 
     def convert_coordinates(self, coordinates):
         if isinstance(coordinates, GeoPoint):
-            return coordinates.to(self.ROW_COL)
+            return np.array([coordinates.to(self.ROW_COL)])
         elif isinstance(coordinates, np.ndarray):
             return coordinates
         else:

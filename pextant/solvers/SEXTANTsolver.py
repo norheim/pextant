@@ -58,11 +58,12 @@ class sextantSearch(object):
         sequence = []
         coords = self.coordinates
         for i, mesh_srch_elt in enumerate(self.nodes):
-            row_entry = [i==1 or i==len(coords)-1] #True if it's the first or last entry
-            row_entry += coords + [mesh_srch_elt.mesh_element.getElevevation()]
-            derived = mesh_srch_elt.derived
-            row_entry += [derived['pathlength'], derived['time'], derived['energy']]
-            sequence += [row_entry]
+            if i != 0:
+                row_entry = [i==1 or i==len(coords)-1] #True if it's the first or last entry
+                row_entry += coords[i] + [mesh_srch_elt.mesh_element.z]
+                derived = mesh_srch_elt.derived
+                row_entry += [derived['pathlength'], derived['time'], derived['energy']]
+                sequence += [row_entry]
         return sequence
 
 def fullSearch(waypoints, env_model, cost_function, viz=None):
