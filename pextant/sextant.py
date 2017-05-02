@@ -1,18 +1,20 @@
+from flask_settings import GEOTIFF_FULL_PATH
 import sys
 sys.path.append('../')
 import numpy as np
-
-from flask import Flask
 import json
-app = Flask(__name__)
 from datetime import timedelta
-from flask import make_response, request, current_app
+
 from functools import update_wrapper
 
 from pextant.EnvironmentalModel import GDALMesh
 from pextant.analysis.loadWaypoints import JSONloader
 from pextant.lib.geoshapely import GeoPolygon, LAT_LONG
 from pextant.solvers.astarMesh import astarSolver
+
+from flask import Flask
+from flask import make_response, request, current_app
+app = Flask(__name__)
 
 def crossdomain(origin=None, methods=None, headers=None,
                 max_age=21600, attach_to_all=True,
@@ -59,8 +61,8 @@ def main(argv):
     try:
         geotiff_full_path = argv[0]
     except IndexError:
-        print 'Syntax is "sextant <inputfile>"'
-        geotiff_full_path = '../data/maps/Ames/Ames.tif'
+        # print 'Syntax is "sextant <inputfile>"'
+        geotiff_full_path = GEOTIFF_FULL_PATH
 
     gdal_mesh = GDALMesh(geotiff_full_path)
 
@@ -83,4 +85,4 @@ def main(argv):
 
 
 if __name__ == "__main__":
-   main(sys.argv[1:])
+    main(sys.argv[1:])

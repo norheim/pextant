@@ -5,6 +5,7 @@ from pextant.analysis.loadWaypoints import JSONloader
 from pextant.ExplorerModel import Astronaut
 from pextant.mesh.MeshVisualizer import MeshViz
 from pextant.solvers.astarMesh import astarSolver, ExplorerCost
+
 explorer = Astronaut(80)
 mv = MeshViz(True)
 DATA_ROOT = os.path.join('..','..','data')
