@@ -112,6 +112,7 @@ class GridMeshModel(EnvironmentalModel):
         self.searchKernel = SearchKernel()
         self.ROW_COL = Cartesian(self.nw_geo_point, self.resolution, reverse=True)
         self.COL_ROW = Cartesian(self.nw_geo_point, self.resolution)
+        self.cached_neighbours = self._cache_neighbours() if self.cached else []
 
     def _getMeshElement(self, mesh_coordinates):
         if len(self._inBounds(mesh_coordinates))>0:
@@ -127,8 +128,12 @@ class GridMeshModel(EnvironmentalModel):
         state = np.array(mesh_coordinates)
         kernel = self.searchKernel
         offset = kernel.getKernel()
-        potential_neighbours = offset + state
-        passable_neighbours = self._isPassable(potential_neighbours)
+        if self.cached:
+            selection = self.cached_neighbours[state[0],state[1]]
+            passable_neighbours = state + offset[selection]
+        else:
+            potential_neighbours = state + offset
+            passable_neighbours = self._isPassable(potential_neighbours)
         # TODO: need to make this a function:
         coordsxy =  np.fliplr(passable_neighbours)*self.resolution
         return MeshCollection(self, passable_neighbours.transpose(), coordsxy.transpose())
@@ -154,10 +159,14 @@ class GridMeshModel(EnvironmentalModel):
 
     def _inBounds(self, mesh_coordinates):
         # determines if a coordinate is within the boundaries of the environmental model
+        boolean = self._inbounds_bool(mesh_coordinates)
+        return mesh_coordinates[boolean]
+
+    def _inbounds_bool(self, mesh_coordinates):
         below_bounds = mesh_coordinates < self.shape
         over_bounds = mesh_coordinates >= np.zeros(2)
         boolean = np.logical_and(below_bounds, over_bounds).all(1)
-        return mesh_coordinates[boolean]
+        return boolean
 
     def _hasdata(self, mesh_coordinates):
         bounded = self._inBounds(mesh_coordinates)
@@ -185,11 +194,27 @@ class GridMeshModel(EnvironmentalModel):
         else:
             return np.array([coordinates])
 
+    #TODO: move to parent class
     def cache_neighbours(self):
-        s = dict()
-        for i in range(self.y_size):
-            for j in range(self.x_size):
-                s[(i,j)] = self.getNeighbours((i,j))
+        self.cached_neighbours = self._cache_neighbours()
+        return self.cached_neighbours
+
+    def _cache_neighbours(self):
+        print('cashing neighbours')
+        s = np.empty((self.shape[0],self.shape[1],8),dtype=bool)
+        rows, cols = np.mgrid[0:self.y_size, 0:self.x_size]
+        gridpoints = np.array([rows.flatten(), cols.flatten()]).transpose()
+
+        kernel = self.searchKernel
+        offsets = kernel.getKernel()
+        for idx, offset in enumerate(offsets):
+            candidate_neighbour_point = gridpoints + offset
+            point_is_neighbour = self._inbounds_bool(candidate_neighbour_point) # if not in bounds, its not a neighbour
+            inbound_rows, inbound_cols = candidate_neighbour_point[point_is_neighbour].transpose()
+            point_is_neighbour[point_is_neighbour] = self.isvaliddata[inbound_rows, inbound_cols]
+            hasdata_rows, hasdata_cols = candidate_neighbour_point[point_is_neighbour].transpose()
+            point_is_neighbour[point_is_neighbour] = self.passable[hasdata_rows, hasdata_cols]
+            s[:,:,idx] = np.reshape(point_is_neighbour, self.shape)
         return s
 
 
@@ -201,6 +226,15 @@ def loadElevationMap(fullPath, maxSlope=35, nw_corner=None, se_corner=None, desi
 
 
 if __name__ == '__main__':
-    ames_em = GDALMesh('../data/maps/Ames/Ames.tif').loadSubSection()
+    from pextant.lib.utils import gridpoints_list
+    ames_em = GDALMesh('../data/maps/Ames/Ames.tif').loadSubSection(maxSlope=25)
     #cProfile.run('ames_em.cache_neighbours()')
-    print(ames_em.x_size * ames_em.y_size)
+    s = ames_em.cache_neighbours()
+    positions = gridpoints_list(ames_em)
+    kernel = ames_em.searchKernel.getKernel()
+    for position in positions:
+        n1 = ames_em._getNeighbours(position).mesh_coordinates
+        n2 = (position + kernel[s[position[0], position[1]]]).transpose()
+        if not np.array_equal(n1, n2):
+            print 'Houston we have a problem'
+    print "Houston we don't have a problem'"

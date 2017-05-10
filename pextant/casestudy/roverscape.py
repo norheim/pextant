@@ -1,6 +1,6 @@
 from pextant.api import Pathfinder
 from pextant.EnvironmentalModel import GDALMesh
-from pextant.ExplorerModel import Astronaut
+from pextant.explorers import Astronaut
 from pextant.lib.geoshapely import GeoEnvelope, GeoPoint, LAT_LONG
 import matplotlib.pyplot as plt
 from pextant.solvers.astarMesh import ExpandViz, ExplorerCost, fullSearch

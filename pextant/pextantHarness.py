@@ -18,7 +18,7 @@ import json
 import os
 
 from pextant.api import Pathfinder
-from pextant.ExplorerModel import Astronaut
+from pextant.explorers import Astronaut
 from pextant.lib.geoshapely import GeoPoint, GeoEnvelope, LAT_LONG
 from pextant.EnvironmentalModel import loadElevationMap
 

@@ -2,7 +2,7 @@ import math
 import numpy as np
 from SEXTANTsolver import sextantSearch, SEXTANTSolver
 from astar import aStarSearchNode, aStarNodeCollection, aStarCostFunction, aStarSearch
-from pextant.EnvironmentalModel import EnvironmentalModel
+from pextant.EnvironmentalModel import EnvironmentalModel, GridMeshModel
 from pextant.lib.geoshapely import GeoPoint, GeoPolygon, LONG_LAT
 
 class MeshSearchElement(aStarSearchNode):
@@ -39,12 +39,12 @@ class MeshSearchCollection(aStarNodeCollection):
         return mesh_search_element
 
 class ExplorerCost(aStarCostFunction):
-    def __init__(self, astronaut, environment, optimize_on, heuristic_accelerate=1):
+    def __init__(self, astronaut, environment, optimize_on, cache=False, heuristic_accelerate=1):
         """
 
-        :param astronaut:
+        :type astronaut: Astronaut
         :param environment:
-        :type environment: EnvironmentalModel
+        :type environment: GridMeshModel
         :param optimize_on:
         """
         super(ExplorerCost, self).__init__()
@@ -52,31 +52,44 @@ class ExplorerCost(aStarCostFunction):
         self.map = environment
         self.optimize_vector = astronaut.optimizevector(optimize_on)
         self.heuristic_accelerate = heuristic_accelerate
+        self.cache = cache
+        if cache:
+            self.cached["costs"] = self.cache_costs()
 
-    def getHeuristicCost(self, elt):
-        node = elt.mesh_element
-        start_row, start_col = node.y, node.x
-        end_row, end_col = self.end_node.y, self.end_node.x
+    def cache_all(self):
+        end_y, end_x = self.end_node.y, self.end_node.x
+        self.cached["costs"] = self.cache_costs()
+        self.cached["heuristics"] = self.cache_heuristic((end_x, end_y))
+
+    def cache_costs(self):
+        kernel = self.map.searchKernel
+        offsets = kernel.getKernel()
+        dem = self.map
+
+        dr = np.apply_along_axis(np.linalg.norm, 1, offsets) * self.map.resolution
+        z = self.map.dataset_unmasked
+        g = self.map.getGravity()
+        slopes_rad = np.empty((dem.shape[0], dem.shape[1], 8))
+        energy_cost = np.empty((dem.shape[0], dem.shape[1], 8))
+
+        for idx, offset in enumerate(offsets):
+            dri = dr[idx]
+            slopes_rad[:, :, idx] = np.arctan2(np.roll(np.roll(z, -offset[0], axis=0), -offset[1], axis=1) - z, dri)
+            energy_cost[:, :, idx], _ = self.explorer.total_energy_cost(dri, slopes_rad[:, :, idx],  g)
+
+        return energy_cost
+
+    def cache_heuristic(self, goal):
         optimize_vector = self.optimize_vector
-
-        # max number of diagonal steps that can be taken
-        h_diagonal = min(abs(start_row - end_row), abs(start_col - end_col))
-        h_straight = abs(start_row - end_row) + abs(start_col - end_col)  # Manhattan distance
-
-        # D represents the cost between two consecutive nodes
-        d = 0 #TODO: need to clean up
-
-        # Adding the distance weight
-        d += self.map.resolution * optimize_vector[0]
-
-        # Adding the time weight
-        max_velocity = 1.6  # the maximum velocity is 1.6 from Marquez 2008
-        d += self.map.resolution / max_velocity * optimize_vector[1]
+        g_x, g_y = goal
+        r = self.map.resolution
+        y, x = r*np.mgrid[0:self.map.shape[0], 0:self.map.shape[1]]
+        delta_y, delta_x = np.abs(y - g_y), np.abs(x - g_x)
+        h_diagonal = np.minimum(delta_y, delta_x)
+        h_straight = delta_y + delta_x
 
         # Adding the energy weight
         m = self.explorer.mass
-        r = self.map.resolution
-
         # Aaron's thesis page 50
         if self.map.planet == 'Earth':
             energy_weight = 1.504 * m + 53.298
@@ -89,23 +102,88 @@ class ExplorerCost(aStarCostFunction):
             # This should not happen
             raise TypeError("planet/explorer conflict, current planet: ", self.map.planet, "current explorer: ",
                             self.explorer.type)
-        d += energy_weight *  r * optimize_vector[2]
+
+        max_velocity = 1.6  # the maximum velocity is 1.6 from Marquez 2008
+        d = np.array([1, max_velocity, energy_weight])
+        d = np.dot(d, optimize_vector)
+
+        # Patel 2010. See page 49 of Aaron's thesis
+        heuristic_weight = self.heuristic_accelerate
+        heuristic_cost = heuristic_weight * (d * math.sqrt(2) * h_diagonal + d * (h_straight - 2 * h_diagonal))
+        # This is just Euclidean distance
+        # heuristic_cost = d * math.sqrt((start_row - end_row) ** 2 + (start_col - end_col) ** 2)
+        return heuristic_cost
+
+    def get_cache_heuristic(self, start_row, start_col):
+        return self.cached["heuristics"][start_row, start_col]
+
+    def getHeuristicCost(self, elt):
+        node = elt.mesh_element
+        start_row, start_col = node.mesh_coordinate
+        heuristic_fx = self.get_cache_heuristic if self.cache else self._getHeuristicCost
+        return heuristic_fx(start_row, start_col)
+
+    def _getHeuristicCost(self, start_row, start_col):
+        r = self.map.resolution
+        start_x, start_y = r*start_col, r*start_row
+        end_x, end_y = self.end_node.x, self.end_node.y
+        optimize_vector = self.optimize_vector
+
+        # max number of diagonal steps that can be taken
+        h_diagonal = min(abs(start_y - end_y), abs(start_x - end_x))
+        h_straight = abs(start_y - end_y) + abs(start_x - end_x)  # Manhattan distance
+
+        # Adding the energy weight
+        m = self.explorer.mass
+        # Aaron's thesis page 50
+        if self.map.planet == 'Earth':
+            energy_weight = 1.504 * m + 53.298
+        elif self.map.planet == 'Moon' and self.explorer.type == 'Astronaut':
+            energy_weight = 2.295 * m + 52.936
+        elif self.map.planet == 'Moon' and self.explorer.type == 'Rover':
+            p_e = self.explorer.P_e  # this only exists for rovers
+            energy_weight = (0.216 * m + p_e / 4.167)
+        else:
+            # This should not happen
+            raise TypeError("planet/explorer conflict, current planet: ", self.map.planet, "current explorer: ",
+                            self.explorer.type)
+
+        max_velocity = 1.6  # the maximum velocity is 1.6 from Marquez 2008
+        d = np.array([1, max_velocity, energy_weight])
+        d = np.dot(d, optimize_vector)
 
         # Patel 2010. See page 49 of Aaron's thesis
         heuristic_weight = self.heuristic_accelerate
         heuristic_cost = heuristic_weight*(d * math.sqrt(2) * h_diagonal + d * (h_straight - 2 * h_diagonal))
         # This is just Euclidean distance
         #heuristic_cost = d * math.sqrt((start_row - end_row) ** 2 + (start_col - end_col) ** 2)
-
-        return heuristic_cost
+        return  heuristic_cost
 
     def getCostBetween(self, fromnode, tonodes):
-        optimize_weights = self.optimize_vector
-        optimize_vector = self.calculateCostBetween(fromnode.mesh_element, tonodes.collection)
-        costs = np.dot(optimize_vector.transpose(), optimize_weights)
-        tonodes.derived = optimize_vector
+        """:type fromnode: MeshSearchElement"""
+        from_elt = fromnode.mesh_element
+        to_cllt = tonodes.collection
+        if self.cache:
+            row, col = from_elt.mesh_coordinate
+            selection = self.map.cached_neighbours[row,col]
+            costs = self.cached["costs"][row, col][selection]
+            tonodes.derived = np.array([
+                0.5*np.ones_like(costs),
+                0.5*np.ones_like(costs),
+                costs
+            ])
+        else:
+            optimize_weights = self.optimize_vector
+            optimize_vector = self.calculateCostBetween(from_elt, to_cllt)
+            costs = np.dot(optimize_vector.transpose(), optimize_weights)
+            tonodes.derived = optimize_vector
 
         return costs
+
+    def getCostToNeighbours(self, from_node):
+        row, col = from_node.state
+        neighbours = self.map.cached_neighbours(from_node.state)
+        return self.cached[row, col, neighbours]
 
     def calculateCostBetween(self, from_elt, to_elts):
         """
@@ -132,8 +210,8 @@ class ExplorerCost(aStarCostFunction):
 
 
 class astarSolver(SEXTANTSolver):
-    def __init__(self, env_model, explorer_model, viz=None, optimize_on='Energy', heuristic_accelerate=1):
-        cost_function = ExplorerCost(explorer_model, env_model, optimize_on, heuristic_accelerate)
+    def __init__(self, env_model, explorer_model, viz=None, optimize_on='Energy', cache=False, heuristic_accelerate=1):
+        cost_function = ExplorerCost(explorer_model, env_model, optimize_on, cache, heuristic_accelerate)
         super(astarSolver, self).__init__(env_model, cost_function, viz)
 
     def solve(self, startpoint, endpoint):
@@ -158,7 +236,7 @@ class astarSolver(SEXTANTSolver):
 if __name__ == '__main__':
     from pextant.settings import WP_HI, HI_DEM_LOWQUAL_PATH
     from pextant.EnvironmentalModel import GDALMesh
-    from pextant.ExplorerModel import Astronaut
+    from pextant.explorers import Astronaut
     from pextant.mesh.MeshVisualizer import ExpandViz, MeshVizM
 
     jloader = WP_HI[7]

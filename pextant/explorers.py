@@ -68,6 +68,27 @@ class Astronaut(Explorer):  # Astronaut extends Explorer
                       lambda slope: -0.2 * slope + 1.6, lambda slope: -0.039 * slope + 0.634, 0.05])
         return v
 
+    def slope_energy_cost(self, path_lengths, slopes, g):
+        m = self.mass
+        energy_cost = 3.5 * m * g * path_lengths * np.sin(slopes)
+        downhill = (slopes < 0)
+        downhill_slopes = slopes[downhill]
+        correction = 2.4/3.5 * 0.3 ** (abs(np.degrees(downhill_slopes)) / 7.65)
+        energy_cost[downhill] *= correction
+        return energy_cost
+
+    def level_energy_cost(self, path_lengths, slopes, v):
+        m = self.mass
+        w_level = (3.28 * m + 71.1) * (0.661 * np.cos(slopes) + 0.115 / v)*path_lengths
+        return w_level
+
+    def total_energy_cost(self, path_lengths, slopes, g):
+        v = self.velocity(np.degrees(slopes))
+        slope_cost = self.slope_energy_cost(path_lengths, slopes, g)
+        level_cost = self.level_energy_cost(path_lengths, slopes, v)
+        total_cost = slope_cost + level_cost
+        return total_cost, v
+
     def energyRate(self, path_lengths, slopes, g):
         '''
 		Metabolic Rate Equations for a Suited Astronaut
@@ -77,7 +98,7 @@ class Astronaut(Explorer):  # Astronaut extends Explorer
         m = self.mass
         v = self.velocity(slopes)
         w_level = (3.28 * m + 71.1) * (0.661 * v * np.cos(np.radians(slopes)) + 0.115)
-        w_total = np.zeros(slopes.shape[0])
+        w_slopes = np.zeros(slopes.shape[0])
         for idx, slope in enumerate(slopes):
             if slope == 0:
                 w_slope = 0
@@ -85,8 +106,8 @@ class Astronaut(Explorer):  # Astronaut extends Explorer
                 w_slope = 3.5 * m * g * v[idx] * np.sin(np.radians(slope))
             else:
                 w_slope = 2.4 * m * g * v[idx] * np.sin(np.radians(slope)) * (0.3 ** (abs(slope) / 7.65))
-            w_total[idx] = w_level[idx] + w_slope
-
+            w_slopes[idx] = w_slope
+        w_total = w_level + w_slopes
         return w_total
 
 class Rover(Explorer):  # Rover also extends explorer
@@ -240,7 +261,7 @@ if __name__ == '__main__':
     slopes = np.linspace(-25, 25, 100)
     a = Astronaut(80)
     nrg = a.energyRate(np.ones_like(slopes),slopes,9.81)/a.velocity(slopes)
-    plt.plot(slopes, a.energyRate(np.ones_like(slopes),slopes,9.81))
+    plt.plot(slopes, nrg)
     plt.xlabel('slope [degrees]')
     plt.ylabel('Power [W]')
     plt.title('Power output [Santee et al 2001], mass=80kg')

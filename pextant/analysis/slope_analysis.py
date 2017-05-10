@@ -91,7 +91,7 @@ for i in range(len(bins)-1):
     idx1 = np.where(np.logical_and(bins[i] <= allslopes, allslopes < bins[i+1] ))
     v[i] = np.average(allvelocities[idx1])
 
-from pextant.ExplorerModel import Astronaut
+from pextant.explorers import Astronaut
 slopes = np.linspace(-25, 25, 100)
 a = Astronaut(80)
 #plt.plot(slopes, a.velocity(slopes))

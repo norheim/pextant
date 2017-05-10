@@ -47,9 +47,20 @@ class aStarNodeCollection(object):
 class aStarCostFunction(object):
     def __init__(self):
         self.end_node = None
+        self.cache = False
+        self.cached = {
+            "costs": None,
+            "heuristics": None
+        }
 
     def setEndNode(self, end_state):
-        self.end_node = end_state.mesh_element
+        elt = end_state.mesh_element
+        if self.cache:
+            self.cached["heuristics"] = self.cache_heuristic((elt.x, elt.y))
+        self.end_node = elt
+
+    def cache_heuristic(self, end_state):
+        pass
 
     def getHeuristicCost(self, node):
         return 0

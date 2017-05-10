@@ -44,10 +44,11 @@ class EnvironmentalModel(MetaMesh):
     This class ultimately represents an elevation map + all of the traversable spots on it.
     """
     def __init__(self, nw_geo_point, dataset, resolution=1, planet='Earth',
-                 parent_mesh=None, xoff=0, yoff=0, maxSlope=35):
+                 parent_mesh=None, xoff=0, yoff=0, maxSlope=35, cached=False):
         super(EnvironmentalModel, self).__init__(nw_geo_point, dataset, resolution, planet,
                  parent_mesh, xoff, yoff)
         self.maxSlope = maxSlope
+        self.cached = cached
         self.dataset_unmasked = dataset.filled(0)
         self.isvaliddata = np.logical_not(dataset.mask)
         self.slopes = []

@@ -2,7 +2,7 @@ import os
 import numpy as np
 from pextant.EnvironmentalModel import GDALMesh
 from pextant.analysis.loadWaypoints import JSONloader
-from pextant.ExplorerModel import Astronaut
+from pextant.explorers import Astronaut
 from pextant.mesh.MeshVisualizer import MeshViz
 from pextant.solvers.astarMesh import astarSolver, ExplorerCost
 

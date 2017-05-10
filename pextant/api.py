@@ -73,7 +73,7 @@ class Pathfinder:
 
 if __name__ == '__main__':
     from pextant.analysis.loadWaypoints import loadPoints
-    from ExplorerModel import Astronaut
+    from explorers import Astronaut
     from EnvironmentalModel import GDALMesh
 
     hi_low = GDALMesh('maps/HI_lowqual_DEM.tif')

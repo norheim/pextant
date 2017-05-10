@@ -2,7 +2,7 @@ from astar import aStarSearch
 from astarSEXTANT import astronautCost, MeshSearchElement
 
 from pextant.EnvironmentalModel import GDALMesh
-from pextant.ExplorerModel import Astronaut
+from pextant.explorers import Astronaut
 from pextant.analysis.loadWaypoints import loadPoints
 
 
