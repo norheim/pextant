@@ -75,7 +75,7 @@ class ExplorerCost(aStarCostFunction):
         for idx, offset in enumerate(offsets):
             dri = dr[idx]
             slopes_rad[:, :, idx] = np.arctan2(np.roll(np.roll(z, -offset[0], axis=0), -offset[1], axis=1) - z, dri)
-            energy_cost[:, :, idx], _ = self.explorer.total_energy_cost(dri, slopes_rad[:, :, idx],  g)
+            energy_cost[:, :, idx], _ = self.explorer.energy_expenditure(dri, slopes_rad[:, :, idx], g)
 
         return energy_cost
 
@@ -167,6 +167,7 @@ class ExplorerCost(aStarCostFunction):
             row, col = from_elt.mesh_coordinate
             selection = self.map.cached_neighbours[row,col]
             costs = self.cached["costs"][row, col][selection]
+            #TODO: fix this hack
             tonodes.derived = np.array([
                 0.5*np.ones_like(costs),
                 0.5*np.ones_like(costs),
@@ -199,12 +200,12 @@ class ExplorerCost(aStarCostFunction):
         slopes, path_lengths = from_elt.slopeTo(to_elts)
         times = explorer.time(path_lengths, slopes)
         g = self.map.getGravity()
-        energy_rate = explorer.energyRate(path_lengths, slopes, g)
+        energy_cost = explorer.energy_expenditure(path_lengths, slopes, g)
         #TODO: rewrite this so not all functions need to get evaluated(expensive)
         optimize_vector = np.array([
             path_lengths,
             times,
-            energy_rate*times
+            energy_cost
         ])
         return optimize_vector
 
