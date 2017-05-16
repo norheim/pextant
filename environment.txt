@@ -25,3 +25,4 @@ pip:
 - sphinx
 - sphinx bootstrap theme
 - folium
+- cython (for gdist)
