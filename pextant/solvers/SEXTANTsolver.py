@@ -1,3 +1,4 @@
+from pextant.lib.geoshapely import LONG_LAT
 class SEXTANTSolver(object):
     def __init__(self, environmental_model, cost_function, viz):
         self.env_model = environmental_model
@@ -38,9 +39,10 @@ class sextantSearch(object):
 
     def tojson(self):
         out = {}
+        coordinates = self.coordinates.to(LONG_LAT).transpose().tolist()
         out["geometry"] = {
             'type': 'LineString',
-            'coordinates': self.coordinates
+            'coordinates': coordinates
         }
         results = {}
         for k, v in self.namemap.items():
@@ -54,9 +56,9 @@ class sextantSearch(object):
         out["derivedInfo"] = results
         return out
 
-    def tocsv(self):
+    def tocsv(self, coordstype=LONG_LAT):
         sequence = []
-        coords = self.coordinates
+        coords = self.coordinates.to(coordstype).transpose().tolist()
         for i, mesh_srch_elt in enumerate(self.nodes):
             if i != 0:
                 row_entry = [i==1 or i==len(coords)-1] #True if it's the first or last entry

@@ -71,11 +71,13 @@ class Astronaut(Explorer):  # Astronaut extends Explorer
 
     def slope_energy_cost(self, path_lengths, slopes, g):
         m = self.mass
-        energy_cost = np.piecewise(slopes,
-            [slopes < 0, slopes ==0, slopes>0],
-            [lambda alpha: 2.4 * m * g * path_lengths * np.sin(alpha) * 0.3 ** (abs(np.degrees(alpha)) / 7.65),
-             0,
-             lambda alpha: 3.5 * m * g * path_lengths * np.sin(alpha)])
+        downhill = slopes < 0
+        uphill = slopes >= 0
+        work_dz = m * g * path_lengths * np.sin(slopes)
+        energy_cost = np.empty(slopes.shape)
+        energy_cost[downhill] = 2.4 * work_dz[downhill] * 0.3 ** (abs(np.degrees(slopes[downhill])) / 7.65)
+        energy_cost[uphill] = 3.5 * work_dz[uphill]
+
         return energy_cost
 
     def level_energy_cost(self, path_lengths, slopes, v):
@@ -93,6 +95,14 @@ class Astronaut(Explorer):  # Astronaut extends Explorer
         level_cost = self.level_energy_cost(path_lengths, slopes_radians, v)
         total_cost = slope_cost + level_cost
         return total_cost, v
+
+    def path_energy_expenditure(self, xyz, g=9.81):
+        x, y, z = xyz
+        xy = np.column_stack((x,y))
+        dl = np.diff(xy, axis=0)
+        dz = np.diff(z)
+        slopes = np.arctan2(dz, dl)
+        return self.slope_energy_cost(dl, slopes, g)
 
 
 class Rover(Explorer):  # Rover also extends explorer

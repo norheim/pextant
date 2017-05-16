@@ -1,4 +1,3 @@
-import math
 import numpy as np
 from SEXTANTsolver import sextantSearch, SEXTANTSolver
 from astar import aStarSearchNode, aStarNodeCollection, aStarCostFunction, aStarSearch
@@ -71,13 +70,17 @@ class ExplorerCost(aStarCostFunction):
         g = self.map.getGravity()
         slopes_rad = np.empty((dem.shape[0], dem.shape[1], 8))
         energy_cost = np.empty((dem.shape[0], dem.shape[1], 8))
+        time_cost = np.empty((dem.shape[0], dem.shape[1], 8))
+        path_cost = np.empty((dem.shape[0], dem.shape[1], 8))
 
         for idx, offset in enumerate(offsets):
             dri = dr[idx]
             slopes_rad[:, :, idx] = np.arctan2(np.roll(np.roll(z, -offset[0], axis=0), -offset[1], axis=1) - z, dri)
-            energy_cost[:, :, idx], _ = self.explorer.energy_expenditure(dri, slopes_rad[:, :, idx], g)
+            energy_cost[:, :, idx], v = self.explorer.energy_expenditure(dri, slopes_rad[:, :, idx], g)
+            time_cost[:,:,idx] = dri/v
+            path_cost[:,:,idx] = dri*np.ones_like(z)
 
-        return energy_cost
+        return {'time': time_cost, 'path': path_cost, 'energy': energy_cost}
 
     def cache_heuristic(self, goal):
         optimize_vector = self.optimize_vector
@@ -109,9 +112,9 @@ class ExplorerCost(aStarCostFunction):
 
         # Patel 2010. See page 49 of Aaron's thesis
         heuristic_weight = self.heuristic_accelerate
-        heuristic_cost = heuristic_weight * (d * math.sqrt(2) * h_diagonal + d * (h_straight - 2 * h_diagonal))
+        heuristic_cost = heuristic_weight * (d * np.sqrt(2) * h_diagonal + d * (h_straight - 2 * h_diagonal))
         # This is just Euclidean distance
-        # heuristic_cost = d * math.sqrt((start_row - end_row) ** 2 + (start_col - end_col) ** 2)
+        # heuristic_cost = d * np.sqrt((start_row - end_row) ** 2 + (start_col - end_col) ** 2)
         return heuristic_cost
 
     def get_cache_heuristic(self, start_row, start_col):
@@ -154,9 +157,9 @@ class ExplorerCost(aStarCostFunction):
 
         # Patel 2010. See page 49 of Aaron's thesis
         heuristic_weight = self.heuristic_accelerate
-        heuristic_cost = heuristic_weight*(d * math.sqrt(2) * h_diagonal + d * (h_straight - 2 * h_diagonal))
+        heuristic_cost = heuristic_weight*(d * np.sqrt(2) * h_diagonal + d * (h_straight - 2 * h_diagonal))
         # This is just Euclidean distance
-        #heuristic_cost = d * math.sqrt((start_row - end_row) ** 2 + (start_col - end_col) ** 2)
+        #heuristic_cost = d * np.sqrt((start_row - end_row) ** 2 + (start_col - end_col) ** 2)
         return  heuristic_cost
 
     def getCostBetween(self, fromnode, tonodes):
@@ -166,18 +169,18 @@ class ExplorerCost(aStarCostFunction):
         if self.cache:
             row, col = from_elt.mesh_coordinate
             selection = self.map.cached_neighbours[row,col]
-            costs = self.cached["costs"][row, col][selection]
-            #TODO: fix this hack
-            tonodes.derived = np.array([
-                0.5*np.ones_like(costs),
-                0.5*np.ones_like(costs),
-                costs
+            costs = self.cached["costs"]
+            optimize_vector = np.array([
+                costs['path'][row, col][selection],
+                costs['time'][row, col][selection],
+                costs['energy'][row, col][selection]
             ])
         else:
-            optimize_weights = self.optimize_vector
             optimize_vector = self.calculateCostBetween(from_elt, to_cllt)
-            costs = np.dot(optimize_vector.transpose(), optimize_weights)
-            tonodes.derived = optimize_vector
+
+        optimize_weights = self.optimize_vector
+        costs = np.dot(optimize_vector.transpose(), optimize_weights)
+        tonodes.derived = optimize_vector
 
         return costs
 
@@ -200,7 +203,7 @@ class ExplorerCost(aStarCostFunction):
         slopes, path_lengths = from_elt.slopeTo(to_elts)
         times = explorer.time(path_lengths, slopes)
         g = self.map.getGravity()
-        energy_cost = explorer.energy_expenditure(path_lengths, slopes, g)
+        energy_cost, _ = explorer.energy_expenditure(path_lengths, slopes, g)
         #TODO: rewrite this so not all functions need to get evaluated(expensive)
         optimize_vector = np.array([
             path_lengths,
@@ -226,8 +229,7 @@ class astarSolver(SEXTANTSolver):
             if len(raw) == 0:
                 coordinates = []
             else:
-                coordinates = GeoPolygon(env_model.ROW_COL, *np.array(raw).transpose())\
-                    .to(LONG_LAT).transpose().tolist()
+                coordinates = GeoPolygon(env_model.ROW_COL, *np.array(raw).transpose())
             search.addresult(raw, nodes, coordinates, expanded_items)
             self.searches.append(search)
             return search

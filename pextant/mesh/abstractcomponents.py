@@ -50,11 +50,11 @@ class MeshElement(object):
 
         :param other_elts:
         :type other_elts: MeshCollection
-        :return:
+        :return: slope in radians
         """
         path_length = self.distanceTo(other_elts)
         #TODO: how to avoid divide by zero?
-        slopes = np.degrees(np.arctan((other_elts.z - self.z) / path_length))
+        slopes = np.arctan((other_elts.z - self.z) / path_length)
         return slopes, path_length
 
     def __str__(self):
