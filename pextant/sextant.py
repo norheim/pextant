@@ -8,6 +8,7 @@ from datetime import timedelta
 from functools import update_wrapper
 
 from pextant.EnvironmentalModel import GDALMesh
+from pextant.explorers import Astronaut
 from pextant.analysis.loadWaypoints import JSONloader
 from pextant.lib.geoshapely import GeoPolygon, LAT_LONG
 from pextant.solvers.astarMesh import astarSolver
@@ -59,6 +60,7 @@ def crossdomain(origin=None, methods=None, headers=None,
 
 def main(argv):
     print 'STARTING SEXTANT'
+    geotiff_full_path = ""
     try:
         geotiff_full_path = argv[0]
     except IndexError:
@@ -82,14 +84,18 @@ def main(argv):
         waypoints = GeoPolygon(LAT_LONG, *data_np)
         print waypoints.to(LAT_LONG)
 
-        environmental_model = gdal_mesh.loadSubSection()
-        #solver = astarSolver(environmental_model, explorer, optimize_on='Energy')
-        #search_results, rawpoints, itemssrchd = solver.solvemultipoint(waypoints)
-        return json.dumps({'status': 'OK', 'shape': environmental_model.size})
+        environmental_model = gdal_mesh.loadSubSection(waypoints.geoEnvelope(), cached=True)
+        explorer = Astronaut(80)
+        solver = astarSolver(environmental_model, explorer, optimize_on='Energy', cache=True)
+        _, rawpoints, _ = solver.solvemultipoint(waypoints)
+        lat, lon = GeoPolygon(environmental_model.ROW_COL, *np.array(rawpoints).transpose()).to(LAT_LONG)
+        print((lat, lon))
+        return json.dumps({'latitudes': list(lat), 'longitudes': list(lon)})
 
     if argv[0] != 'sextant:app':
         app.run(host='localhost', port=5000)
 
 
 # if __name__ == "__main__":
-main(sys.argv[1:])
+#main(sys.argv[1:])
+main(['../data/maps/dem/Ames.tif'])
