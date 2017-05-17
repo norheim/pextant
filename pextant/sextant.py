@@ -73,10 +73,34 @@ def main(argv):
     print geotiff_full_path
     
     gdal_mesh = GDALMesh(geotiff_full_path)
+    explorer = Astronaut(80)
+    solver, waypoints, environmental_model = None, None, None
+
+    @app.route('/setwaypoints', methods=['GET', 'POST'])
+    @crossdomain(origin='*')
+    def set_waypoints():
+        global solver, waypoints, environmental_model
+        print('got request')
+        xp_json = request.get_json(force=True)
+        json_loader = JSONloader(xp_json)
+        waypoints = json_loader.get_waypoints()
+        environmental_model = gdal_mesh.loadSubSection(waypoints.geoEnvelope(), cached=True)
+        solver = astarSolver(environmental_model, explorer, optimize_on='Energy', cache=True)
+        print('loaded fine')
+        return json.dumps({'loaded': True})
+
+    @app.route('/solve', methods=['GET', 'POST'])
+    @crossdomain(origin='*')
+    def solve():
+        global solver, waypoints, environmental_model
+        _, rawpoints, _ = solver.solvemultipoint(waypoints)
+        lat, lon = GeoPolygon(environmental_model.ROW_COL, *np.array(rawpoints).transpose()).to(LAT_LONG)
+        print((lat, lon))
+        return json.dumps({'latitudes': list(lat), 'longitudes': list(lon)})
 
     @app.route('/', methods=['GET', 'POST'])
     @crossdomain(origin='*')
-    def set_waypoints():
+    def get_waypoints():
         print('got request')
         data = request.get_json(force=True)
         data_np = np.array(data['waypoints']).transpose()
@@ -98,4 +122,4 @@ def main(argv):
 
 # if __name__ == "__main__":
 main(sys.argv[1:])
-#main(['../data/maps/dem/Ames.tif'])
+#main(['../data/maps/dem/HI_lowqual_DEM.tif'])
