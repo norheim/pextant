@@ -93,9 +93,14 @@ def main(argv):
     @crossdomain(origin='*')
     def solve():
         global solver, waypoints, environmental_model
+        xp_json = request.get_json(force=True)
+        if xp_json:
+            json_loader = JSONloader(xp_json)
+            waypoints = json_loader.get_waypoints()
+        solver.accelerate()
         _, rawpoints, _ = solver.solvemultipoint(waypoints)
         lat, lon = GeoPolygon(environmental_model.ROW_COL, *np.array(rawpoints).transpose()).to(LAT_LONG)
-        print((lat, lon))
+        #print((lat, lon))
         return json.dumps({'latitudes': list(lat), 'longitudes': list(lon)})
 
     @app.route('/', methods=['GET', 'POST'])

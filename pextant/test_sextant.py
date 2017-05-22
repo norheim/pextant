@@ -6,12 +6,6 @@ from pextant.analysis.loadWaypoints import JSONloader
 WP_HI = JSONloader.from_file('../data/waypoints/HI_13Nov16_MD7_A.json')
 
 xp_json = WP_HI.sequence
-ames_data = {
-            "waypoints": [
-                [  37.42015095, -122.06505988],
-                [  37.42014872, -122.06477738]
-            ]
-        }
 
 r1 = requests.post('http://localhost:5000/setwaypoints', data = json.dumps(xp_json), timeout=5)
 print(r1.json())
