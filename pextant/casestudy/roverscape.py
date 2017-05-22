@@ -1,4 +1,4 @@
-from pextant.api import Pathfinder
+from pextant.api_future import Pathfinder
 from pextant.EnvironmentalModel import GDALMesh
 from pextant.explorers import Astronaut
 from pextant.lib.geoshapely import GeoEnvelope, GeoPoint, LAT_LONG

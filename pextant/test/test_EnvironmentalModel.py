@@ -1,7 +1,7 @@
 import numpy
 from osgeo import gdal
 import unittest
-from pextant.api import *
+from pextant.api_future import *
 
 inferno_map_address = 'datasets\INFERNO-DEM.tif'
 

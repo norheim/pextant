@@ -1,4 +1,4 @@
-from pextant.api import *
+from pextant.api_future import *
 from pextant.EnvironmentalModel import *
 from osgeo import gdal
 

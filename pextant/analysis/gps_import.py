@@ -1,4 +1,3 @@
-from pextant.api import *
 from pextant.lib.geoshapely import GeoPolygon, LAT_LONG
 import matplotlib.pyplot as plt
 from osgeo import gdal

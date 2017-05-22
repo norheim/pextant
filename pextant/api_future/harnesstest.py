@@ -1,6 +1,6 @@
 from pextant.EnvironmentalModel import GDALMesh
 from pextant.analysis.loadWaypoints import JSONloader
-from pextant.api.pextantHarness import getCornersForMap, getMap, callPextant
+from pextant.api_future.pextantHarness import getCornersForMap, getMap, callPextant
 from pextant.lib.geoshapely import GeoPolygon, LAT_LONG
 from pextant.settings import AMES_DEM, TEST_JSON
 

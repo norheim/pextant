@@ -1,7 +1,7 @@
 from pextant.EnvironmentalModel import *
 from pextant.explorers import Astronaut
 from pextant.analysis.loadWaypoints import loadPoints
-from pextant.api import *
+from pextant.api_future import *
 
 filename = 'waypoints/HI_sextant_testing2_B.json'
 with open(filename) as data_file:

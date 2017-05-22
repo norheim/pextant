@@ -1,4 +1,4 @@
-from pextant.api import *
+from pextant.api_future import *
 import numpy as np
 
 elevs = np.array([[1, 3],
