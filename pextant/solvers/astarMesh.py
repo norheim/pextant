@@ -83,38 +83,36 @@ class ExplorerCost(aStarCostFunction):
         return {'time': time_cost, 'path': path_cost, 'energy': energy_cost}
 
     def cache_heuristic(self, goal):
-        optimize_vector = self.optimize_vector
         g_x, g_y = goal
         r = self.map.resolution
-        y, x = r*np.mgrid[0:self.map.shape[0], 0:self.map.shape[1]]
+        y, x = r*np.mgrid[0:self.map.y_size, 0:self.map.x_size]
         delta_y, delta_x = np.abs(y - g_y), np.abs(x - g_x)
         h_diagonal = np.minimum(delta_y, delta_x)
         h_straight = delta_y + delta_x
 
-        # Adding the energy weight
-        m = self.explorer.mass
-        # Aaron's thesis page 50
-        if self.map.planet == 'Earth':
-            energy_weight = 1.504 * m + 53.298
-        elif self.map.planet == 'Moon' and self.explorer.type == 'Astronaut':
-            energy_weight = 2.295 * m + 52.936
-        elif self.map.planet == 'Moon' and self.explorer.type == 'Rover':
-            p_e = self.explorer.P_e  # this only exists for rovers
-            energy_weight = (0.216 * m + p_e / 4.167)
-        else:
-            # This should not happen
-            raise TypeError("planet/explorer conflict, current planet: ", self.map.planet, "current explorer: ",
-                            self.explorer.type)
-
-        max_velocity = 1.6  # the maximum velocity is 1.6 from Marquez 2008
-        d = np.array([1, max_velocity, energy_weight])
-        d = np.dot(d, optimize_vector)
-
         # Patel 2010. See page 49 of Aaron's thesis
-        heuristic_weight = self.heuristic_accelerate
-        heuristic_cost = heuristic_weight * (d * np.sqrt(2) * h_diagonal + d * (h_straight - 2 * h_diagonal))
-        # This is just Euclidean distance
-        # heuristic_cost = d * np.sqrt((start_row - end_row) ** 2 + (start_col - end_col) ** 2)
+        manhattan_distance = (2 - np.sqrt(2)) * h_diagonal + h_straight
+        # Could also use euclidean distance
+        # euclidean_distance = np.sqrt(delta_y ** 2 + delta_x ** 2)
+
+        # Adding the energy weight
+        explorer = self.explorer
+        m = explorer.mass
+        planet = self.map.planet
+
+        energy_weight = explorer.minenergy[planet](m) #to minimize
+        max_velocity = explorer.maxvelocity # to minimize
+
+        optimize_weights = self.optimize_vector
+        optimize_values = np.array([
+            1, # Distance per m
+            max_velocity, # time per m
+            energy_weight # energy per m
+        ])
+        optimize_cost = manhattan_distance * np.dot(optimize_values, optimize_weights)
+
+        heuristic_cost = self.heuristic_accelerate * optimize_cost
+
         return heuristic_cost
 
     def get_cache_heuristic(self, start_row, start_col):
@@ -215,8 +213,15 @@ class ExplorerCost(aStarCostFunction):
 
 class astarSolver(SEXTANTSolver):
     def __init__(self, env_model, explorer_model, viz=None, optimize_on='Energy', cache=False, heuristic_accelerate=1):
+        self.explorer_model = explorer_model
+        self.optimize_on = optimize_on
+        self.cache = cache
         cost_function = ExplorerCost(explorer_model, env_model, optimize_on, cache, heuristic_accelerate)
         super(astarSolver, self).__init__(env_model, cost_function, viz)
+
+    def accelerate(self, weight=10):
+        self.cost_function = ExplorerCost(self.explorer_model, self.env_model, self.optimize_on,
+                                          self.cache, heuristic_accelerate=weight)
 
     def solve(self, startpoint, endpoint):
         env_model = self.env_model

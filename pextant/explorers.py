@@ -20,6 +20,8 @@ class Explorer(object):
             ['Time', self.time, 'min'],
             ['Energy', self.energy_expenditure, 'min']
         ]
+        self.maxvelocity = 0.01 # a very small number non zero to prevent divide by infinity
+        self.minenergy ={}
 
     def optimizevector(self, arg):
         if isinstance(arg, str):
@@ -51,11 +53,15 @@ class Explorer(object):
     def energy_expenditure(self, path_lengths, slopes, g):
         return 0
 
-
 class Astronaut(Explorer):  # Astronaut extends Explorer
     def __init__(self, mass, parameters=None):
         super(Astronaut, self).__init__(mass, parameters)
         self.type = 'Astronaut'
+        self.maxvelocity = 1.6  # the maximum velocity is 1.6 from Marquez 2008
+        self.minenergy = {  # Aaron's thesis page 50
+            'Earth': lambda m: 1.504 * m + 53.298,
+            'Moon': lambda m: 2.295 * m + 52.936
+        }
 
     def velocity(self, slopes):
         if np.logical_or((slopes > 35), (slopes < -35)).any():
@@ -114,6 +120,9 @@ class Rover(Explorer):  # Rover also extends explorer
         # In future iterations, perhaps we can change this to depend on the
         # activities being performed during the exploration
         self.type = 'Rover'
+        self.minenergy = {
+            'Moon' : lambda m: 0.216 * m + self.P_e / 4.167
+        }
 
     def velocity(self, slope=0):
         return self.speed  # we assume constant velocity for the rover
