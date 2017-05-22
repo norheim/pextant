@@ -1,8 +1,9 @@
 from pextant.EnvironmentalModel import GDALMesh
-from pextant.lib.geoshapely import GeoPoint, GeoPolygon, LAT_LONG
-from pextant.pextantHarness import getCornersForMap, getMap, callPextant
-from pextant.settings import AMES_DEM, TEST_JSON, HI_DEM
 from pextant.analysis.loadWaypoints import JSONloader
+from pextant.api.pextantHarness import getCornersForMap, getMap, callPextant
+from pextant.lib.geoshapely import GeoPolygon, LAT_LONG
+from pextant.settings import AMES_DEM, TEST_JSON
+
 
 def generateExtent(lat, long):
     extent = [long[0], lat[1], long[1], lat[0]]
