@@ -91,7 +91,7 @@ class ExplorerCost(aStarCostFunction):
         h_straight = delta_y + delta_x
 
         # Patel 2010. See page 49 of Aaron's thesis
-        manhattan_distance = (2 - np.sqrt(2)) * h_diagonal + h_straight
+        manhattan_distance = (np.sqrt(2)-2) * h_diagonal + h_straight
         # Could also use euclidean distance
         # euclidean_distance = np.sqrt(delta_y ** 2 + delta_x ** 2)
 
@@ -110,7 +110,7 @@ class ExplorerCost(aStarCostFunction):
             energy_weight # energy per m
         ])
         optimize_cost = manhattan_distance * np.dot(optimize_values, optimize_weights)
-
+        print(self.heuristic_accelerate)
         heuristic_cost = self.heuristic_accelerate * optimize_cost
 
         return heuristic_cost
