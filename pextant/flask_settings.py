@@ -9,4 +9,4 @@ HAWAII_MAUNA_ULU = 'Hawaii_Lava_Flows.tif'
 HAWAII_MAUNA_KEA = 'TODO_CREATE.tif'
 
 # if no path is passed in as a parameter, this will be used.
-GEOTIFF_FULL_PATH = os.path.join(GEOTIFF_PATH, AMES) 
+GEOTIFF_FULL_PATH = os.path.join(GEOTIFF_PATH, HAWAII_MAUNA_ULU)
