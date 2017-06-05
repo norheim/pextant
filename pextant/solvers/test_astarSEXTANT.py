@@ -1,6 +1,6 @@
 from astarMesh import ExplorerCost
 from pextant.EnvironmentalModel import GDALMesh
-from pextant.mesh.triangularmesh import TriMesh
+from pextant.mesh.triangularmesh import TriPolyMesh
 from pextant.explorers import Astronaut
 from pextant.settings import AMES_DEM
 from pextant.mesh.MeshVisualizer import TriExpandViz
@@ -8,7 +8,7 @@ from pextant.solvers.astar import aStarSearch
 from pextant.lib.geoshapely import GeoPoint, LAT_LONG
 from pextant.solvers.astarMesh import MeshSearchElement
 
-ames_em = TriMesh(AMES_DEM).loadSubSection()
+ames_em = TriPolyMesh(AMES_DEM).loadSubSection()
 a = Astronaut(80)
 costfunction = ExplorerCost(a, ames_em, 'Energy')
 node = ames_em._getMeshElement(2767)

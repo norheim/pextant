@@ -5,7 +5,7 @@ from osgeo import gdal, osr
 
 from pextant.lib.geoshapely import *
 from pextant.lib.geoutils import filled_grid_circle
-from pextant.mesh.abstractmesh import GridMesh, EnvironmentalModel, SearchKernel, coordinate_transform
+from pextant.mesh.abstractmesh import GeoMesh, GridMesh, EnvironmentalModel, SearchKernel, coordinate_transform
 from pextant.mesh.abstractcomponents import MeshCollection
 from pextant.mesh.concretecomponents import MeshElement
 
@@ -21,7 +21,7 @@ class GDALDataset(object):
 
 class GDALMesh(GridMesh):
     """
-    This class should be used for loading all GDAL terrains, and any subset thereof
+    This class should be used for loading all GeoTiff terrains, and any subset thereof
     """
 
     def __init__(self, file_path):
@@ -97,13 +97,14 @@ class GDALMesh(GridMesh):
         # TODO: this hack needs explanation
         nw_coord_hack = GeoPoint(UTM(zone), inter_easting.min(), inter_northing.max()).to(COL_ROW)
         nw_coord = GeoPoint(COL_ROW, nw_coord_hack[0], nw_coord_hack[1])
-        return (dataset_clean, desired_res, nw_coord, x_offset, y_offset)
+        meta_mesh = GeoMesh(nw_coord, dataset_clean, desired_res, parent_mesh=self,
+                            xoff=x_offset, yoff=y_offset)
+        return meta_mesh
 
     def loadSubSection(self, geo_envelope=None, desired_res=None, **kwargs):
         #kwargs is reserved for max slope argument
-        (map_array, desired_res, nw_coord, x_offset, y_offset) = self._loadSubSection(geo_envelope, desired_res)
-        return GridMeshModel(nw_coord, map_array, desired_res,
-                             parent_mesh=self, xoff=x_offset, yoff=y_offset, **kwargs)
+        sub_mesh = self._loadSubSection(geo_envelope, desired_res)
+        return GridMeshModel.from_parent(sub_mesh, **kwargs)
 
 
 class GridMeshModel(EnvironmentalModel):

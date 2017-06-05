@@ -99,9 +99,9 @@ class MeshCollection(object):
 
 if __name__ == '__main__':
     from pextant.EnvironmentalModel import GDALMesh
-    from pextant.mesh.triangularmesh import TriMesh
+    from pextant.mesh.triangularmesh import TriPolyMesh
     from pextant.lib.geoshapely import GeoPoint
-    ames_em = TriMesh('../../data/maps/Ames/Ames.tif').loadSubSection()
+    ames_em = TriPolyMesh('../../data/maps/Ames/Ames.tif').loadSubSection()
     #out = ames_em._getNeighbours((10,20))
     out = ames_em._getNeighbours(2625)
     otherelt = ames_em._getMeshElement(10)

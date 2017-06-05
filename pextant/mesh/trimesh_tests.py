@@ -1,8 +1,8 @@
 from pextant.lib.geoshapely import GeoPoint
-from pextant.mesh.triangularmesh import TriMesh
+from pextant.mesh.triangularmesh import TriPolyMesh
 from pextant.settings import AMES_DEM
 
-tm = TriMesh(AMES_DEM)
+tm = TriPolyMesh(AMES_DEM)
 em = tm.loadSubSection()
 testpoint = GeoPoint(em.ROW_COL, 20, 30)
 

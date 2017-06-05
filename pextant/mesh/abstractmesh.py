@@ -4,7 +4,7 @@ import json
 from pextant.lib.geoshapely import GeoPoint, Cartesian
 from skimage.draw import circle
 
-class MetaMesh(object):
+class GeoMesh(object):
     def __init__(self, nw_geo_point, dataset, resolution=1, planet='Earth',
                  parent_mesh=None, xoff=0, yoff=0):
         y_size, x_size = dataset.shape  #y is first in case dataset is a numpy array
@@ -13,22 +13,25 @@ class MetaMesh(object):
         self.shape = dataset.shape
         self.size = dataset.size
         self.nw_geo_point = nw_geo_point
-        self.se_geo_point = GeoPoint(Cartesian(nw_geo_point, resolution), self.x_size, self.y_size)
+        self.se_geo_point = GeoPoint(Cartesian(nw_geo_point, resolution), x_size, y_size)
         self.dataset = dataset
         self.resolution = resolution
+        self.planet = planet if parent_mesh == None else parent_mesh.planet
+        # data points that make it relative to a parent mesh
         self.parent_mesh = parent_mesh
-        self.planet = planet if self.parent_mesh == None else parent_mesh.planet
         self.xoff = xoff
         self.yoff = yoff
 
-    def jsonify(self):
-        return json.dumps(self.__dict__)
+    @classmethod
+    def from_parent(cls, parent, **kwargs):
+        return cls(parent.nw_geo_point, parent.dataset, parent.resolution, parent_mesh=parent.parent_mesh,
+                   xoff=parent.xoff, yoff=parent.yoff, **kwargs)
 
     def __str__(self):
         return 'height: %s \nwidth: %s \nresolution: %s \nnw corner: %s' % \
               (self.y_size, self.x_size, self.resolution, str(self.nw_geo_point))
 
-class GridMesh(MetaMesh):
+class GridMesh(GeoMesh):
     def __init__(self, *arg, **kwargs):
         super(GridMesh, self).__init__(*arg, **kwargs)
         self.ROW_COL = Cartesian(self.nw_geo_point, self.resolution, reverse=True)
@@ -39,7 +42,7 @@ def coordinate_transform(func):
         return func(self, self.convert_coordinates(point))
     return decorated
 
-class EnvironmentalModel(MetaMesh):
+class EnvironmentalModel(GeoMesh):
     """
     This class ultimately represents an elevation map + all of the traversable spots on it.
     """

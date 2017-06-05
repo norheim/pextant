@@ -110,7 +110,7 @@ class ExplorerCost(aStarCostFunction):
             energy_weight # energy per m
         ])
         optimize_cost = manhattan_distance * np.dot(optimize_values, optimize_weights)
-        print(self.heuristic_accelerate)
+        #print(self.heuristic_accelerate)
         heuristic_cost = self.heuristic_accelerate * optimize_cost
 
         return heuristic_cost
