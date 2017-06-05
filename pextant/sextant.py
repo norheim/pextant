@@ -81,7 +81,8 @@ def main(argv):
     def set_waypoints():
         global solver, waypoints, environmental_model
         print('got request')
-        xp_json = request.get_json(force=True)
+        request_data = request.get_json(force=True)
+        xp_json = request_data['xp_json']
         json_loader = JSONloader(xp_json)
         waypoints = json_loader.get_waypoints()
         environmental_model = gdal_mesh.loadSubSection(waypoints.geoEnvelope(), cached=True)
@@ -93,16 +94,28 @@ def main(argv):
     @crossdomain(origin='*')
     def solve():
         global solver, waypoints, environmental_model
-        xp_json = request.get_json(force=True)
+        request_data = request.get_json(force=True)
+        xp_json = request_data['xp_json']
+        param = request_data['param']
         if xp_json:
             json_loader = JSONloader(xp_json)
             waypoints = json_loader.get_waypoints()
         solver.accelerate()
-        _, rawpoints, _ = solver.solvemultipoint(waypoints)
-        lat, lon = GeoPolygon(environmental_model.ROW_COL, *np.array(rawpoints).transpose()).to(LAT_LONG)
-        #print((lat, lon))
-        return json.dumps({'latitudes': list(lat), 'longitudes': list(lon)})
+        search_results, rawpoints, _ = solver.solvemultipoint(waypoints)
+        return_json = {
+            'latlong':[]
+        }
+        if param['return'] == 'segmented':
+            for search_result in search_results:
+                lat, lon = GeoPolygon(environmental_model.ROW_COL, *np.array(search_result.raw).transpose()).to(LAT_LONG)
+                return_json['latlong'].append({'latitudes': list(lat), 'longitudes': list(lon)})
+        else:
+            lat, lon = GeoPolygon(environmental_model.ROW_COL, *np.array(rawpoints).transpose()).to(LAT_LONG)
+            return_json['latlong'].append({'latitudes': list(lat), 'longitudes': list(lon)})
 
+        return json.dumps(return_json)
+
+    # OLD Stuff: delete
     @app.route('/', methods=['GET', 'POST'])
     @crossdomain(origin='*')
     def get_waypoints():
