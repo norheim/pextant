@@ -7,10 +7,23 @@ WP_HI = JSONloader.from_file('../data/waypoints/HI_13Nov16_MD7_A.json')
 
 xp_json = WP_HI.sequence
 
-r1 = requests.post('https://localhost/pextant/setwaypoints',
-                   data = json.dumps(xp_json), verify=False, timeout=5)
+config1 = 'https://localhost/pextant'
+config2 = 'http://localhost:5000'
+
+send_json1 = {
+    'param': {},
+    'xp_json': xp_json
+}
+
+r1 = requests.post(config2 + '/setwaypoints',
+                   data = json.dumps(send_json1), verify=False, timeout=5)
 print(r1.json())
-r2 = requests.post('https://localhost/pextant/solve',
-                   data = json.dumps({}), verify=False,)
+send_json2 = {
+    'param': {
+        'return':'segmented'
+    },
+}
+r2 = requests.post(config2+'/solve',
+                   data = json.dumps(send_json2), verify=False,)
 json_response = r2.json()
-print(json_response["latitudes"])
+print(json_response)

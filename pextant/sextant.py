@@ -95,9 +95,9 @@ def main(argv):
     def solve():
         global solver, waypoints, environmental_model
         request_data = request.get_json(force=True)
-        xp_json = request_data['xp_json']
         param = request_data['param']
-        if xp_json:
+        if 'xp_json' in request_data:
+            xp_json = request_data['xp_json']
             json_loader = JSONloader(xp_json)
             waypoints = json_loader.get_waypoints()
         solver.accelerate()
