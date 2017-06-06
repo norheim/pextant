@@ -1,5 +1,6 @@
 from flask_settings import GEOTIFF_FULL_PATH
 import sys
+import traceback
 sys.path.append('../')
 import numpy as np
 import json
@@ -76,19 +77,36 @@ def main(argv):
     explorer = Astronaut(80)
     solver, waypoints, environmental_model = None, None, None
 
+    @app.route('/test', methods=['GET', 'POST'])
+    @crossdomain(origin='*')
+    def test():
+        print str(request)
+        return json.dumps({'test':'test'})
+        
     @app.route('/setwaypoints', methods=['GET', 'POST'])
     @crossdomain(origin='*')
     def set_waypoints():
-        global solver, waypoints, environmental_model
-        print('got request')
-        request_data = request.get_json(force=True)
-        xp_json = request_data['xp_json']
-        json_loader = JSONloader(xp_json)
-        waypoints = json_loader.get_waypoints()
-        environmental_model = gdal_mesh.loadSubSection(waypoints.geoEnvelope(), cached=True)
-        solver = astarSolver(environmental_model, explorer, optimize_on='Energy', cache=True)
-        print('loaded fine')
-        return json.dumps({'loaded': True})
+        try:
+            global solver, waypoints, environmental_model
+            print('got request')
+            request_data = request.get_json(force=True)
+            
+            xp_json = request_data['xp_json']
+            json_loader = JSONloader(xp_json['sequence'])
+            print 'loaded xp json'
+            waypoints = json_loader.get_waypoints()
+            print 'waypoints'
+            print str(waypoints)
+            print 'gdal mesh is  built from %s' % str(geotiff_full_path)
+            environmental_model = gdal_mesh.loadSubSection(waypoints.geoEnvelope(), cached=True)
+            solver = astarSolver(environmental_model, explorer, optimize_on='Energy', cache=True)
+            print('loaded fine')
+            return json.dumps({'loaded': True})
+        except Exception, e:
+            traceback.print_exc()
+            response = {'error': str(e),
+                        'status_code': 400}
+            return response
 
     @app.route('/solve', methods=['GET', 'POST'])
     @crossdomain(origin='*')
