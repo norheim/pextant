@@ -88,15 +88,13 @@ def main(argv):
     def set_waypoints():
         try:
             global solver, waypoints, environmental_model
-            print('got request')
+            print('in set waypoints')
             request_data = request.get_json(force=True)
             
             xp_json = request_data['xp_json']
             json_loader = JSONloader(xp_json['sequence'])
             print 'loaded xp json'
             waypoints = json_loader.get_waypoints()
-            print 'waypoints'
-            print str(waypoints)
             print 'gdal mesh is  built from %s' % str(geotiff_full_path)
             environmental_model = gdal_mesh.loadSubSection(waypoints.geoEnvelope(), cached=True)
             solver = astarSolver(environmental_model, explorer, optimize_on='Energy', cache=True)
@@ -112,18 +110,19 @@ def main(argv):
     @crossdomain(origin='*')
     def solve():
         global solver, waypoints, environmental_model
+        print 'in solve'
         request_data = request.get_json(force=True)
-        param = request_data['param']
+        return_type = request_data['return']
         if 'xp_json' in request_data:
             xp_json = request_data['xp_json']
-            json_loader = JSONloader(xp_json)
+            json_loader = JSONloader(xp_json['sequence'])
             waypoints = json_loader.get_waypoints()
         solver.accelerate()
         search_results, rawpoints, _ = solver.solvemultipoint(waypoints)
         return_json = {
             'latlong':[]
         }
-        if param['return'] == 'segmented':
+        if return_type == 'segmented':
             for search_result in search_results:
                 lat, lon = GeoPolygon(environmental_model.ROW_COL, *np.array(search_result.raw).transpose()).to(LAT_LONG)
                 return_json['latlong'].append({'latitudes': list(lat), 'longitudes': list(lon)})
