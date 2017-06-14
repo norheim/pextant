@@ -1,7 +1,8 @@
 ================================
 Installation Instructions
 ================================
-pextant is developed in Python 2.7. Future releases might include packaging and automatic installation through a ``setup.py`` file. In the meantime, installation is facilitated by providing a ``.yml`` file compatible with the conda enviroment manager. **Only tested on Windows machines**
+pextant is developed in Python 2.7 (32 bit and 64 bit should both work). Future releases might include packaging and automatic installation through a ``setup.py`` file. In the meantime, installation is facilitated through a combination of the conda enviroment manager and the pip tool. 
+**Only tested on Windows machines**
 
 Quick instructions:
 ================================
@@ -14,6 +15,13 @@ Quick instructions:
 	
 	# or Mac and Linux users:
 	source activate pextant
+
+	# 3. Next, if on windows, get Shapely library and download
+	# from: http://www.lfd.uci.edu/~gohlke/pythonlibs/#shapely
+	pip install Shapely‑1.5.17‑cp27‑cp27m‑win32.whl (or Shapely‑1.5.17‑cp27‑cp27m‑win_amd64.whl if on 64 bit)
+
+	# 4. Finally, install all the pip requirements conda didnt install
+	pip install -r envreq.txt
 
 If shapely doesn't install, and you are on windows run:
 
