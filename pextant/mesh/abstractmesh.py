@@ -1,22 +1,24 @@
 import numpy as np
 import numpy.matlib as matlib
-import json
-from pextant.lib.geoshapely import GeoPoint, Cartesian
+from pextant.lib.geoshapely import GeoPoint, Cartesian, XY
+from scipy.interpolate import interp2d, NearestNDInterpolator, RegularGridInterpolator
 from skimage.draw import circle
 
 class GeoMesh(object):
     def __init__(self, nw_geo_point, dataset, resolution=1, planet='Earth',
                  parent_mesh=None, xoff=0, yoff=0):
-        y_size, x_size = dataset.shape  #y is first in case dataset is a numpy array
-        self.x_size = x_size
-        self.y_size = y_size
+        self.dataset = dataset.data
+        self.x_size = dataset.x_size
+        self.y_size = dataset.y_size
         self.shape = dataset.shape
         self.size = dataset.size
+
+        self.local_coordinates = XY(nw_geo_point, resolution)
         self.nw_geo_point = nw_geo_point
-        self.se_geo_point = GeoPoint(Cartesian(nw_geo_point, resolution), x_size, y_size)
-        self.dataset = dataset
+        self.se_geo_point = GeoPoint(Cartesian(nw_geo_point, resolution), self.x_size, self.y_size)
         self.resolution = resolution
         self.planet = planet if parent_mesh == None else parent_mesh.planet
+
         # data points that make it relative to a parent mesh
         self.parent_mesh = parent_mesh
         self.xoff = xoff
@@ -27,9 +29,47 @@ class GeoMesh(object):
         return cls(parent.nw_geo_point, parent.dataset, parent.resolution, parent_mesh=parent.parent_mesh,
                    xoff=parent.xoff, yoff=parent.yoff, **kwargs)
 
+    def localpoint(self, geopoint):
+        return geopoint.to(self.local_coordinates)
+
     def __str__(self):
         return 'height: %s \nwidth: %s \nresolution: %s \nnw corner: %s' % \
               (self.y_size, self.x_size, self.resolution, str(self.nw_geo_point))
+
+class Dataset(object):
+    '''
+    This is a wrapper that gives gdal datasets a shape property, similar to numpy arrays
+    '''
+    def __init__(self, data, row_size, col_size):
+        self.y_size = row_size
+        self.x_size = col_size
+        self.shape = (row_size, col_size)
+        self.size = row_size*col_size
+        self.data = data
+
+    def __str__(self):
+        return 'height: %s \nwidth: %s ' % \
+              (self.y_size, self.x_size)
+
+class InterpolatingDataset(Dataset):
+    def __init__(self, data, row_size, col_size):
+        super(InterpolatingDataset, self).__init__(data, row_size, col_size)
+        self.interpolator = self._grid_interpolator_initializer()
+
+    @classmethod
+    def from_np(cls, numpy_array):
+        y_size, x_size = numpy_array.shape
+        return cls(numpy_array, y_size, x_size)
+
+    # should be overwritten if needed, which is why it's its own function outside of __init__
+    def _grid_interpolator_initializer(self):
+        x_axis = np.arange(self.x_size)
+        y_axis = np.arange(self.y_size)
+        return RegularGridInterpolator((y_axis, x_axis), self.data)
+
+    # interpolation should be defined by children classes
+    def get_datapoint(self, localpoint):
+        return self.interpolator(localpoint)
 
 class GridMesh(GeoMesh):
     def __init__(self, *arg, **kwargs):
@@ -52,8 +92,8 @@ class EnvironmentalModel(GeoMesh):
                  parent_mesh, xoff, yoff)
         self.maxSlope = maxSlope
         self.cached = cached
-        self.dataset_unmasked = dataset.filled(0)
-        self.isvaliddata = np.logical_not(dataset.mask)
+        self.dataset_unmasked = self.dataset.filled(0)
+        self.isvaliddata = np.logical_not(self.dataset.mask)
         self.slopes = []
         self.obstacles = []  # obstacles is a list with boolean values for non-passable squares
         self.passable = []

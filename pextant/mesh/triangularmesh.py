@@ -5,18 +5,24 @@ from pextant.EnvironmentalModel import GDALMesh, EnvironmentalModel, coordinate_
 from pextant.lib.geoshapely import GeoPoint, XY
 from pextant.mesh.abstractmesh import GeoMesh
 from pextant.mesh.abstractcomponents import MeshElement, MeshCollection
+from pextant.mesh.abstractmesh import InterpolatingDataset
+from scipy.interpolate import LinearNDInterpolator
 
-
-class TriDataset(object):
+class TriDataset(InterpolatingDataset):
     def __init__(self, mesh, elevations=None, y_size=None, x_size=None):
-        self.elevations = elevations
         if x_size == None:
             x_size, y_size, _ = np.diff(mesh.mesh.bounds.transpose()).flatten().astype('int32')
-        self.shape = (y_size, x_size)
+        super(TriDataset, self).__init__(mesh, x_size, y_size)
+        self.elevations = elevations
+
+        #TODO: need to fix this
         self.size,_ = mesh.faces.shape
         self.mesh = mesh
         self.mask = np.zeros(self.size) # for missing data
 
+    def _grid_interpolator_initializer(self):
+        # TODO: replace with Trimesh built in interpolator
+        return LinearNDInterpolator(self.data.vertices[:,[0,1]], self.data.vertices[:,2])
 
 class TriMeshPLY(object):
     def __init__(self, file_path):
