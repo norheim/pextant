@@ -82,7 +82,7 @@ class MeshViz:
         if notebook:
             output_notebook()
 
-    def viz(self, mesh, x=None, y=None, palette="Spectral11", viz=True):
+    def viz(self, mesh, x=None, y=None, palette="Spectral11", viz=True, type="line"):
         dh, dw = mesh.shape
         size = max(dh, dw)
         self.mesh = mesh
@@ -91,8 +91,10 @@ class MeshViz:
         self.p = figure(webgl=True, title="MD2", x_axis_label='x', y_axis_label='y', x_range=[0, size], y_range=[0, size])
         self.p.image(image=[mesh[::-1, :]], x=0, y=0, dw=dw, dh=dh, palette=palette)
         if not x is None:
-            self.p.line(x, self.dh - np.array(y), line_color="green", line_width=3)
-            #self.p.circle(x, self.dh - np.array(y), fill_color="green", line_color="black", size=10)
+            if type=="line":
+                self.p.line(x, self.dh - np.array(y), line_color="green", line_width=3)
+            else:
+                self.p.circle(x, self.dh - np.array(y), fill_color="yellow", line_color="black", size=10)
         if self.notebook and viz:
             self.t = show(self.p, notebook_handle = self.notebook)
         else:

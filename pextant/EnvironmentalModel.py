@@ -5,18 +5,22 @@ from osgeo import gdal, osr
 
 from pextant.lib.geoshapely import *
 from pextant.lib.geoutils import filled_grid_circle
-from pextant.mesh.abstractmesh import GeoMesh, GridMesh, EnvironmentalModel, SearchKernel, coordinate_transform
+from pextant.mesh.abstractmesh import GeoMesh, GridMesh, EnvironmentalModel, \
+    SearchKernel, coordinate_transform, Dataset
 from pextant.mesh.abstractcomponents import MeshCollection
 from pextant.mesh.concretecomponents import MeshElement
 
-class GDALDataset(object):
+class GDALDataset(Dataset):
     '''
     This is a wrapper that gives gdal datasets a shape property, similar to numpy arrays
     '''
     def __init__(self, dataset, row_size, col_size):
-        self.shape = (row_size, col_size)
-        self.size = row_size*col_size
+        super(GDALDataset, self).__init__(dataset, row_size, col_size)
         self.raster = dataset
+
+    # override interpolator since the data set is just a shell
+    def _grid_interpolator_initializer(self):
+        return lambda : None
 
 
 class GDALMesh(GridMesh):
@@ -92,7 +96,7 @@ class GDALMesh(GridMesh):
         band = dataset.GetRasterBand(1)
         map_array = band.ReadAsArray(x_offset, y_offset, x_size, y_size, buf_x, buf_y).astype(np.float)
         dataset_clean = ma.masked_array(map_array, np.isnan(map_array)).filled(-99999)
-        dataset_clean = ma.masked_array(dataset_clean, dataset_clean < 0)
+        dataset_clean = Dataset.from_np(ma.masked_array(dataset_clean, dataset_clean < 0))
 
         # TODO: this hack needs explanation
         nw_coord_hack = GeoPoint(UTM(zone), inter_easting.min(), inter_northing.max()).to(COL_ROW)
