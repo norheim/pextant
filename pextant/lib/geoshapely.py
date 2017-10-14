@@ -126,7 +126,6 @@ class Cartesian(GeoType):
         # doing conversion early on will save use from redoing it later, we don't expect our origin to change too much
         self.origin_easting, self.origin_northing = origin.x, origin.y
         self.resolution = resolution
-
         self.origin = origin # needed for reversal
         self.reversed = reverse # needed for reversal too
 
@@ -147,6 +146,65 @@ class Cartesian(GeoType):
         delta_easting, delta_northing = points_easting - self.origin_easting, self.origin_northing - points_northing
         coords = np.array([np.round(delta_easting / self.resolution,6),
                            np.round(delta_northing / self.resolution,6)]).astype(int)
+        return self.reorder(coords)
+
+class Cartesian2(object):
+    def __init__(self, origin=None, resolution=1, reverse=False, integer=True):
+        if reverse:
+            order = ["y", "x"]
+        else:
+            order = ["x", "y"]
+
+        self.name = "nongeocoord"
+        self.values = order
+        proj_transform_order = ["x", "y"]
+        self.proj_transform_order = [order.index(parameter) for parameter in proj_transform_order]
+        # doing conversion early on will save use from redoing it later, we don't expect our origin to change too much
+        self.origin_easting, self.origin_northing = (origin.x, origin.y) if origin != None else (0, 0)
+        self.resolution = resolution
+        self.origin = origin # needed for reversal
+        self.reversed = reverse # needed for reversal too
+        self.integer = integer
+
+    def reverse(self):
+        return Cartesian(self.origin, self.resolution, not self.reversed)
+
+    def reorder(self, elements):
+        array_elements = np.array(elements)
+        if len(array_elements.shape) <= 1:
+            post_out = array_elements[self.proj_transform_order]
+        else:
+            post_out = array_elements[self.proj_transform_order, :]
+        return post_out
+
+    def to_utm(self, geo_point):
+        return  Cartesian2()
+
+    def getargs(self, geo_points):
+        # next line should ideally be super.getargs, but we overwrite the fx so not sure if possible
+        x, y = geo_points["x"], geo_points["y"]
+        delta_easting, delta_northing = np.array([x, y]) * self.resolution
+        return self.origin_easting + delta_easting, self.origin_northing + delta_northing
+
+    def transform(self, geo_point, to_geo_type, conversion_type=None):
+        args = self.getargs(geo_point)
+        if self.name == to_geo_type.name:
+            array_out = args
+            post_array = to_geo_type.post_process(array_out)
+            if conversion_type is not None:
+                return conversion_type(post_array)
+            else:
+                return post_array
+        else:
+            return None
+
+    def post_process(self, transformed_points):
+        points_easting, points_northing = transformed_points
+        delta_easting, delta_northing = points_easting - self.origin_easting, points_northing-self.origin_northing
+        coords = np.array([np.round(delta_easting / self.resolution,6),
+                           np.round(delta_northing / self.resolution,6)])
+        if self.integer:
+            coords = coords.astype(int)
         return self.reorder(coords)
 
 class GeoObject(object):
