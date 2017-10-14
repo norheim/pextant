@@ -10,16 +10,17 @@ class TriExpandViz(object):
     def __init__(self, env_model, start_point, end_point, counter_interval=10):
         self.mesh = env_model.dataset.mesh
         self.env_model = env_model
-        self.points = GeoPolygon([start_point, end_point])
+        #self.points = GeoPolygon([start_point, end_point])
         self.y, self.x = self.mesh.vertices[:, :2].transpose()
-        self.zfaces = np.zeros(env_model.size)
+        self.zfaces = self.mesh.triangles_center[:, 2]
         self.counter = 0
         self.counter_interval = counter_interval
 
-    def draw(self):
-        px,py = self.points.to(self.env_model.ROW_COL)
+    def draw(self, x = (), y=()):
+        #px,py = self.points.to(self.env_model.ROW_COL)
         plt.tripcolor(self.x, self.y, self.mesh.faces, facecolors=self.zfaces, edgecolors='k')
-        plt.plot(px, py, 'o')
+        if len(x) != 0:
+            plt.plot(x, y)
         plt.axis('equal')
         plt.show()
 
