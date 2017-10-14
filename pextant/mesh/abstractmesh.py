@@ -1,25 +1,27 @@
 import numpy as np
 import numpy.matlib as matlib
 from pextant.lib.geoshapely import GeoPoint, Cartesian, XY
-from scipy.interpolate import interp2d, NearestNDInterpolator, RegularGridInterpolator
+from scipy.interpolate import NearestNDInterpolator, RegularGridInterpolator, griddata
+from scipy.ndimage.interpolation import zoom
 from skimage.draw import circle
 
 class GeoMesh(object):
-    def __init__(self, nw_geo_point, dataset, resolution=1, planet='Earth',
+    def __init__(self, nw_geo_point, dataset, planet='Earth',
                  parent_mesh=None, xoff=0, yoff=0):
-        self.dataset = dataset.data
+        self.dataset = dataset
+        self.data = dataset.data
         self.x_size = dataset.x_size
         self.y_size = dataset.y_size
         self.shape = dataset.shape
         self.size = dataset.size
+        self.resolution = dataset.resolution
 
-        self.local_coordinates = XY(nw_geo_point, resolution)
+        self.local_coordinates = XY(nw_geo_point, self.resolution)
         self.nw_geo_point = nw_geo_point
-        self.se_geo_point = GeoPoint(Cartesian(nw_geo_point, resolution), self.x_size, self.y_size)
-        self.resolution = resolution
+        self.se_geo_point = GeoPoint(Cartesian(nw_geo_point, self.resolution), self.x_size, self.y_size)
         self.planet = planet if parent_mesh == None else parent_mesh.planet
 
-        # data points that make it relative to a parent mesh
+        # data points that make it relative to a parent mesh, but not really currently in use
         self.parent_mesh = parent_mesh
         self.xoff = xoff
         self.yoff = yoff
@@ -40,26 +42,27 @@ class Dataset(object):
     '''
     This is a wrapper that gives gdal datasets a shape property, similar to numpy arrays
     '''
-    def __init__(self, data, row_size, col_size):
+    def __init__(self, data, row_size, col_size, resolution):
         self.y_size = row_size
         self.x_size = col_size
         self.shape = (row_size, col_size)
         self.size = row_size*col_size
         self.data = data
+        self.resolution = resolution
 
     def __str__(self):
         return 'height: %s \nwidth: %s ' % \
               (self.y_size, self.x_size)
 
 class InterpolatingDataset(Dataset):
-    def __init__(self, data, row_size, col_size):
-        super(InterpolatingDataset, self).__init__(data, row_size, col_size)
+    def __init__(self, data, row_size, col_size, resolution=1.):
+        super(InterpolatingDataset, self).__init__(data, row_size, col_size, resolution)
         self.interpolator = self._grid_interpolator_initializer()
 
     @classmethod
-    def from_np(cls, numpy_array):
+    def from_np(cls, numpy_array, resolution=1.):
         y_size, x_size = numpy_array.shape
-        return cls(numpy_array, y_size, x_size)
+        return cls(numpy_array, y_size, x_size, resolution=resolution)
 
     # should be overwritten if needed, which is why it's its own function outside of __init__
     def _grid_interpolator_initializer(self):
@@ -67,9 +70,53 @@ class InterpolatingDataset(Dataset):
         y_axis = np.arange(self.y_size)
         return RegularGridInterpolator((y_axis, x_axis), self.data)
 
+    def downsample(self, resolution):
+        return InterpolatingDataset.from_np(zoom(self.data, self.resolution/resolution))
+
     # interpolation should be defined by children classes
     def get_datapoint(self, localpoint):
         return self.interpolator(localpoint)
+
+
+class NpDataset(np.ndarray):
+    # Wraps around Interpolating Dataset aswell
+    def __new__(cls, input_array, resolution=1.0):
+        # Input array is an already formed ndarray instance
+        # We first cast to be our class type
+        obj = np.asarray(input_array).view(cls)
+        # add the new attribute to the created instance
+        obj.resolution = resolution
+        obj.interp = InterpolatingDataset.from_np(input_array, resolution=resolution)
+        # Finally, we must return the newly created object:
+        return obj
+
+    def downsample(self, resolution):
+        return NpDataset(zoom(self.interp.data, float(self.interp.resolution) / resolution), resolution)
+
+    def __getattr__(self, item):
+        try:
+            return InterpolatingDataset.__getattribute__(self, item)
+        except AttributeError:
+            return getattr(self.interp, item)
+
+    def __array_finalize__(self, obj):
+        # see InfoArray.__array_finalize__ for comments
+        if obj is None: return
+        resolution =  getattr(obj, "resolution", None)
+        self.interp = InterpolatingDataset.from_np(self, resolution)
+
+    def __repr__(self):
+        return np.array(self.interp.data).__repr__()
+
+
+class NearestInterpolatorDataset(InterpolatingDataset):
+    def __init__(self, *arg, **kwargs):
+        super(NearestInterpolatorDataset, self).__init__(*arg, **kwargs)
+
+    def _grid_interpolator_initializer(self):
+        x_axis = np.arange(self.x_size)
+        y_axis = np.arange(self.y_size)
+        return NearestNDInterpolator((y_axis, x_axis), self.data)
 
 class GridMesh(GeoMesh):
     def __init__(self, *arg, **kwargs):
@@ -86,14 +133,15 @@ class EnvironmentalModel(GeoMesh):
     """
     This class ultimately represents an elevation map + all of the traversable spots on it.
     """
-    def __init__(self, nw_geo_point, dataset, resolution=1, planet='Earth',
-                 parent_mesh=None, xoff=0, yoff=0, maxSlope=35, cached=False):
-        super(EnvironmentalModel, self).__init__(nw_geo_point, dataset, resolution, planet,
+    def __init__(self, nw_geo_point, dataset, planet='Earth',
+                 parent_mesh=None, xoff=0, yoff=0, maxSlope=35, kernel_size=3, kernel_type="square",
+                 cached=False):
+        super(EnvironmentalModel, self).__init__(nw_geo_point, dataset, planet,
                  parent_mesh, xoff, yoff)
         self.maxSlope = maxSlope
         self.cached = cached
-        self.dataset_unmasked = self.dataset.filled(0)
-        self.isvaliddata = np.logical_not(self.dataset.mask)
+        self.kernel_type = kernel_type
+        self.kernel_size = kernel_size
         self.slopes = []
         self.obstacles = []  # obstacles is a list with boolean values for non-passable squares
         self.passable = []
@@ -127,7 +175,11 @@ class EnvironmentalModel(GeoMesh):
     def _getMeshElement(self, mesh_coordinates): pass
 
     def getMeshEltNeighbours(self, mesh_element):
-        self._getNeighbours(mesh_element.state)
+        return self._getNeighbours(mesh_element.state)
+
+    @coordinate_transform
+    def get_neighbours(self, geo_coordinates):
+        return self._getNeighbours(geo_coordinates)
 
     def _getNeighbours(self, mesh_coordinates): pass
 
@@ -163,7 +215,7 @@ class EnvironmentalModel(GeoMesh):
         return self._hasdata(mesh_coordinates) and mesh_coordinates not in self.obstacles
 
 class SearchKernel(object):
-    def __init__(self, kernelrange = 3):
+    def __init__(self, kernelrange = 3, type="square"):
         searchvector = range(-(kernelrange / 2), kernelrange / 2 + 1)
         col_off = matlib.repmat(searchvector, len(searchvector), 1)
         row_off = np.transpose(col_off)
@@ -173,10 +225,17 @@ class SearchKernel(object):
         self.col_off = col_off_clean
         self.row_off = row_off_clean
         self.kernelrange = kernelrange
+        self.type = type
+        self.typemap = dict(square=self.get_square_kernel, circular=self.get_circular_kernel)
         self.kernel = np.array([row_off_clean, col_off_clean]).transpose()
 
     def getKernel(self):
+        return self.typemap[self.type]()
+
+    def get_square_kernel(self):
         return self.kernel
 
-    def getCircularKernel(self):
-        return np.array(circle(0, 0, 6)).transpose()
+    def get_circular_kernel(self):
+        kernel = np.array(circle(0, 0, int((self.kernelrange+1)/2+1))).transpose()
+        center_removed = np.delete(kernel, np.where(np.logical_and(kernel[:, 0] == 0, kernel[:, 1] == 0))[0][0], 0)
+        return center_removed

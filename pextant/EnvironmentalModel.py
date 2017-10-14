@@ -6,7 +6,7 @@ from osgeo import gdal, osr
 from pextant.lib.geoshapely import *
 from pextant.lib.geoutils import filled_grid_circle
 from pextant.mesh.abstractmesh import GeoMesh, GridMesh, EnvironmentalModel, \
-    SearchKernel, coordinate_transform, Dataset
+    SearchKernel, coordinate_transform, Dataset, NpDataset
 from pextant.mesh.abstractcomponents import MeshCollection
 from pextant.mesh.concretecomponents import MeshElement
 
@@ -14,8 +14,8 @@ class GDALDataset(Dataset):
     '''
     This is a wrapper that gives gdal datasets a shape property, similar to numpy arrays
     '''
-    def __init__(self, dataset, row_size, col_size):
-        super(GDALDataset, self).__init__(dataset, row_size, col_size)
+    def __init__(self, dataset, row_size, col_size, resolution):
+        super(GDALDataset, self).__init__(dataset, row_size, col_size, resolution)
         self.raster = dataset
 
     # override interpolator since the data set is just a shell
@@ -39,16 +39,17 @@ class GDALMesh(GridMesh):
         nw_easting = dataset_info[0]
         nw_northing = dataset_info[3]
         resolution = dataset_info[1]
-        dataset_wrapped = GDALDataset(dataset, row_size=y_size, col_size=x_size)
+        dataset_wrapped = GDALDataset(dataset, row_size=y_size, col_size=x_size,
+                                      resolution=resolution)
 
         proj = dataset.GetProjection()
         srs = osr.SpatialReference(wkt=proj)
         projcs = srs.GetAttrValue('projcs')  # "NAD83 / UTM zone 5N"...hopefully
-        regex_result = re.search('zone\s(\d+)(\w)', projcs)
-        zone_number = regex_result.group(1)  # zone letter is group(2)
+        regex_result = re.search('zone(\s|\_)(\d+)(\w)', projcs, flags=re.IGNORECASE)
+        zone_number = regex_result.group(2)  # zone letter is group(2)
         nw_geo_point = GeoPoint(UTM(zone_number), nw_easting, nw_northing)
 
-        super(GDALMesh, self).__init__(nw_geo_point, dataset_wrapped, resolution)
+        super(GDALMesh, self).__init__(nw_geo_point, dataset_wrapped)
 
     def _loadSubSection(self, geo_envelope=None, desired_res=None):
         """
@@ -96,7 +97,7 @@ class GDALMesh(GridMesh):
         band = dataset.GetRasterBand(1)
         map_array = band.ReadAsArray(x_offset, y_offset, x_size, y_size, buf_x, buf_y).astype(np.float)
         dataset_clean = ma.masked_array(map_array, np.isnan(map_array)).filled(-99999)
-        dataset_clean = Dataset.from_np(ma.masked_array(dataset_clean, dataset_clean < 0))
+        dataset_clean = NpDataset(ma.masked_array(dataset_clean, dataset_clean < 0))
 
         # TODO: this hack needs explanation
         nw_coord_hack = GeoPoint(UTM(zone), inter_easting.min(), inter_northing.max()).to(COL_ROW)
@@ -114,7 +115,9 @@ class GDALMesh(GridMesh):
 class GridMeshModel(EnvironmentalModel):
     def __init__(self, *arg, **kwargs):
         super(GridMeshModel, self).__init__(*arg, **kwargs)
-        self.searchKernel = SearchKernel()
+        self.dataset_unmasked = self.data.filled(0) if isinstance(self.data, np.ma.core.MaskedArray) else self.data
+        self.isvaliddata = np.logical_not(self.data.mask)
+        self.searchKernel = SearchKernel(self.kernel_size, self.kernel_type)
         self.ROW_COL = Cartesian(self.nw_geo_point, self.resolution, reverse=True)
         self.COL_ROW = Cartesian(self.nw_geo_point, self.resolution)
         self.cached_neighbours = self._cache_neighbours() if self.cached else []
@@ -144,7 +147,7 @@ class GridMeshModel(EnvironmentalModel):
         return MeshCollection(self, passable_neighbours.transpose(), coordsxy.transpose())
 
     def setSlopes(self):
-        [gx, gy] = np.gradient(self.dataset, self.resolution, self.resolution)
+        [gx, gy] = np.gradient(self.data, self.resolution, self.resolution)
         self.slopes = np.degrees(
             np.arctan(np.sqrt(np.add(np.square(gx), np.square(gy)))))  # Combining for now for less RAM usage
 
@@ -206,12 +209,12 @@ class GridMeshModel(EnvironmentalModel):
 
     def _cache_neighbours(self):
         print('cashing neighbours')
-        s = np.empty((self.shape[0],self.shape[1],8),dtype=bool)
         rows, cols = np.mgrid[0:self.y_size, 0:self.x_size]
         gridpoints = np.array([rows.flatten(), cols.flatten()]).transpose()
 
         kernel = self.searchKernel
         offsets = kernel.getKernel()
+        s = np.empty((self.shape[0], self.shape[1], len(offsets)), dtype=bool)
         for idx, offset in enumerate(offsets):
             candidate_neighbour_point = gridpoints + offset
             point_is_neighbour = self._inbounds_bool(candidate_neighbour_point) # if not in bounds, its not a neighbour

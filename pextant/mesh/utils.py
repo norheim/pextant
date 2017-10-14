@@ -2,6 +2,7 @@ from vtk import vtkImageData, vtkGreedyTerrainDecimation, VTK_FLOAT, vtkPolyData
     vtkDelaunay2D, vtkRenderWindow, vtkWindowToImageFilter, vtkPNGWriter, vtkActor, vtkRenderer, vtkPolyDataMapper
 from vtk.util.numpy_support import numpy_to_vtk
 from IPython.display import Image
+import numpy as np
 
 def write_poly(polygons, filename):
     plyWriter = vtkPLYWriter()
