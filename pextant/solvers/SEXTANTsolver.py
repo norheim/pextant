@@ -1,4 +1,6 @@
 from pextant.lib.geoshapely import LONG_LAT
+import numpy as np
+
 class SEXTANTSolver(object):
     def __init__(self, environmental_model, cost_function, viz):
         self.env_model = environmental_model
@@ -18,7 +20,18 @@ class SEXTANTSolver(object):
             search_results.append(search_result)
             rawpoints += search_result.raw
             itemssrchd += search_result.expanded_items
-        return search_results, rawpoints, itemssrchd
+        return search_results, np.array(rawpoints).transpose(), itemssrchd
+
+class sextantSearchList(object):
+    def __init__(self):
+        self.list = []
+
+    def append(self, elt):
+        self.list.append(elt)
+
+    def raw(self):
+        pass
+        #return np.array([search.raw for search in self.list])
 
 class sextantSearch(object):
     def __init__(self, startpoint, endpoint):

@@ -11,7 +11,7 @@ from scipy.interpolate import LinearNDInterpolator
 class TriDataset(InterpolatingDataset):
     def __init__(self, mesh, elevations=None, y_size=None, x_size=None):
         if x_size == None:
-            x_size, y_size, _ = np.diff(mesh.mesh.bounds.transpose()).flatten().astype('int32')
+            x_size, y_size, _ = np.diff(mesh.bounds.transpose()).flatten().astype('int32')
         super(TriDataset, self).__init__(mesh, x_size, y_size)
         self.elevations = elevations
 
@@ -52,31 +52,38 @@ class GDALTriMesh(GDALMesh):
     #TODO: cache elevations
     def _loadSubSectionTri(self, geo_envelope=None, desired_res=None, accuracy=0.05):
         sub_mesh = self._loadSubSection(geo_envelope, desired_res)
-        row_size, col_size = sub_mesh.shape
-        magnification = 1 / self.resolution
-
-        # clean data set
-        subsection_elevations = sub_mesh.dataset
-        min_elevation = np.min(subsection_elevations)
-        subsection_elevations_corrected = subsection_elevations.filled(min_elevation)
-        grounded_elevations = subsection_elevations_corrected - min_elevation
-        stretch_elevations = magnification * grounded_elevations  # force z resolution to match x & y
-
-        corrected_absolute_error = magnification * accuracy
-        poly = decimate(stretch_elevations, corrected_absolute_error)
-        mesh = TriMeshPLY.from_poly(poly).mesh
-        dataset = TriDataset(mesh, stretch_elevations, row_size, col_size)
-
-        return GeoMesh(sub_mesh.nw_geo_point, dataset, sub_mesh.resolution, parent_mesh=sub_mesh.parent_mesh,
-                       xoff=sub_mesh.x_offset, yoff=sub_mesh.y_offset)
+        return grid_to_tri(sub_mesh, accuracy)
 
     def loadSubSection(self, geo_envelope=None, desired_res=None, accuracy=0.05, **kwargs):
         sub_mesh = self._loadSubSectionTri(geo_envelope, desired_res, accuracy)
         return TriMeshModel.from_parent(sub_mesh, **kwargs)
 
+def grid_to_tri(geomesh, accuracy=0.05):
+    row_size, col_size = geomesh.shape
+    magnification = 1 / geomesh.resolution
+
+    # clean data set
+    subsection_elevations = geomesh.data
+    min_elevation = np.min(subsection_elevations)
+    subsection_elevations_corrected = subsection_elevations.filled(min_elevation)
+    grounded_elevations = subsection_elevations_corrected - min_elevation
+    stretch_elevations = magnification * grounded_elevations  # force z resolution to match x & y
+    wrapped_stretch_elevations = stretch_elevations
+
+    corrected_absolute_error = magnification * accuracy
+    #inverted_stretch_elevations = np.fliplr(stretch_elevations)
+    poly = decimate(stretch_elevations, corrected_absolute_error)
+    mesh = TriMeshPLY.from_poly(poly).mesh
+    mesh.vertices[:,2] = mesh.vertices[:,2] / magnification + min_elevation #shrink back
+
+    dataset = TriDataset(mesh, wrapped_stretch_elevations, row_size, col_size)
+
+    return GeoMesh(geomesh.nw_geo_point, dataset, geomesh.resolution, parent_mesh=geomesh.parent_mesh,
+                   xoff=geomesh.xoff, yoff=geomesh.yoff)
 
 class TriMeshModel(EnvironmentalModel):
     def __init__(self, *arg, **kwargs):
+        kwargs['cached'] = True #force caching
         super(TriMeshModel, self).__init__(*arg, **kwargs)
         self.raster = self.dataset.elevations
         self.faces = self.dataset.mesh.faces
@@ -84,10 +91,9 @@ class TriMeshModel(EnvironmentalModel):
         #self.xy = XY(self.nw_geo_point, 1)
         self.ROW_COL = XY(self.nw_geo_point, self.resolution, reverse=True)
         self.COL_ROW = XY(self.nw_geo_point, self.resolution)
-        self.cache_neighbours()
 
-    def cache_neighbours(self):
-        self.neighbours = self.edge_neighbours()
+    def _cache_neighbours(self):
+        return self.edge_neighbours()
 
     def all_neighbours(self):
         d = dict()
@@ -111,7 +117,7 @@ class TriMeshModel(EnvironmentalModel):
     def _getNeighbours(self, faceidx):
         #potential_neighbours = reduce(np.union1d, map(self.neighbours.get, self.faces[faceidx]))
         #potential_neighbours = np.setdiff1d(potential_neighbours, np.array(faceidx))
-        potential_neighbours = self.neighbours[faceidx]
+        potential_neighbours = self.cached_neighbours[faceidx]
         passable_neighbours = np.array(filter(self._isPassable, potential_neighbours))
         triangles = self.dataset.mesh.triangles_center[passable_neighbours]
         # TODO: need to make this a function:
@@ -140,11 +146,17 @@ class TriMeshModel(EnvironmentalModel):
     def _hasdata(self, coordinates):
         return self.isvaliddata[coordinates]
 
+    def find_nearest(self, value):
+        idx = (np.linalg.norm(self.data.vertices[:,:2] - np.array(value), axis=1)).argmin()
+        return idx
+
     def convert_coordinates(self, coordinates):
         if isinstance(coordinates, GeoPoint):
             x, y = coordinates.to(self.COL_ROW)
-            z = self.raster[int(np.round(y)),int(np.round(x))]/self.resolution
-            _,_, facidx = proximity.closest_point(self.dataset.mesh, [[x, y, z]])
-            return facidx[0]
+        elif isinstance(coordinates, tuple):
+            x, y = coordinates
         else:
             return coordinates
+        z = self.raster[int(np.round(y)), int(np.round(x))] #/ self.resolution
+        _, _, facidx = proximity.closest_point(self.data, [[x, y, z]])
+        return facidx[0]

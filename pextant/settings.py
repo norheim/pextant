@@ -3,11 +3,12 @@ import numpy as np
 from pextant.EnvironmentalModel import GDALMesh
 from pextant.analysis.loadWaypoints import JSONloader
 from pextant.explorers import Astronaut
-#from pextant.mesh.MeshVisualizer import MeshViz
+from pextant.mesh.MeshVisualizer import MeshVizM
 from pextant.solvers.astarMesh import astarSolver, ExplorerCost
 
 explorer = Astronaut(80)
 #mv = MeshViz(True)
+mp = MeshVizM()
 DATA_ROOT = os.path.join('../..','data')
 MAPS_ROOT = os.path.join(DATA_ROOT,'maps')
 WAYPOINTS_ROOT = os.path.join(DATA_ROOT,'waypoints')

@@ -38,7 +38,7 @@ class MeshSearchCollection(aStarNodeCollection):
         return mesh_search_element
 
 class ExplorerCost(aStarCostFunction):
-    def __init__(self, astronaut, environment, optimize_on, cache=False, heuristic_accelerate=1):
+    def __init__(self, astronaut, environment, optimize_on, cached=False, heuristic_accelerate=1):
         """
 
         :type astronaut: Astronaut
@@ -51,8 +51,8 @@ class ExplorerCost(aStarCostFunction):
         self.map = environment
         self.optimize_vector = astronaut.optimizevector(optimize_on)
         self.heuristic_accelerate = heuristic_accelerate
-        self.cache = cache
-        if cache:
+        self.cache = cached
+        if cached:
             self.cached["costs"] = self.cache_costs()
 
     def cache_all(self):
@@ -68,17 +68,18 @@ class ExplorerCost(aStarCostFunction):
         dr = np.apply_along_axis(np.linalg.norm, 1, offsets) * self.map.resolution
         z = self.map.dataset_unmasked
         g = self.map.getGravity()
-        slopes_rad = np.empty((dem.shape[0], dem.shape[1], 8))
-        energy_cost = np.empty((dem.shape[0], dem.shape[1], 8))
-        time_cost = np.empty((dem.shape[0], dem.shape[1], 8))
-        path_cost = np.empty((dem.shape[0], dem.shape[1], 8))
+        neighbour_size = len(self.map.searchKernel.getKernel())
+        slopes_rad = np.empty((dem.shape[0], dem.shape[1], neighbour_size))
+        energy_cost = np.empty((dem.shape[0], dem.shape[1], neighbour_size))
+        time_cost = np.empty((dem.shape[0], dem.shape[1], neighbour_size))
+        path_cost = np.empty((dem.shape[0], dem.shape[1], neighbour_size))
 
         for idx, offset in enumerate(offsets):
             dri = dr[idx]
             slopes_rad[:, :, idx] = np.arctan2(np.roll(np.roll(z, -offset[0], axis=0), -offset[1], axis=1) - z, dri)
             energy_cost[:, :, idx], v = self.explorer.energy_expenditure(dri, slopes_rad[:, :, idx], g)
             time_cost[:,:,idx] = dri/v
-            path_cost[:,:,idx] = dri*np.ones_like(z)
+            path_cost[:,:,idx] = dri/np.cos(slopes_rad[:, :, idx])*np.ones_like(z)
 
         return {'time': time_cost, 'path': path_cost, 'energy': energy_cost}
 
@@ -212,11 +213,11 @@ class ExplorerCost(aStarCostFunction):
 
 
 class astarSolver(SEXTANTSolver):
-    def __init__(self, env_model, explorer_model, viz=None, optimize_on='Energy', cache=False, heuristic_accelerate=1):
+    def __init__(self, env_model, explorer_model, viz=None, optimize_on='Energy', cached=False, heuristic_accelerate=1):
         self.explorer_model = explorer_model
         self.optimize_on = optimize_on
-        self.cache = cache
-        cost_function = ExplorerCost(explorer_model, env_model, optimize_on, cache, heuristic_accelerate)
+        self.cache = cached
+        cost_function = ExplorerCost(explorer_model, env_model, optimize_on, cached, heuristic_accelerate)
         super(astarSolver, self).__init__(env_model, cost_function, viz)
 
     def accelerate(self, weight=10):

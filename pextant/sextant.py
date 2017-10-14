@@ -97,7 +97,7 @@ def main(argv):
             waypoints = json_loader.get_waypoints()
             print 'gdal mesh is  built from %s' % str(geotiff_full_path)
             environmental_model = gdal_mesh.loadSubSection(waypoints.geoEnvelope(), cached=True)
-            solver = astarSolver(environmental_model, explorer, optimize_on='Energy', cache=True)
+            solver = astarSolver(environmental_model, explorer, optimize_on='Energy', cached=True)
             print('loaded fine')
             return json.dumps({'loaded': True})
         except Exception, e:
@@ -145,7 +145,7 @@ def main(argv):
 
         environmental_model = gdal_mesh.loadSubSection(waypoints.geoEnvelope(), cached=True)
         explorer = Astronaut(80)
-        solver = astarSolver(environmental_model, explorer, optimize_on='Energy', cache=True)
+        solver = astarSolver(environmental_model, explorer, optimize_on='Energy', cached=True)
         _, rawpoints, _ = solver.solvemultipoint(waypoints)
         lat, lon = GeoPolygon(environmental_model.ROW_COL, *np.array(rawpoints).transpose()).to(LAT_LONG)
         print((lat, lon))
@@ -156,5 +156,5 @@ def main(argv):
 
 
 # if __name__ == "__main__":
-main(sys.argv[1:])
-#main(['../data/maps/dem/HI_lowqual_DEM.tif'])
+#main(sys.argv[1:])
+main(['../data/maps/dem/Ames.tif'])

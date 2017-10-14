@@ -102,13 +102,14 @@ class Astronaut(Explorer):  # Astronaut extends Explorer
         total_cost = slope_cost + level_cost
         return total_cost, v
 
-    def path_energy_expenditure(self, xyz, g=9.81):
+    def path_energy_expenditure(self, xyz, res=1, g=9.81):
         x, y, z = xyz
-        xy = np.column_stack((x,y))
-        dl = np.diff(xy, axis=0)
+        xy = res*np.column_stack((x,y))
+        dxy = np.diff(xy, axis=0)
+        dl = np.sqrt(np.sum(np.square(dxy), axis=1))
         dz = np.diff(z)
         slopes = np.arctan2(dz, dl)
-        return self.slope_energy_cost(dl, slopes, g)
+        return self.energy_expenditure(dl, slopes, g)
 
 
 class Rover(Explorer):  # Rover also extends explorer
