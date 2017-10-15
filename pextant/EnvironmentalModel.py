@@ -22,6 +22,21 @@ class GDALDataset(Dataset):
     def _grid_interpolator_initializer(self):
         return lambda : None
 
+    def subsection(self, x_offset, y_offset, x_size, y_size, desired_res=None):
+        buf_x = None
+        buf_y = None
+        if desired_res:
+            buf_x = int(x_size * self.resolution / desired_res)
+            buf_y = int(y_size * self.resolution / desired_res)
+        else:
+            desired_res = self.resolution
+
+        band = self.raster.GetRasterBand(1)
+        map_array = band.ReadAsArray(x_offset, y_offset, x_size, y_size, buf_x, buf_y).astype(np.float)
+        dataset_clean = ma.masked_array(map_array, np.isnan(map_array)).filled(-99999)
+        dataset_clean = NpDataset(ma.masked_array(dataset_clean, dataset_clean < 0), desired_res)
+        return dataset_clean
+
 
 class GDALMesh(GridMesh):
     """
@@ -46,69 +61,17 @@ class GDALMesh(GridMesh):
         srs = osr.SpatialReference(wkt=proj)
         projcs = srs.GetAttrValue('projcs')  # "NAD83 / UTM zone 5N"...hopefully
         regex_result = re.search('zone(\s|\_)(\d+)(\w)', projcs, flags=re.IGNORECASE)
-        zone_number = regex_result.group(2)  # zone letter is group(2)
-        nw_geo_point = GeoPoint(UTM(zone_number), nw_easting, nw_northing)
+        if regex_result:
+            zone_number = regex_result.group(2)  # zone letter is group(2)
+            nw_geo_point = GeoPoint(UTM(zone_number), nw_easting, nw_northing)
+        else:
+            nw_geo_point = GeoPoint(UTM(0), 0, 0)
 
         super(GDALMesh, self).__init__(nw_geo_point, dataset_wrapped)
 
-    def _loadSubSection(self, geo_envelope=None, desired_res=None):
-        """
-        :param geo_envelope:
-        :type geo_envelope pextant.geoshapely.GeoEnvelope
-        :param desired_res:
-        :return:
-        """
-        map_nw_corner, zone = self.nw_geo_point, self.nw_geo_point.utm_reference.proj_param["zone"]
-        dataset = self.dataset.raster
-
-        COL_ROW = Cartesian(map_nw_corner, self.resolution)
-        map_se_corner = GeoPoint(COL_ROW, self.x_size, self.y_size)
-
-        if geo_envelope is not None:
-            selection_nw_corner, selection_se_corner = geo_envelope.getBounds()
-        else:
-            selection_nw_corner, selection_se_corner = map_nw_corner, map_se_corner
-
-        map_box = GeoPolygon([map_nw_corner, map_se_corner]).envelope
-        selection_box = GeoEnvelope(selection_nw_corner, selection_se_corner).envelope
-        intersection_box = map_box.intersection(selection_box)
-
-        inter_easting, inter_northing = np.array(intersection_box.bounds).reshape((2, 2)).transpose()
-        intersection_box_geo = GeoPolygon(UTM(zone), inter_easting, inter_northing)  # could change to UTM_AUTO later
-        inter_x, inter_y = intersection_box_geo.to(COL_ROW)
-
-        x_offset, max_x = inter_x
-        max_y, y_offset = inter_y
-        # TODO: need to explain the +1, comes from hack. Also, doesnt work when selecting full screen
-        x_size = max_x - x_offset + 1
-        y_size = max_y - y_offset + 1
-        if geo_envelope is None:
-            x_size -= 1
-            y_size -= 1
-
-        buf_x = None
-        buf_y = None
-        if desired_res:
-            buf_x = int(x_size * self.resolution / desired_res)
-            buf_y = int(y_size * self.resolution / desired_res)
-        else:
-            desired_res = self.resolution
-
-        band = dataset.GetRasterBand(1)
-        map_array = band.ReadAsArray(x_offset, y_offset, x_size, y_size, buf_x, buf_y).astype(np.float)
-        dataset_clean = ma.masked_array(map_array, np.isnan(map_array)).filled(-99999)
-        dataset_clean = NpDataset(ma.masked_array(dataset_clean, dataset_clean < 0))
-
-        # TODO: this hack needs explanation
-        nw_coord_hack = GeoPoint(UTM(zone), inter_easting.min(), inter_northing.max()).to(COL_ROW)
-        nw_coord = GeoPoint(COL_ROW, nw_coord_hack[0], nw_coord_hack[1])
-        meta_mesh = GeoMesh(nw_coord, dataset_clean, desired_res, parent_mesh=self,
-                            xoff=x_offset, yoff=y_offset)
-        return meta_mesh
-
     def loadSubSection(self, geo_envelope=None, desired_res=None, **kwargs):
         #kwargs is reserved for max slope argument
-        sub_mesh = self._loadSubSection(geo_envelope, desired_res)
+        sub_mesh = self.subsection(geo_envelope, desired_res)
         return GridMeshModel.from_parent(sub_mesh, **kwargs)
 
 
@@ -116,7 +79,8 @@ class GridMeshModel(EnvironmentalModel):
     def __init__(self, *arg, **kwargs):
         super(GridMeshModel, self).__init__(*arg, **kwargs)
         self.dataset_unmasked = self.data.filled(0) if isinstance(self.data, np.ma.core.MaskedArray) else self.data
-        self.isvaliddata = np.logical_not(self.data.mask)
+        self.isvaliddata = np.logical_not(self.data.mask)  if isinstance(self.data, np.ma.core.MaskedArray) \
+            else np.ones_like(self.data)
         self.searchKernel = SearchKernel(self.kernel_size, self.kernel_type)
         self.ROW_COL = Cartesian(self.nw_geo_point, self.resolution, reverse=True)
         self.COL_ROW = Cartesian(self.nw_geo_point, self.resolution)

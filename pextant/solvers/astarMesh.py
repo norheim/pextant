@@ -216,8 +216,8 @@ class astarSolver(SEXTANTSolver):
     def __init__(self, env_model, explorer_model, viz=None, optimize_on='Energy', cached=False, heuristic_accelerate=1):
         self.explorer_model = explorer_model
         self.optimize_on = optimize_on
-        self.cache = cached
-        cost_function = ExplorerCost(explorer_model, env_model, optimize_on, cached, heuristic_accelerate)
+        self.cache = env_model.cached
+        cost_function = ExplorerCost(explorer_model, env_model, optimize_on, env_model.cached, heuristic_accelerate)
         super(astarSolver, self).__init__(env_model, cost_function, viz)
 
     def accelerate(self, weight=10):
