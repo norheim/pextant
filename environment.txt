@@ -2,6 +2,7 @@ This is a list of all higher level libraries installed
 conda:
 - jupyter
 - nb_conda
+- jupyter_contrib_nbextensions
 - numpy
 - gdal
 - pyproj
@@ -14,6 +15,7 @@ conda:
 - ipyleaflet (overrided py folium?)
 -c menpo/label/master cyassimp (for pymesh)
 -c conda-forge rtree shapely embree (for pymesh) shapely already installed technically
+- vtk
 pip:
 - docker
 - pypiwin32 (for docker)
