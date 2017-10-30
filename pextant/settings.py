@@ -20,8 +20,10 @@ HI_DEM = GDALMesh(HI_DEM_PATH)
 HI_DEM_LOWQUAL = GDALMesh(HI_DEM_LOWQUAL_PATH)
 HI_DEM_AERIAL = GDALMesh(HI_DEM_AERIAL_PATH)
 ID_DEM_PATH = os.path.join(MAPS_ROOT, 'Idaho', 'hwmidres.tif')
+ID_DEM_PATH2 = os.path.join(MAPS_ROOT, 'Idaho', 'hwmidlow.tif')
 ID_DEM_HIGHRES = os.path.join(MAPS_ROOT, 'Idaho', 'hwfull.tif')
 DEM_ID = {
+    50: GDALMesh(ID_DEM_PATH2),
     20: GDALMesh(ID_DEM_PATH),
     2: GDALMesh(ID_DEM_HIGHRES)
 }
