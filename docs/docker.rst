@@ -14,7 +14,7 @@ https://hub.docker.com/r/homme/cesium-terrain-builder/
 	ctb-tile -r average -o /data/tilesets /data/hwmidlow.tif
 
 	docker run -v "c:\Users\johan\Desktop\Big maps":/data -ti spara/gdal_ef bash
-	docker run -v "c:\Users\johan\Dropbox (MIT)\BASALT\pextant\pextant\maps":/data -t -i spara/gdal_ef bash
+	docker run -v "c:\Users\johan\Dropbox (MIT)\BASALT\pextant\data\maps":/data -t -i spara/gdal_ef bash
 
 	gdaldem color-relief HI_lowqual_DEM.tif colormap.txt HI_lowqual_relief.tif -nearest_color_entry
 
