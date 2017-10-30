@@ -5,7 +5,7 @@ from osgeo import gdal, osr
 
 from pextant.lib.geoshapely import *
 from pextant.lib.geoutils import filled_grid_circle
-from pextant.mesh.abstractmesh import GeoMesh, GridMesh, EnvironmentalModel, \
+from pextant.mesh.abstractmesh import GeoMesh, EnvironmentalModel, \
     SearchKernel, coordinate_transform, Dataset, NpDataset
 from pextant.mesh.abstractcomponents import MeshCollection
 from pextant.mesh.concretecomponents import MeshElement
@@ -37,6 +37,57 @@ class GDALDataset(Dataset):
         dataset_clean = NpDataset(ma.masked_array(dataset_clean, dataset_clean < 0), desired_res)
         return dataset_clean
 
+class GridMesh(GeoMesh):
+    def __init__(self, *arg, **kwargs):
+        super(GridMesh, self).__init__(*arg, **kwargs)
+        self.ROW_COL = Cartesian(self.nw_geo_point, self.resolution, reverse=True)
+        self.COL_ROW = Cartesian(self.nw_geo_point, self.resolution)
+
+    def subsection(self, geo_envelope=None, desired_res=None):
+        """
+                :param geo_envelope:
+                :type geo_envelope pextant.geoshapely.GeoEnvelope
+                :param desired_res:
+                :return:
+        """
+        map_nw_corner, map_se_corner  = self.nw_geo_point, GeoPoint(self.COL_ROW, self.x_size, self.y_size)
+
+        if geo_envelope is not None:
+            selection_nw_corner, selection_se_corner = geo_envelope.getBounds()
+        else:
+            selection_nw_corner, selection_se_corner = map_nw_corner, map_se_corner
+
+        map_box = GeoPolygon([map_nw_corner, map_se_corner]).envelope
+        selection_box = GeoEnvelope(selection_nw_corner, selection_se_corner).envelope
+        intersection_box = map_box.intersection(selection_box)
+
+        inter_easting, inter_northing = np.array(intersection_box.bounds).reshape((2, 2)).transpose()
+        intersection_box_geo = GeoPolygon(self.nw_geo_point.utm_reference, inter_easting, inter_northing)  # could change to UTM_AUTO later
+        inter_x, inter_y = intersection_box_geo.to(self.COL_ROW)
+
+        x_offset, max_x = inter_x
+        max_y, y_offset = inter_y
+        # TODO: need to explain the +1, comes from hack. Also, doesnt work when selecting full screen
+        x_size = max_x - x_offset + 1
+        y_size = max_y - y_offset + 1
+        if geo_envelope is None:
+            x_size -= 1
+            y_size -= 1
+
+        dataset_clean = self.dataset.subsection(x_offset, y_offset, x_size, y_size, desired_res)
+
+        # TODO: this hack needs explanation
+        nw_coord_hack = GeoPoint(self.nw_geo_point.utm_reference, inter_easting.min(), inter_northing.max())\
+            .to(self.COL_ROW)
+        nw_coord = GeoPoint(self.COL_ROW, nw_coord_hack[0], nw_coord_hack[1])
+        meta_mesh = GridMesh(nw_coord, dataset_clean, parent_mesh=self,
+                             xoff=x_offset, yoff=y_offset)
+        return meta_mesh
+
+    def loadSubSection(self, geo_envelope=None, desired_res=None, **kwargs):
+        #kwargs is reserved for max slope argument
+        sub_mesh = self.subsection(geo_envelope, desired_res)
+        return GridMeshModel.from_parent(sub_mesh, **kwargs)
 
 class GDALMesh(GridMesh):
     """
@@ -69,18 +120,12 @@ class GDALMesh(GridMesh):
 
         super(GDALMesh, self).__init__(nw_geo_point, dataset_wrapped)
 
-    def loadSubSection(self, geo_envelope=None, desired_res=None, **kwargs):
-        #kwargs is reserved for max slope argument
-        sub_mesh = self.subsection(geo_envelope, desired_res)
-        return GridMeshModel.from_parent(sub_mesh, **kwargs)
-
-
 class GridMeshModel(EnvironmentalModel):
     def __init__(self, *arg, **kwargs):
         super(GridMeshModel, self).__init__(*arg, **kwargs)
         self.dataset_unmasked = self.data.filled(0) if isinstance(self.data, np.ma.core.MaskedArray) else self.data
         self.isvaliddata = np.logical_not(self.data.mask)  if isinstance(self.data, np.ma.core.MaskedArray) \
-            else np.ones_like(self.data)
+            else np.ones_like(self.data).astype(bool)
         self.searchKernel = SearchKernel(self.kernel_size, self.kernel_type)
         self.ROW_COL = Cartesian(self.nw_geo_point, self.resolution, reverse=True)
         self.COL_ROW = Cartesian(self.nw_geo_point, self.resolution)
@@ -179,6 +224,10 @@ class GridMeshModel(EnvironmentalModel):
         kernel = self.searchKernel
         offsets = kernel.getKernel()
         s = np.empty((self.shape[0], self.shape[1], len(offsets)), dtype=bool)
+        dr = np.apply_along_axis(np.linalg.norm, 1, offsets) * self.resolution
+        z = self.dataset_unmasked
+        neighbour_size = len(self.searchKernel.getKernel())
+        #slopes_rad = np.empty((self.shape[0], self.shape[1], neighbour_size))
         for idx, offset in enumerate(offsets):
             candidate_neighbour_point = gridpoints + offset
             point_is_neighbour = self._inbounds_bool(candidate_neighbour_point) # if not in bounds, its not a neighbour
@@ -186,6 +235,11 @@ class GridMeshModel(EnvironmentalModel):
             point_is_neighbour[point_is_neighbour] = self.isvaliddata[inbound_rows, inbound_cols]
             hasdata_rows, hasdata_cols = candidate_neighbour_point[point_is_neighbour].transpose()
             point_is_neighbour[point_is_neighbour] = self.passable[hasdata_rows, hasdata_cols]
+            #dri = dr[idx]
+            #slopes_rad = np.arctan2(np.roll(np.roll(z, -offset[0], axis=0), -offset[1], axis=1) - z, dri)
+            #not_too_steep = np.degrees(slopes_rad) <= self.maxSlope
+            #is_passable = np.reshape(point_is_neighbour, self.shape)
+            #s[:, :, idx] = np.logical_and(is_passable, not_too_steep)
             s[:,:,idx] = np.reshape(point_is_neighbour, self.shape)
         return s
 
