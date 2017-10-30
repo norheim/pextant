@@ -9,11 +9,12 @@ from pextant.mesh.abstractmesh import InterpolatingDataset
 from scipy.interpolate import LinearNDInterpolator
 
 class TriDataset(InterpolatingDataset):
-    def __init__(self, mesh, elevations=None, y_size=None, x_size=None):
+    def __init__(self, mesh, resolution, elevations=None, y_size=None, x_size=None):
         if x_size == None:
             x_size, y_size, _ = np.diff(mesh.bounds.transpose()).flatten().astype('int32')
         super(TriDataset, self).__init__(mesh, x_size, y_size)
         self.elevations = elevations
+        self.resolution = resolution
 
         #TODO: need to fix this
         self.size,_ = mesh.faces.shape
@@ -22,7 +23,8 @@ class TriDataset(InterpolatingDataset):
 
     def _grid_interpolator_initializer(self):
         # TODO: replace with Trimesh built in interpolator
-        return LinearNDInterpolator(self.data.vertices[:,[0,1]], self.data.vertices[:,2])
+        return LinearNDInterpolator(self.data_container.vertices[:,[0,1]]/self.resolution,
+                                    self.data_container.vertices[:,2])
 
 class TriMeshPLY(object):
     def __init__(self, file_path):
@@ -51,7 +53,7 @@ class GDALTriMesh(GDALMesh):
 
     #TODO: cache elevations
     def _loadSubSectionTri(self, geo_envelope=None, desired_res=None, accuracy=0.05):
-        sub_mesh = self._loadSubSection(geo_envelope, desired_res)
+        sub_mesh = self.subsection(geo_envelope, desired_res)
         return grid_to_tri(sub_mesh, accuracy)
 
     def loadSubSection(self, geo_envelope=None, desired_res=None, accuracy=0.05, **kwargs):
@@ -65,7 +67,10 @@ def grid_to_tri(geomesh, accuracy=0.05):
     # clean data set
     subsection_elevations = geomesh.data
     min_elevation = np.min(subsection_elevations)
-    subsection_elevations_corrected = subsection_elevations.filled(min_elevation)
+    if isinstance(subsection_elevations, np.ma.core.MaskedArray):
+        subsection_elevations_corrected = subsection_elevations.filled(min_elevation)
+    else:
+        subsection_elevations_corrected = subsection_elevations
     grounded_elevations = subsection_elevations_corrected - min_elevation
     stretch_elevations = magnification * grounded_elevations  # force z resolution to match x & y
     wrapped_stretch_elevations = stretch_elevations
@@ -75,10 +80,11 @@ def grid_to_tri(geomesh, accuracy=0.05):
     poly = decimate(stretch_elevations, corrected_absolute_error)
     mesh = TriMeshPLY.from_poly(poly).mesh
     mesh.vertices[:,2] = mesh.vertices[:,2] / magnification + min_elevation #shrink back
+    mesh.vertices[:,:2] = mesh.vertices[:, :2] / magnification
 
-    dataset = TriDataset(mesh, wrapped_stretch_elevations, row_size, col_size)
+    dataset = TriDataset(mesh, geomesh.resolution, wrapped_stretch_elevations, row_size, col_size)
 
-    return GeoMesh(geomesh.nw_geo_point, dataset, geomesh.resolution, parent_mesh=geomesh.parent_mesh,
+    return GeoMesh(geomesh.nw_geo_point, dataset, parent_mesh=geomesh.parent_mesh,
                    xoff=geomesh.xoff, yoff=geomesh.yoff)
 
 class TriMeshModel(EnvironmentalModel):
