@@ -1,5 +1,5 @@
 import numpy as np
-from SEXTANTsolver import sextantSearch, SEXTANTSolver
+from SEXTANTsolver import sextantSearch, SEXTANTSolver, sextantSearchList
 from astar import aStarSearchNode, aStarNodeCollection, aStarCostFunction, aStarSearch
 from pextant.EnvironmentalModel import EnvironmentalModel, GridMeshModel
 from pextant.lib.geoshapely import GeoPoint, GeoPolygon, LONG_LAT
@@ -227,7 +227,6 @@ class astarSolver(SEXTANTSolver):
     def solve(self, startpoint, endpoint):
         env_model = self.env_model
         if env_model.elt_hasdata(startpoint) and env_model.elt_hasdata(endpoint):
-            search = sextantSearch(startpoint, endpoint)
             node1, node2 = MeshSearchElement(env_model.getMeshElement(startpoint)), \
                            MeshSearchElement(env_model.getMeshElement(endpoint))
             solution_path, expanded_items = aStarSearch(node1, node2, self.cost_function, self.viz)
@@ -236,7 +235,7 @@ class astarSolver(SEXTANTSolver):
                 coordinates = []
             else:
                 coordinates = GeoPolygon(env_model.ROW_COL, *np.array(raw).transpose())
-            search.addresult(raw, nodes, coordinates, expanded_items)
+            search = sextantSearch(raw, nodes, coordinates, expanded_items)
             self.searches.append(search)
             return search
         else:

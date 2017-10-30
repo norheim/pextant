@@ -12,33 +12,40 @@ class SEXTANTSolver(object):
         pass
 
     def solvemultipoint(self, waypoints):
-        rawpoints = []
-        itemssrchd = []
-        search_results = []
+        search_list = sextantSearchList(waypoints)
         for i in range(len(waypoints) - 1):
             search_result = self.solve(waypoints[i], waypoints[i + 1])
-            search_results.append(search_result)
-            rawpoints += search_result.raw
-            itemssrchd += search_result.expanded_items
-        return search_results, np.array(rawpoints).transpose(), itemssrchd
+            search_list.append(search_result)
+        return search_list, search_list.raw(), search_list.itemssrchd()
 
 class sextantSearchList(object):
-    def __init__(self):
+    def __init__(self, points):
+        self.startpoint = points[0]
+        self.endpoint = points[-1]
+        self.waypoints = points
         self.list = []
-
-    def append(self, elt):
-        self.list.append(elt)
-
-    def raw(self):
-        pass
-        #return np.array([search.raw for search in self.list])
-
-class sextantSearch(object):
-    def __init__(self, startpoint, endpoint):
-        self.startpoint = startpoint
-        self.endpoint = endpoint
+        self.rawpoints = []
 
     def addresult(self, raw, nodes, coordinates, expanded_items):
+        self.list.append(sextantSearch(raw, nodes, coordinates, expanded_items))
+
+    def append(self, sextantsearch):
+        self.list.append(sextantsearch)
+
+    def raw(self):
+        return np.array([search.raw for search in self.list])
+
+    def itemssrchd(self):
+        return np.array([search.expanded_items for search in self.list])
+
+    def tojson(self):
+        return [elt.tojson() for elt in self.list]
+
+    def tocsv(self):
+        return [elt.tocsv() for elt in self.list]
+
+class sextantSearch(object):
+    def __init__(self, raw, nodes, coordinates, expanded_items):
         self.namemap = {
             'time': ['timeList','totalTime'],
             'pathlength': ['distanceList','totalDistance'],
@@ -47,6 +54,7 @@ class sextantSearch(object):
         #self.searches = []
         self.nodes = nodes
         self.raw = raw
+        self.npraw = np.array(raw).transpose()
         self.coordinates = coordinates
         self.expanded_items = expanded_items
 
@@ -80,14 +88,3 @@ class sextantSearch(object):
                 row_entry += [derived['pathlength'], derived['time'], derived['energy']]
                 sequence += [row_entry]
         return sequence
-
-def fullSearch(waypoints, env_model, cost_function, viz=None):
-    segment_searches = []
-    rawpoints = []
-    itemssrchd = []
-    for i in range(len(waypoints)-1):
-        search_result = search(env_model, waypoints[i], waypoints[i+1], cost_function, viz)
-        segment_searches.append(search_result)
-        rawpoints += search_result.raw
-        itemssrchd += search_result.expanded_items
-    return segment_searches, rawpoints, itemssrchd

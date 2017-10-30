@@ -45,14 +45,10 @@ class Pathfinder:
             extension = None
 
         if extension == "json":
-            jsonout = []
-            for segment in segmentsout:
-                jsonout += [segment.tojson()]
-            json.dump(jsonout.tojson(), filepath)
+            json.dump(segmentsout.tojson(), filepath)
         elif extension == "csv":
-            rows = [['isStation', 'x', 'y', 'z', 'distanceMeters', 'energyJoules', 'timeSeconds']]
-            for segment in segmentsout:
-                rows += segment.tocsv() #still need to fix that the same point is included twice
+            header = [['isStation', 'x', 'y', 'z', 'distanceMeters', 'energyJoules', 'timeSeconds']]
+            rows = header + segmentsout.tocsv()
             with open(filepath, 'wb') as csvfile:
                 writer = csv.writer(csvfile)
                 for row in rows:
@@ -67,7 +63,7 @@ class Pathfinder:
 
         #if algorithm == "A*":
         segmentsout,_,_ = self.completeSearch(optimize_on, waypoints, filepath)
-        updatedjson = jloader.add_search_sol(segmentsout)
+        updatedjson = jloader.add_search_sol(segmentsout.list)
 
         return updatedjson
 

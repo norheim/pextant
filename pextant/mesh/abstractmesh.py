@@ -1,6 +1,6 @@
 import numpy as np
 import numpy.matlib as matlib
-from pextant.lib.geoshapely import GeoPoint, GeoPolygon, GeoEnvelope, Cartesian, XY, UTM
+from pextant.lib.geoshapely import GeoPoint, GeoPolygon, GeoEnvelope, Cartesian, XY
 from scipy.interpolate import NearestNDInterpolator, RegularGridInterpolator, griddata
 from scipy.ndimage.interpolation import zoom
 from skimage.draw import circle
@@ -71,7 +71,7 @@ class InterpolatingDataset(Dataset):
         return RegularGridInterpolator((y_axis, x_axis), self.data_container)
 
     def downsample(self, resolution):
-        return InterpolatingDataset.from_np(zoom(self.data_container, self.resolution/resolution))
+        return InterpolatingDataset.from_np(zoom(self.data_container, self.resolution/resolution), resolution=resolution)
 
     # interpolation should be defined by children classes
     def get_datapoint(self, localpoint):
@@ -86,36 +86,45 @@ class NpDataset(np.ndarray):
         obj = np.asarray(input_array).view(cls)
         # add the new attribute to the created instance
         obj.resolution = resolution
-        obj.interp = InterpolatingDataset.from_np(input_array, resolution=resolution)
+        row_size,col_size = obj.shape
+        obj.y_size = row_size
+        obj.x_size = col_size
+        obj.data_container = input_array
         # Finally, we must return the newly created object:
         return obj
 
     def downsample(self, resolution):
-        return NpDataset(zoom(self.interp.data_container, float(self.interp.resolution) / resolution), resolution)
+        factor = self.resolution / float(resolution)
+        downsampled =zoom(self.data_container, factor)
+        return NpDataset(downsampled, resolution)
 
     def subsection(self, xoff, yoff, xsize, ysize, resolution=None):
-        x2 = xoff+xsize
-        y2 = yoff+ysize
-        sub =  NpDataset(self.interp.data_container[xoff:x2, yoff:y2])
-        if resolution == None:
-             return sub
-        else:
-            return sub.downsample(resolution)
+        res = 1.0 if resolution == None else resolution/self.resolution
+        #print(xoff, yoff, xsize, ysize, res)
+        x2, y2 = int((xoff + xsize) / res), int((yoff + ysize) / res)
+        xoff, yoff = int(xoff/res), int(yoff/res)
+        #print(xoff,yoff,x2,y2)
+        npdataset = self.downsample(resolution) if resolution != None else self
+        sub = npdataset[yoff:y2, xoff:x2]
+        return sub
 
-    def __getattr__(self, item):
-        try:
-            return InterpolatingDataset.__getattribute__(self, item)
-        except AttributeError:
-            return getattr(self.interp, item)
+    def interpolator(self):
+        x_axis = np.arange(self.x_size)
+        y_axis = np.arange(self.y_size)
+        return RegularGridInterpolator((y_axis, x_axis), self.data_container)
+
+    # interpolation should be defined by children classes
+    def get_datapoint(self, localpoint):
+        return self.interpolator()(localpoint)
 
     def __array_finalize__(self, obj):
         # see InfoArray.__array_finalize__ for comments
-        if obj is None: return
-        resolution =  getattr(obj, "resolution", None)
-        self.interp = InterpolatingDataset.from_np(self, resolution)
+        self.resolution =  getattr(obj, "resolution", None)
+        self.y_size, self.x_size = self.shape
+        self.data_container = self.view(np.ndarray)
 
     def __repr__(self):
-        return np.array(self.interp.data_container).__repr__()
+        return self.data_container.__repr__()
 
 
 class NearestInterpolatorDataset(InterpolatingDataset):
@@ -126,53 +135,6 @@ class NearestInterpolatorDataset(InterpolatingDataset):
         x_axis = np.arange(self.x_size)
         y_axis = np.arange(self.y_size)
         return NearestNDInterpolator((y_axis, x_axis), self.data_container)
-
-class GridMesh(GeoMesh):
-    def __init__(self, *arg, **kwargs):
-        super(GridMesh, self).__init__(*arg, **kwargs)
-        self.ROW_COL = Cartesian(self.nw_geo_point, self.resolution, reverse=True)
-        self.COL_ROW = Cartesian(self.nw_geo_point, self.resolution)
-
-    def subsection(self, geo_envelope=None, desired_res=None):
-        """
-                :param geo_envelope:
-                :type geo_envelope pextant.geoshapely.GeoEnvelope
-                :param desired_res:
-                :return:
-        """
-        map_nw_corner, map_se_corner  = self.nw_geo_point, GeoPoint(self.COL_ROW, self.x_size, self.y_size)
-
-        if geo_envelope is not None:
-            selection_nw_corner, selection_se_corner = geo_envelope.getBounds()
-        else:
-            selection_nw_corner, selection_se_corner = map_nw_corner, map_se_corner
-
-        map_box = GeoPolygon([map_nw_corner, map_se_corner]).envelope
-        selection_box = GeoEnvelope(selection_nw_corner, selection_se_corner).envelope
-        intersection_box = map_box.intersection(selection_box)
-
-        inter_easting, inter_northing = np.array(intersection_box.bounds).reshape((2, 2)).transpose()
-        intersection_box_geo = GeoPolygon(self.nw_geo_point.utm_reference, inter_easting, inter_northing)  # could change to UTM_AUTO later
-        inter_x, inter_y = intersection_box_geo.to(self.COL_ROW)
-
-        x_offset, max_x = inter_x
-        max_y, y_offset = inter_y
-        # TODO: need to explain the +1, comes from hack. Also, doesnt work when selecting full screen
-        x_size = max_x - x_offset + 1
-        y_size = max_y - y_offset + 1
-        if geo_envelope is None:
-            x_size -= 1
-            y_size -= 1
-
-        dataset_clean = self.dataset.subsection(x_offset, y_offset, x_size, y_size, desired_res)
-
-        # TODO: this hack needs explanation
-        nw_coord_hack = GeoPoint(self.nw_geo_point.utm_reference, inter_easting.min(), inter_northing.max())\
-            .to(self.COL_ROW)
-        nw_coord = GeoPoint(self.COL_ROW, nw_coord_hack[0], nw_coord_hack[1])
-        meta_mesh = GridMesh(nw_coord, dataset_clean, parent_mesh=self,
-                             xoff=x_offset, yoff=y_offset)
-        return meta_mesh
 
 def coordinate_transform(func):
     def decorated(self, point):
@@ -286,6 +248,26 @@ class SearchKernel(object):
         return self.kernel
 
     def get_circular_kernel(self):
-        kernel = np.array(circle(0, 0, int((self.kernelrange+1)/2+1))).transpose()
+        kernel = np.array(circle(0, 0, int((self.kernelrange-1)/2+1))).transpose()
         center_removed = np.delete(kernel, np.where(np.logical_and(kernel[:, 0] == 0, kernel[:, 1] == 0))[0][0], 0)
         return center_removed
+
+if __name__ == '__main__':
+    from pextant.settings import *
+    from scipy.stats import multivariate_normal
+    from pextant.lib.geoshapely import *
+    nrows = 40
+    ncols = 40
+    rows, cols = np.mgrid[0:nrows, 0:ncols]
+    rv = multivariate_normal([nrows / 2, ncols / 2], [[nrows, 0], [0, ncols]])
+    pos = np.empty(rows.shape + (2,))
+    pos[:, :, 0] = rows
+    pos[:, :, 1] = cols
+    raster = 1800 * rv.pdf(pos)
+    nw_geo_point = GeoPoint(LAT_LONG, 0, 0)
+    from pextant.EnvironmentalModel import GridMeshModel
+    from pextant.mesh.triangularmesh import grid_to_tri, TriMeshModel
+
+    environment = GridMeshModel(nw_geo_point, NpDataset(raster), cached=True)
+    solver = astarSolver(environment, explorer)
+    sol = solver.solve((0, 0), (20, 20))
