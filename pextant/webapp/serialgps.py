@@ -46,7 +46,7 @@ class GDALMeshServer(StoppableThread):
         if function == 'load':
             self.object = GDALMesh(arguments)
         elif function == 'selectarea':
-            self.object.loadMapSection(arguments[0], arguments[1])
+            self.object.loadSubSection(arguments[0], arguments[1])
         elif function == 'getinfo':
             self.object.jsonify()
 
@@ -65,7 +65,7 @@ class GPSRecorderThread(StoppableThread):
         self.most_recent_gps_point = None
         self.most_recent_gps_point_raw = None
         self.save_name_baseline = str(time())
-        EM = GDALMesh('maps/HI_lowqual_DEM.tif').loadMapSection(
+        EM = GDALMesh('maps/HI_lowqual_DEM.tif').loadSubSection(
             GeoEnvelope(GeoPoint(LAT_LONG, 19.370299271704212, -155.2175380561995),
                         GeoPoint(LAT_LONG, 19.359626542672096, -155.19608451884082)))
         ma_el = ma.masked_array(EM.elevations, mask=EM.elevations < 0)

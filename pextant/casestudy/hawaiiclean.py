@@ -1,9 +1,9 @@
 from time import time
 
 from pextant.EnvironmentalModel import *
-from pextant.ExplorerModel import Astronaut
+from pextant.explorers import Astronaut
 from pextant.analysis.loadWaypoints import loadPoints
-from pextant.api import *
+from pextant.api_future import *
 
 
 def runpextant(filename, pointJSON=None):

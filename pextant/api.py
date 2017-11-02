@@ -2,11 +2,10 @@ import csv
 import json
 import logging
 import re
-from pextant.solvers.astarSEXTANT import fullSearch, ExplorerCost
+from pextant.solvers.astarMesh import astarSolver
 from pextant.analysis.loadWaypoints import JSONloader
 import matplotlib.pyplot as plt
 logger = logging.getLogger()
-
 
 class Pathfinder:
     """
@@ -21,8 +20,9 @@ class Pathfinder:
     difficult because they depend on shadowing and was not implemented by Aaron.
     """
     def __init__(self, explorer_model, environmental_model):
-        self.explorer = explorer_model
-        self.map = environmental_model
+        cheating = 10
+        self.solver = astarSolver(environmental_model, explorer_model,
+                                  optimize_on = 'Energy', heuristic_accelerate = cheating)
 
     def aStarCompletePath(self, optimize_on, waypoints, returnType="JSON", dh=None, fileName=None ):
         pass
@@ -37,11 +37,7 @@ class Pathfinder:
         used when we would like to write stuff to a file and is currently necessary
         for csv return types.
         """
-        env_model = self.map
-        explorer_model = self.explorer
-        cheating = 10
-        cost_function = ExplorerCost(explorer_model, env_model, optimize_on, cheating)
-        segmentsout, rawpoints, items = fullSearch(waypoints, env_model, cost_function)
+        segmentsout, rawpoints, items = self.solver.solvemultipoint(waypoints)
 
         if filepath:
             extension = re.search('^(.+\/[^/]+)\.(\w+)$', filepath).group(2)
@@ -49,14 +45,10 @@ class Pathfinder:
             extension = None
 
         if extension == "json":
-            jsonout = []
-            for segment in segmentsout:
-                jsonout += [segment.tojson()]
-            json.dump(jsonout.tojson(), filepath)
+            json.dump(segmentsout.tojson(), filepath)
         elif extension == "csv":
-            rows = [['isStation', 'x', 'y', 'z', 'distanceMeters', 'energyJoules', 'timeSeconds']]
-            for segment in segmentsout:
-                rows += segment.tocsv() #still need to fix that the same point is included twice
+            header = [['isStation', 'x', 'y', 'z', 'distanceMeters', 'energyJoules', 'timeSeconds']]
+            rows = header + segmentsout.tocsv()
             with open(filepath, 'wb') as csvfile:
                 writer = csv.writer(csvfile)
                 for row in rows:
@@ -71,18 +63,18 @@ class Pathfinder:
 
         #if algorithm == "A*":
         segmentsout,_,_ = self.completeSearch(optimize_on, waypoints, filepath)
-        updatedjson = jloader.add_search_sol(segmentsout)
+        updatedjson = jloader.add_search_sol(segmentsout.list)
 
         return updatedjson
 
 if __name__ == '__main__':
     from pextant.analysis.loadWaypoints import loadPoints
-    from ExplorerModel import Astronaut
+    from explorers import Astronaut
     from EnvironmentalModel import GDALMesh
 
     hi_low = GDALMesh('maps/HI_lowqual_DEM.tif')
     waypoints = loadPoints('waypoints/HI_13Nov16_MD7_A.json')
-    env_model = hi_low.loadMapSection(waypoints.geoEnvelope())
+    env_model = hi_low.loadSubSection(waypoints.geoEnvelope())
     astronaut = Astronaut(80)
     pathfinder = Pathfinder(astronaut, env_model)
     out = pathfinder.aStarCompletePath('Energy', waypoints)

@@ -1,8 +1,13 @@
 from geoshapely import GeoPolygon, GeoPoint, UTM, LAT_LONG, Cartesian
 import numpy as np
+from skimage.draw import circle
 
 # TODO: use skimage.draw.circle instead
-def filled_circle(ROW_COL, center, radius):
+def filled_grid_circle(radius):
+    rr, cc = circle(radius-1, radius-1, radius)
+    return np.array([rr.flatten(), cc.flatten()])
+
+def filled_circle_old(ROW_COL, center, radius):
     """
 
     :param ROW_COL:

@@ -13,5 +13,6 @@ v1.0.0 August 18, 2015 -- Added basic functionality for Field D*, although very 
 v1.0.1 November 19, 2015 -- some bug fixes
 
 v2.0 November 2016 -- HI deployment version
+Geoshapely library allows easy conversions between reference systems(lat, long, utm, etc)
 
-v3.0 Spring 2017
+v3.0 Spring 2017 -- upgrading modularity, adding triangular mesh, more visualization

@@ -1,5 +1,6 @@
 import heapq
 import warnings
+from pextant.mesh.abstractcomponents import MeshCollection
 
 class aStarSearchNode(object):
     def __init__(self, state, parent=None, cost_from_parent=0):
@@ -31,6 +32,9 @@ class aStarNodeCollection(object):
     class to be overwritten
     """
     def __init__(self, collection):
+        '''
+        :type collection: MeshCollection
+        '''
         self.collection = collection
 
     def __getitem__(self, index):
@@ -38,14 +42,25 @@ class aStarNodeCollection(object):
 
     #TODO: need to enforce this
     def get_states(self):
-        return self.collection.collection
+        return self.collection.get_states()
 
 class aStarCostFunction(object):
     def __init__(self):
         self.end_node = None
+        self.cache = False
+        self.cached = {
+            "costs": None,
+            "heuristics": None
+        }
 
     def setEndNode(self, end_state):
-        self.end_node = end_state
+        elt = end_state.mesh_element
+        if self.cache:
+            self.cached["heuristics"] = self.cache_heuristic((elt.x, elt.y))
+        self.end_node = elt
+
+    def cache_heuristic(self, end_state):
+        pass
 
     def getHeuristicCost(self, node):
         return 0
@@ -89,7 +104,7 @@ def aStarSearch(start_node, end_node, cost_function, viz=None):
         costs_to_node = g_cost[current_node_state] + cost_function.getCostBetween(current_node, children)
         children_states = children.get_states()
         for idx, child_node in enumerate(children):
-            child_node_state = tuple(children_states[idx])
+            child_node_state = children_states[idx]
             cost_to_node = costs_to_node[idx]
             if child_node_state in expanded: #and cost_to_node >= g_cost.get(child_node_state,0):
                 continue
@@ -101,9 +116,11 @@ def aStarSearch(start_node, end_node, cost_function, viz=None):
                 heapq.heappush(agenda, (estimated_cost, child_node))
                 if viz:
                     viz.add(child_node_state, estimated_cost)
+        if viz:
+            viz.addcount()
 
     # if it can't find a solution
     warnings.warn('no solution found')
-    if viz:
-        viz.draw()
+    #if viz:
+    #    viz.draw()
     return (([],[]), expanded)

@@ -62,7 +62,7 @@ for traverse in traversesallowed:
     df = pd.read_csv(csv_filename, sep=delimiter, header=header_row)
     gp = GeoPolygon(LAT_LONG,*df[['latitude', 'longitude']].as_matrix().transpose())
     wp = JSONloader.from_file(json_filename).get_waypoints()
-    em = gm.loadMapSection(gp.geoEnvelope())
+    em = gm.loadSubSection(gp.geoEnvelope())
     rr = df['cumulative distance (m)'].as_matrix()
     df['date_time'] = pd.to_datetime(df['epoch timestamp'],unit='s')
     time = df['date_time']-df['date_time'][0]
@@ -91,7 +91,7 @@ for i in range(len(bins)-1):
     idx1 = np.where(np.logical_and(bins[i] <= allslopes, allslopes < bins[i+1] ))
     v[i] = np.average(allvelocities[idx1])
 
-from pextant.ExplorerModel import Astronaut
+from pextant.explorers import Astronaut
 slopes = np.linspace(-25, 25, 100)
 a = Astronaut(80)
 #plt.plot(slopes, a.velocity(slopes))

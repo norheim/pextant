@@ -1,5 +1,5 @@
 import unittest
-from pextant.api import *
+from pextant.api_future import *
 
 class TestAstronaut(unittest.TestCase):
 	

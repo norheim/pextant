@@ -83,8 +83,10 @@ class JSONloader:
         w = waypoints.values.tolist()
         latlongFull = pd.DataFrame(w)
         latlongInter = latlongFull['coordinates'].values.tolist()
-        waypointslatlong = np.array(latlongInter[0])
-        return GeoPolygon(LAT_LONG, waypointslatlong[:, 1], waypointslatlong[:, 0])
+        waypointslatlong = []
+        for elt in latlongInter:
+            waypointslatlong.extend(elt)
+        return GeoPolygon(LONG_LAT, *np.array(waypointslatlong).transpose())
 
     def add_search_sol(self, segments, write_to_file=False):
         ways_and_segments = deepcopy(self.sequence)
@@ -105,6 +107,9 @@ class JSONloader:
 
 
 if __name__ == '__main__':
+    from pextant.settings import *
+    md = JSONloader.from_file(MD_HI[6])
+    sextantsol = md.get_segments()
     test =json.dumps([{u'commands': [], u'uuid': u'ccf34b91-86f4-47ee-b03d-3dbbba6ba167',
       u'geometry': {u'type': u'Point', u'coordinates': [-155.20191861222781, 19.366498026755977]}, u'tolerance': 0.6,
       u'userDuration': 0, u'boundary': 0.6, u'type': u'Station', u'id': u'HIL11_A_WAY0'}, {

@@ -1,4 +1,4 @@
-from pextant.api import *
+from pextant.api_future import *
 import unittest
 
 testfile = 'datasets\INFERNO-DEM.tif'

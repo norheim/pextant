@@ -8,3 +8,6 @@ data/
 static/
 pextant/notebooks
 !pextant/notebooks/*.py
+*.ply
+_build_html
+*.xlsx

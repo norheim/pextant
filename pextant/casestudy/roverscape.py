@@ -1,15 +1,15 @@
-from pextant.api import Pathfinder
+from pextant.api_future import Pathfinder
 from pextant.EnvironmentalModel import GDALMesh
-from pextant.ExplorerModel import Astronaut
+from pextant.explorers import Astronaut
 from pextant.lib.geoshapely import GeoEnvelope, GeoPoint, LAT_LONG
 import matplotlib.pyplot as plt
-from pextant.solvers.astarSEXTANT import ExpandViz, ExplorerCost, fullSearch
+from pextant.solvers.astarMesh import ExpandViz, ExplorerCost, fullSearch
 import numpy as np
 import cProfile
 
 def roverscape():
     dem_map = GDALMesh('../../data/maps/Ames/Ames.tif')
-    env_model = dem_map.loadMapSection()
+    env_model = dem_map.loadSubSection()
     #viz = ExpandViz(env_model)
     #viz.draw()
     astronaut = Astronaut(70)
