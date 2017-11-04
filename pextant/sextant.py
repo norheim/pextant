@@ -123,7 +123,7 @@ def main(argv):
             'latlong':[]
         }
         if return_type == 'segmented':
-            for search_result in search_results:
+            for search_result in search_results.list:
                 lat, lon = GeoPolygon(environmental_model.ROW_COL, *np.array(search_result.raw).transpose()).to(LAT_LONG)
                 return_json['latlong'].append({'latitudes': list(lat), 'longitudes': list(lon)})
         else:
@@ -157,4 +157,4 @@ def main(argv):
 
 # if __name__ == "__main__":
 #main(sys.argv[1:])
-main(['../data/maps/dem/Ames.tif'])
+main(['../data/maps/dem/HI_air_imagery.tif'])
