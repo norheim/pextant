@@ -20,7 +20,7 @@ class Pathfinder:
     difficult because they depend on shadowing and was not implemented by Aaron.
     """
     def __init__(self, explorer_model, environmental_model):
-        cheating = 10
+        cheating = 1
         self.solver = astarSolver(environmental_model, explorer_model,
                                   optimize_on = 'Energy', heuristic_accelerate = cheating)
 
