@@ -156,5 +156,5 @@ def main(argv):
 
 
 # if __name__ == "__main__":
-#main(sys.argv[1:])
-main(['../data/maps/dem/HI_air_imagery.tif'])
+main(sys.argv[1:])
+#main(['../data/maps/dem/HI_air_imagery.tif'])
