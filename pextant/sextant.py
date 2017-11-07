@@ -97,7 +97,7 @@ def main(argv):
             waypoints = json_loader.get_waypoints()
             print 'gdal mesh is  built from %s' % str(geotiff_full_path)
             environmental_model = gdal_mesh.loadSubSection(waypoints.geoEnvelope(), cached=True)
-            solver = astarSolver(environmental_model, explorer, optimize_on='Energy', cached=True)
+            solver = astarSolver(environmental_model, explorer, optimize_on='Energy')
             print('loaded fine')
             return json.dumps({'loaded': True})
         except Exception, e:
@@ -117,7 +117,9 @@ def main(argv):
             xp_json = request_data['xp_json']
             json_loader = JSONloader(xp_json['sequence'])
             waypoints = json_loader.get_waypoints()
-        solver.accelerate()
+        print(waypoints.to(LAT_LONG))
+        environmental_model = gdal_mesh.loadSubSection(waypoints.geoEnvelope(), cached=True)
+        solver = astarSolver(environmental_model, explorer, optimize_on='Energy')
         search_results, rawpoints, _ = solver.solvemultipoint(waypoints)
         return_json = {
             'latlong':[]

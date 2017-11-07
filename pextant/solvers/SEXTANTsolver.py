@@ -33,7 +33,10 @@ class sextantSearchList(object):
         self.list.append(sextantsearch)
 
     def raw(self):
-        return np.array([search.raw for search in self.list])
+        result = []
+        for search in self.list:
+            result += search.raw
+        return np.array(result)
 
     def itemssrchd(self):
         return np.array([search.expanded_items for search in self.list])
