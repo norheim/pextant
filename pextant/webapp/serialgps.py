@@ -62,20 +62,21 @@ class GPSRecorderThread(StoppableThread):
         self.recorded_points = {}
         self.delay = 0.1
         self.record = True
+        self.do_emit = True
         self.most_recent_gps_point = None
         self.most_recent_gps_point_raw = None
         self.save_name_baseline = str(time())
-        EM = GDALMesh('maps/HI_lowqual_DEM.tif').loadSubSection(
-            GeoEnvelope(GeoPoint(LAT_LONG, 19.370299271704212, -155.2175380561995),
-                        GeoPoint(LAT_LONG, 19.359626542672096, -155.19608451884082)))
-        ma_el = ma.masked_array(EM.elevations, mask=EM.elevations < 0)
-        self.EM = EM
-        self.ma_el = ma_el
-        self.maxelevation = ma_el.max()
-        self.minelevation = ma_el.min()
+        #EM = GDALMesh('maps/HI_lowqual_DEM.tif').loadSubSection(
+        #    GeoEnvelope(GeoPoint(LAT_LONG, 19.370299271704212, -155.2175380561995),
+        #                GeoPoint(LAT_LONG, 19.359626542672096, -155.19608451884082)))
+        #ma_el = ma.masked_array(EM.elevations, mask=EM.elevations < 0)
+        #self.EM = EM
+        #self.ma_el = ma_el
+        #self.maxelevation = ma_el.max()
+        #self.minelevation = ma_el.min()
 
     def getSaveName(self, extraname):
-        return 'gps/gps_' + extraname + '_' + self.save_name_baseline + '.json'
+        return '../../data/gps/hawaii17/gps_' + extraname + '_' + self.save_name_baseline + '.json'
 
     def correctForOffset(self, lat, long):
         easting, northing = GeoPoint(LAT_LONG, lat, long).to(UTM(5))
@@ -88,12 +89,13 @@ class GPSRecorderThread(StoppableThread):
     def newGPSPoint(self, lat, lon, alt):
         print lat, lon
         raw_point_json = self.recordAndSaveGPSPoint(lat, lon, alt, 'raw')
-        correctedPointLat, correctedPointLong = self.correctForOffset(lat, lon)
-        self.getMesh(correctedPointLat, correctedPointLong)
-        corrected_point_json = self.recordAndSaveGPSPoint(correctedPointLat, correctedPointLong, 0, 'corrected')
-        self.most_recent_gps_point = corrected_point_json
+        print(lat, lon, alt)
+        #correctedPointLat, correctedPointLong = self.correctForOffset(lat, lon)
+        #self.getMesh(correctedPointLat, correctedPointLong)
+        #corrected_point_json = self.recordAndSaveGPSPoint(correctedPointLat, correctedPointLong, 0, 'corrected')
+        #self.most_recent_gps_point = corrected_point_json
         self.most_recent_gps_point_raw = raw_point_json
-        self.emit(corrected_point_json)
+        self.emit(raw_point_json) #would normally be corrected
 
     def getMesh(self, lat, lon):
         center = GeoPoint(LAT_LONG, lat, lon)
@@ -134,7 +136,7 @@ class GPSRecorderThread(StoppableThread):
             'time': time(),
             'latitude': lat,
             'longitude': lon,
-            'altitude': 0}
+            'altitude': alt}
         if extraname in self.recorded_points:
             self.recorded_points[extraname].append(latlon_point)
         else:
@@ -142,15 +144,17 @@ class GPSRecorderThread(StoppableThread):
 
         savefile_name = self.getSaveName(extraname)
 
-        with open(savefile_name, 'w') as outfile:
-            json.dump(self.recorded_points[extraname], outfile)
+        if self.record:
+            with open(savefile_name, 'w') as outfile:
+                json.dump(self.recorded_points[extraname], outfile)
 
         latlon_point_json = json.dumps(latlon_point)
         return latlon_point_json
 
     def emit(self, latlon_point_json):
         print str(time())
-        self.socket_channel.emit(latlon_point_json)
+        if self.do_emit:
+            self.socket_channel.emit(latlon_point_json)
 
 
 class GPSSerialThread(GPSRecorderThread):
@@ -159,23 +163,40 @@ class GPSSerialThread(GPSRecorderThread):
         self.comport = comport
         self.baudrate = 4800
         self.serial_reference = None
+        self.timer = time()
+        self.connect_time = None
+        self.connected = False
 
     def openSerialConnection(self):
-        ser = serial.Serial()
-        ser.port = self.comport
-        ser.baudrate = self.baudrate
-        ser.timeout = 1
-        ser.open()
-        self.serial_reference = ser
+        if self.comport in ''.join(serial_ports()):
+            self.connected = True
+            if self.connect_time == None:
+                self.connect_time = time()
+            if self.serial_reference == None and time()-self.connect_time>1:
+                ser = serial.Serial()
+                ser.port = self.comport
+                ser.baudrate = self.baudrate
+                ser.timeout = 1
+                ser.open()
+                self.serial_reference = ser
+            return self.serial_reference != None
+        else:
+            self.connected = False
+            if self.serial_reference is not None:
+                self.connect_time = None
+                self.serial_reference.close()
+                self.serial_reference = None
+            return False
 
     def streamFromSerial(self):
-        self.openSerialConnection()
         while not self.stopped():
-            data = self.serial_reference.readline()
-            if data[0:6] == '$GPGGA':
-                msg = pynmea2.parse(data)
-                if self.record:
+            if self.openSerialConnection():
+                data = self.serial_reference.readline()
+                if data[0:6] == '$GPGGA':
+                    msg = pynmea2.parse(data)
+                    print (msg)
                     self.newGPSPoint(msg.latitude, msg.longitude, msg.altitude)
+                    eventlet.sleep()
 
     def run(self):
         self.streamFromSerial()
@@ -215,7 +236,7 @@ class GPSSerialEmulator(GPSRecorderThread):
                 totaldelta = newtime - startime
                 randomPointLat, randomPointLong = GeoPoint(XY, 0.5*totaldelta, 0.5*totaldelta).to(LAT_LONG)
                 self.newGPSPoint(randomPointLat, randomPointLong, 0)
-
+            #the sleeping is required if we are running this inside webappfresh
             eventlet.sleep()
 
     def run(self):
@@ -231,5 +252,7 @@ class FakeEmitter(object):
         print message
 
 if __name__ == '__main__':
-    gps = GPSSerialEmulator(FakeEmitter(), FakeEmitter(),'COM6')
+    print(json.dumps(serial_ports()))
+    gps = GPSSerialThread(FakeEmitter(), FakeEmitter(),'COM10')
+    gps.record = False
     gps.start()
