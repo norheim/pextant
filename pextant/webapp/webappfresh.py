@@ -30,12 +30,13 @@ thread = Thread()
 def gps_on(data):
     global thread
     print('got gps request')
+    print(data)
     if data["command"] == "start":
-        if thread == None:
+        if not thread.isAlive():
             print('starting gps')
             session["gps_channel"].emit('testing')
             thread = GPSSerialThread(session["gps_channel"], FakeEmitter(), data["data"])
-            thread.record = False
+            thread.record = True
             thread.start()
         else:
             print('gps already on')
