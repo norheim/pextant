@@ -246,7 +246,7 @@ class GridMeshModel(EnvironmentalModel):
 
 def loadElevationMap(fullPath, maxSlope=35, nw_corner=None, se_corner=None, desiredRes=None):
     geoenvelope = GeoEnvelope(nw_corner, se_corner)
-    maxSlope=25 #TODO: need to fix this
+    #maxSlope=25 #TODO: need to fix this
     dem = GDALMesh(fullPath)
     return dem.loadSubSection(geoenvelope, maxSlope=maxSlope, desired_res=desiredRes)
 
