@@ -34,7 +34,7 @@ class GDALDataset(Dataset):
         band = self.raster.GetRasterBand(1)
         map_array = band.ReadAsArray(x_offset, y_offset, x_size, y_size, buf_x, buf_y).astype(np.float)
         dataset_clean = ma.masked_array(map_array, np.isnan(map_array)).filled(-99999)
-        dataset_clean = NpDataset(ma.masked_array(dataset_clean, dataset_clean < 0), desired_res)
+        dataset_clean = NpDataset(ma.masked_array(dataset_clean, dataset_clean < -1e4), desired_res)
         return dataset_clean
 
 class GridMesh(GeoMesh):
