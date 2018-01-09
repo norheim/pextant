@@ -46,9 +46,10 @@ def sextant_loader(filepath):
 
 #this really is a xpjson loader
 class JSONloader:
-    def __init__(self, sequence, filename=None):
+    def __init__(self, sequence, raw, filename=None):
         self.extension = '_plan.json'
         self.filename = filename
+        self.raw = raw
         self.sequence = sequence
 
     @classmethod
@@ -62,7 +63,7 @@ class JSONloader:
         fullfilename = os.path.join(dirname, filename)
         with open(filepath) as data_file:
             jsondata = json.load(data_file)
-            return cls(jsondata['sequence'], fullfilename)
+            return cls(jsondata['sequence'], jsondata, fullfilename)
 
     def get_waypoints(self):
         #print('HI')
@@ -99,9 +100,11 @@ class JSONloader:
         raw_json = json.dumps(ways_and_segments)
         formatted_json = json.dumps(ways_and_segments, indent=4, sort_keys=True)
         if write_to_file and self.filename:
+            rawfile = self.raw
+            rawfile["sequence"] = ways_and_segments
             new_filename = self.filename + self.extension
             with open(new_filename, 'w') as outfile:
-                outfile.write(formatted_json)
+                json.dump(rawfile, outfile, indent=4, sort_keys=True)
 
         return raw_json
 
