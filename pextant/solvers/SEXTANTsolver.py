@@ -1,5 +1,6 @@
-from pextant.lib.geoshapely import LONG_LAT
+from pextant.lib.geoshapely import GeoPolygon, LONG_LAT
 import numpy as np
+import csv
 
 class SEXTANTSolver(object):
     def __init__(self, environmental_model, cost_function, viz):
@@ -38,14 +39,30 @@ class sextantSearchList(object):
             result += search.raw
         return np.array(result)
 
+    def coordinates(self):
+        result = []
+        for search in self.list:
+            result += search.coordinates.to(LONG_LAT).transpose().tolist()
+        return GeoPolygon(LONG_LAT, *np.array(result).transpose())
+
     def itemssrchd(self):
         return np.array([search.expanded_items for search in self.list])
 
-    def tojson(self):
+    def tojson(self, save=False):
         return [elt.tojson() for elt in self.list]
 
-    def tocsv(self):
-        return [elt.tocsv() for elt in self.list]
+    def tocsv(self, filepath=None):
+        csvlist = [elt.tocsv() for elt in self.list]
+        rows = [['isStation', 'x', 'y', 'z', 'distanceMeters', 'energyJoules', 'timeSeconds']]
+        for row in csvlist:
+            rows += row
+        if filepath:
+            with open(filepath, 'wb') as csvfile:
+                writer = csv.writer(csvfile)
+                for row in rows:
+                    writer.writerow(row)
+        return csvlist
+
 
 class sextantSearch(object):
     def __init__(self, raw, nodes, coordinates, expanded_items):
