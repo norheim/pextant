@@ -1,4 +1,6 @@
 This is a list of all higher level libraries installed
+conda install numpy gdal pyproj pandas shapely scipy sckit-image matplotlib
+pip install flask flask-socketio eventlet pynmea2 pyserial
 conda:
 - jupyter
 - nb_conda
