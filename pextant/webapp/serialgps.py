@@ -231,7 +231,7 @@ class GPSSerialEmulator(GPSRecorderThread):
             deltat = newtime - self.time
             if deltat > 1:
                 self.time = newtime
-                center = GeoPoint(LAT_LONG, 19.36479555, -155.20178273)
+                center = GeoPoint(LAT_LONG, 19.401912952980723, -155.26565760546461)
                 XY = Cartesian(center, 1)
                 totaldelta = newtime - startime
                 randomPointLat, randomPointLong = GeoPoint(XY, 0.5*totaldelta, 0.5*totaldelta).to(LAT_LONG)
@@ -253,6 +253,6 @@ class FakeEmitter(object):
 
 if __name__ == '__main__':
     print(json.dumps(serial_ports()))
-    gps = GPSSerialThread(FakeEmitter(), FakeEmitter(),'COM10')
+    gps = GPSSerialEmulator(FakeEmitter(), FakeEmitter(),'COM10')
     gps.record = False
     gps.start()

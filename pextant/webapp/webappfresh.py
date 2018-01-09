@@ -1,9 +1,12 @@
 from flask import Flask, session
 from flask_socketio import SocketIO
+import sys
+sys.path.append('../../')
 from serialgps import GPSSerialThread, serial_ports, GPSSerialEmulator, RandomThread, FakeEmitter
 from pextant.lib.geoshapely import LAT_LONG, GeoPoint, Cartesian, UTM
 from pextant.analysis.loadWaypoints import JSONloader
 from pathlib2 import Path
+from DateTime import DateTime
 
 import json
 from threading import Thread
@@ -43,6 +46,17 @@ def gps_on(data):
     elif data["command"] == "stop" and thread != None:
         thread.stop()
         thread = None
+    elif data["command"] == "hist":
+        data = '../../data/gps/hawaii17/gps_raw_1510357679.3.json'
+        with open(data, 'r') as f:
+            jsondata = json.load(f)
+        times = [DateTime(elt["time"]).ISO8601() for elt in jsondata]
+        obj = {}
+        obj["coords"] = [jsondata]
+        obj["times"] = [times]
+        session["gps_channel"].emit(json.dumps(obj))
+
+
 
 def connected_devices(data):
     print('connected devices request')
