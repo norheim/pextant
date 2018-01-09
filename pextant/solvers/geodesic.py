@@ -16,20 +16,32 @@ class gdistSolver(SEXTANTSolver):
 
     def solve(self, start_point, end_point):
         tmm = self.get_tmm[self.type]()
+        source_face = self.env_model.convert_coordinates(
+            tuple(np.array((start_point[1], start_point[0])) * self.env_model.resolution))
+        target_face = self.env_model.convert_coordinates(
+            tuple(np.array((end_point[1], end_point[0])) * self.env_model.resolution))
+        energy = self.energy_cost[[source_face, target_face]]
+        transformed_start = energy[0]*self.env_model.data.triangles_center[source_face]
+        transformed_goal = energy[1]*self.env_model.data.triangles_center[target_face]
+        source = np.array([int(tmm.find_nearest(transformed_start[:2]))])
+        target = np.array([int(tmm.find_nearest(transformed_goal[:2]))])
         #tmm = self.env_model
         mesh = tmm.data
-        source = np.array([int(tmm.find_nearest((start_point[1], start_point[0])))])
-        target = np.array([int(tmm.find_nearest((end_point[1], end_point[0])))])
         gdist_vertices = mesh.vertices
         gdist_faces = mesh.faces.astype('int32')
         path = gdist.compute_path(gdist_vertices, gdist_faces, source_indices=source, target_indices=target)
+
         return path
 
+    def get_area_weight(self):
+        weight = np.sqrt(self.env_model.data.area_faces) * self.env_model.resolution
+        return weight
+
     def get_tmm_center(self):
-        z_cost = self.weight*self.energy_cost
-        vertices = np.c_[self.env_model.data.triangles_center[:, :2], z_cost]
+        vertices = self.env_model.data.triangles_center*np.matlib.repmat(self.energy_cost,3,1).transpose()
+
         mesh = TriMeshPLY.from_poly(delaunaytriang(vertices))
-        dataset = TriDataset(mesh)
+        dataset = TriDataset(mesh, self.env_model.resolution)
         tmm = TriMeshModel.from_parent(GeoMesh(self.env_model.nw_geo_point, dataset, self.env_model.resolution,
                                          xoff=self.env_model.xoff, yoff=self.env_model.yoff))
         return tmm
@@ -38,7 +50,7 @@ class gdistSolver(SEXTANTSolver):
         z_cost = self.weight*self.solve_vertex()
         vertices = np.c_[self.env_model.data.vertices[:, :2], z_cost]
         mesh = Trimesh(vertices, self.env_model.data.faces)
-        dataset = TriDataset(mesh)
+        dataset = TriDataset(mesh, self.env_model.resolution)
         tmm = TriMeshModel.from_parent(GeoMesh(self.env_model.nw_geo_point, dataset, self.env_model.resolution,
                                          xoff=self.env_model.xoff, yoff=self.env_model.yoff))
         return tmm
@@ -67,5 +79,5 @@ class gdistSolver(SEXTANTSolver):
         area_face = mesh.area_faces
         average_length = np.ones_like(area_face)
         energy_cost, _ = self.cost_function.energy_expenditure(
-            average_length, slopes_rad, 9.81)
+            np.sqrt(area_face)*self.env_model.resolution, slopes_rad, 9.81)
         return energy_cost
