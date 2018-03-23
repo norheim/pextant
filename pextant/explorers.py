@@ -1,7 +1,41 @@
 import logging
 import numpy as np
+from pextant.lib.geoshapely import GeoPolygon
+import pandas as pd
 
 logger = logging.getLogger()
+
+class TraversePath:
+    def __init__(self, geopolygon, z, em=None, derived=None):
+        self.geopolygon = geopolygon
+        self.z = z
+        self.em = em
+        self.derived = derived
+
+    @classmethod
+    def frommap(cls, geopolygon, em, derived=None):
+        coords = geopolygon.to(em.ROW_COL)
+        z = em.dataset.get_datapoint(coords.transpose())
+        return cls(geopolygon, z, em, derived)
+
+    @classmethod
+    def fromnodes(cls, nodes):
+        em = nodes[0].mesh_element.parentMesh
+        states = np.array([node.state for node in nodes]).transpose()
+        derived = [node.derived for node in nodes]
+        derived_pd = pd.DataFrame.from_dict(derived[1:])
+        gp = GeoPolygon(em.ROW_COL, *states)
+        return cls.frommap(gp, em, derived_pd)
+
+    def xyz(self, ref=None):
+        if ref is None and self.em is not None:
+            ref = self.em.COL_ROW
+
+        if ref is not None:
+            x, y = self.geopolygon.to(ref)
+            return np.array((x, y, self.z))
+        else:
+            return [], [], []
 
 
 class Explorer(object):
@@ -102,8 +136,9 @@ class Astronaut(Explorer):  # Astronaut extends Explorer
         total_cost = slope_cost + level_cost
         return total_cost, v
 
-    def path_energy_expenditure(self, xyz, res=1, g=9.81):
-        x, y, z = xyz
+    def path_energy_expenditure(self, path, g=9.81):
+        x, y, z = path.xyz()
+        res = path.em.resolution
         xy = res*np.column_stack((x,y))
         dxy = np.diff(xy, axis=0)
         dl = np.sqrt(np.sum(np.square(dxy), axis=1))
