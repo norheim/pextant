@@ -1,0 +1,23 @@
+from matplotlib.colors import LightSource
+from io import StringIO, BytesIO
+ls = LightSource(azdeg=315, altdeg=45)
+ 
+weight=1
+res = area_model.resolution
+exaggeration = res*weight
+acc_web = ls.hillshade(area_model.data, vert_exag=exaggeration, dx=res, dy=res)
+plt.imsave('test2.png', acc_web, cmap='gray')
+
+acc_norm = acc_web - np.nanmin(acc_web)
+acc_norm = acc_norm / np.nanmax(acc_norm)
+acc_norm = np.where(np.isfinite(acc_web), acc_norm, 0)
+acc_im = PIL.Image.fromarray(np.uint8(plt.cm.gray(acc_norm)*255))
+acc_mask = np.where(np.isfinite(acc_web), 255, 0)
+mask = PIL.Image.fromarray(np.uint8(acc_mask), mode='L')
+im = PIL.Image.new('RGBA', acc_norm.shape[::-1], color=None)
+im.paste(acc_im, mask=mask)
+f = BytesIO()
+im.save(f, 'png')
+data = b64encode(f.getvalue())
+data = data.decode('ascii')
+imgurl = 'data:image/png;base64,' + data
