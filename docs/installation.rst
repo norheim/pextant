@@ -23,12 +23,6 @@ Quick instructions:
 	# 4. Finally, install all the pip requirements conda didnt install
 	pip install -r envreq.txt
 
-If shapely doesn't install, and you are on windows run:
-
-.. code-block:: python
-
-	# Install shapely 'wheel'
-	pip install pextant/lib/Shapely-1.5.17-cp27-cp27m-win32.whl
 
 Make sure to have the environment activated in your terminal befor running >>> python xxxx.py in the console/terminal. 
 If you use pycharm make sure to changes your interpreter settings:
