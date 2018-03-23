@@ -7,6 +7,7 @@ pextant is developed in Python 2.7 (32 bit and 64 bit should both work). Future 
 Quick instructions:
 ================================
 .. code-block:: python
+
 	# 1. Import the environment
 	conda env create -f environment.yml
 
@@ -26,8 +27,6 @@ Quick instructions:
 
 Make sure to have the environment activated in your terminal befor running >>> python xxxx.py in the console/terminal. 
 If you use pycharm make sure to changes your interpreter settings:
-
-.. image:: _images/pycharm_virtenv.png
 
 Good to know about Conda Enviroment Manager
 ================================
