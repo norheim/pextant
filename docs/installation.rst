@@ -17,13 +17,6 @@ Quick instructions:
 	# or Mac and Linux users:
 	source activate pextant
 
-	# 3. Next, if on windows, get Shapely library and download
-	# from: http://www.lfd.uci.edu/~gohlke/pythonlibs/#shapely
-	pip install Shapely‑1.5.17‑cp27‑cp27m‑win32.whl (or Shapely‑1.5.17‑cp27‑cp27m‑win_amd64.whl if on 64 bit)
-
-	# 4. Finally, install all the pip requirements conda didnt install
-	pip install -r envreq.txt
-
 
 Make sure to have the environment activated in your terminal befor running >>> python xxxx.py in the console/terminal. 
 If you use pycharm make sure to changes your interpreter settings:
