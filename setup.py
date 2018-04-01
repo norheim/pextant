@@ -12,11 +12,5 @@ setup(
     classifiers = [],
     license='The MIT License: http://www.opensource.org/licenses/mit-license.php',
     description='Python version of SEXTANT pathfinding tool',
-    long_description=open('README.txt').read(),
-    install_requires=[
-        'numpy >= 1.9',
-		'osgeo >= 2.0.0',
-		'pyproj >= 1.9',
-		'shapely >= 1.5'
-    ],
+    long_description=open('README.txt').read()
 )
