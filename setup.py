@@ -1,12 +1,15 @@
 from distutils.core import setup
-
+from distutils.core import setup
 setup(
-	name='Pextant',
-    version='1.0.1',
-    author='Kevin Lu',
-    author_email='kezilu@mit.edu',
+	name='pextant',
     packages=['pextant'],
-    url='http://pypi.python.org/pypi/Pextant/',
+    version='1.0',
+    author='Johannes Norheim',
+    author_email='norheim@mit.edu',
+    url='http://pypi.python.org/pypi/pextant/',
+    download_url = 'https://github.com/norheim/pextant/archive/1.0.tar.gz',
+    keywords = ['testing', 'logging', 'example'], # arbitrary keywords
+    classifiers = [],
     license='The MIT License: http://www.opensource.org/licenses/mit-license.php',
     description='Python version of SEXTANT pathfinding tool',
     long_description=open('README.txt').read(),
