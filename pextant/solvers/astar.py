@@ -110,27 +110,23 @@ def aStarSearch(start_node, end_node, cost_function, viz=None):
 
         explored.add(current_node_state)
 
-        children = current_node.getChildren()
-        costs_to_node = acc_cost + cost_function.getCostBetween(current_node, children)
-        children_states = children.get_states()
-        for idx, child_node in enumerate(children):
-            child_node_state = children_states[idx]
-            if child_node_state in explored: #and cost_to_node >= g_cost.get(child_node_state,0):
+        for child_node, child_state, cost in cost_function.getCostBetween(current_node, current_node.getChildren()):
+            if child_state in explored: #and cost_to_node >= g_cost.get(child_node_state,0):
                 continue
-            ncost = costs_to_node[idx]
-            if child_node_state in enqueued:
-                qcost, h = enqueued[child_node_state]
+            ncost = acc_cost + cost
+            if child_state in enqueued:
+                qcost, h = enqueued[child_state]
                 if qcost <= ncost:
                     continue
             else:
-                h = cost_function.getHeuristicCost(child_node)
+                h = cost_function.getHeuristicCostRaw(child_state)
                 #print(current_node_state, child_node_state, ncost+h, ncost, h)
-            enqueued[child_node_state] = ncost, h
+            enqueued[child_state] = ncost, h
             estimated_cost = ncost+h
             # this if statement is a shortcut that does a lot of things at the same time
             push(queue, (estimated_cost, next(c), child_node, ncost))
             if viz:
-                viz.add(child_node_state, estimated_cost)
+                viz.add(child_state, estimated_cost)
         if viz:
             viz.addcount()
 

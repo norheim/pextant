@@ -1,4 +1,5 @@
 import numpy as np
+import networkx as nx
 from SEXTANTsolver import sextantSearch, SEXTANTSolver, sextantSearchList
 from astar import aStarSearchNode, aStarNodeCollection, aStarCostFunction, aStarSearch
 from pextant.EnvironmentalModel import EnvironmentalModel, GridMeshModel
@@ -125,6 +126,11 @@ class ExplorerCost(aStarCostFunction):
         heuristic_fx = self.get_cache_heuristic if self.cache else self._getHeuristicCost
         return heuristic_fx(start_row, start_col)
 
+    def getHeuristicCostRaw(self, rowcol):
+        start_row, start_col = rowcol
+        heuristic_fx = self.get_cache_heuristic if self.cache else self._getHeuristicCost
+        return heuristic_fx(start_row, start_col)
+
     def _getHeuristicCost(self, start_row, start_col):
         r = self.map.resolution
         start_x, start_y = r*start_col, r*start_row
@@ -181,7 +187,7 @@ class ExplorerCost(aStarCostFunction):
         costs = np.dot(optimize_vector.transpose(), optimize_weights)
         tonodes.derived = optimize_vector
 
-        return costs
+        return zip(tonodes, to_cllt.get_states(), costs)
 
     def getCostToNeighbours(self, from_node):
         row, col = from_node.state
@@ -217,6 +223,7 @@ class astarSolver(SEXTANTSolver):
         self.explorer_model = explorer_model
         self.optimize_on = optimize_on
         self.cache = env_model.cached
+        self.G = None
         cost_function = ExplorerCost(explorer_model, env_model, optimize_on, env_model.cached, heuristic_accelerate)
         super(astarSolver, self).__init__(env_model, cost_function, viz)
 
@@ -240,6 +247,45 @@ class astarSolver(SEXTANTSolver):
             return search
         else:
             return False
+
+    def weight(self, a, b):
+        selection = (np.array(a) + self.env_model.searchKernel.getKernel()).tolist().index(list(b))
+        costs = self.cost_function.cached["costs"]
+        optimize_weights = self.cost_function.optimize_vector
+        optimize_vector = np.array([
+            costs['path'][a][selection],
+            costs['time'][a][selection],
+            costs['energy'][a][selection]
+        ])
+        costs = np.dot(optimize_vector.transpose(), optimize_weights)
+        return costs
+
+    def solvenx(self, startpoint, endpoint):
+        env_model = self.env_model
+        cost_function = self.cost_function
+        if env_model.elt_hasdata(startpoint) and env_model.elt_hasdata(endpoint):
+            if self.G == None:
+                self.G = generateGraph(env_model, self.weight)
+            self.cost_function.setEndNode(MeshSearchElement(env_model.getMeshElement(endpoint)))
+            raw = nx.astar_path(self.G, startpoint, endpoint, lambda a, b: self.cost_function._getHeuristicCost(*a))
+            coordinates = GeoPolygon(self.env_model.COL_ROW, *np.array(raw).transpose()[::-1])
+            search = sextantSearch(raw, [], coordinates, [])
+            self.searches.append(search)
+            return search
+        else:
+            return False
+
+def generateGraph(em, weightfx):
+    G = nx.DiGraph()
+    rows, cols = range(em.y_size), range(em.x_size)
+    G.add_nodes_from((i, j) for i in rows for j in cols)
+    for i in rows:
+        #if i%10 == 0:
+        #    print(i)
+        for j in cols:
+            n = np.array((i,j))+em.searchKernel.getKernel()[em.cached_neighbours[i,j]]
+            G.add_weighted_edges_from(((i,j), tuple(k), weightfx((i,j),tuple(k))) for k in n)
+    return G
 
 if __name__ == '__main__':
     from pextant.settings import WP_HI, HI_DEM_LOWQUAL_PATH
