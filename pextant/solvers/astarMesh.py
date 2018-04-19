@@ -11,8 +11,8 @@ class MeshSearchElement(aStarSearchNode):
         super(MeshSearchElement, self).__init__(mesh_element.mesh_coordinate, parent, cost_from_parent)
 
     def goalTest(self, goal):
-        if self.mesh_element.distanceToElt(goal.mesh_element) < self.mesh_element.parentMesh.resolution*3:
-            return True
+        return self.mesh_element.mesh_coordinate == goal.mesh_element.mesh_coordinate
+        #return self.mesh_element.distanceToElt(goal.mesh_element) < self.mesh_element.parentMesh.resolution*3
 
     def getChildren(self):
         return MeshSearchCollection(self.mesh_element.getNeighbours(), self)

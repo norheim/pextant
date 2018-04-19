@@ -1,4 +1,5 @@
-import heapq
+from heapq import heappop, heappush
+from itertools import count
 import warnings
 from pextant.mesh.abstractcomponents import MeshCollection
 
@@ -82,40 +83,54 @@ def aStarSearch(start_node, end_node, cost_function, viz=None):
     three vector elements representing: 'Energy', 'Time', or 'Distance'
     As of right now 'Energy' just refers to metabolic energy.
     """
+    push = heappush
+    pop = heappop
     if start_node.goalTest(end_node):
         return (start_node, 0, 0)
 
-    cost_function.setEndNode(end_node)
+    cost_function.setEndNode(end_node) #this also caches all the heuristic costs if need be
     start_node.cost = 0
     # agenda contains pairs (cost, node)
-    agenda = []
+    c = count()
+    queue = [(0, next(c), start_node, 0)]
     current_node = start_node # needed in case of early exit of loop
-    heapq.heappush(agenda, (0, start_node))
-    g_cost = {start_node.state: 0}
-    expanded = set()
 
-    while agenda:
-        current_node = heapq.heappop(agenda)[1]
+    enqueued = {}
+    explored = set()
+
+    while queue:
+        #print([(idx, mesh.mesh_coordinate) for idx, mesh in agenda])
+        _, __, current_node, acc_cost = pop(queue)
         current_node_state = current_node.state
         if current_node.goalTest(end_node):
-            return (current_node.getPath(), expanded)
-        expanded.add(current_node_state)
+            return (current_node.getPath(), explored)
+
+        if current_node_state in explored:
+            continue
+
+        explored.add(current_node_state)
+
         children = current_node.getChildren()
-        costs_to_node = g_cost[current_node_state] + cost_function.getCostBetween(current_node, children)
+        costs_to_node = acc_cost + cost_function.getCostBetween(current_node, children)
         children_states = children.get_states()
         for idx, child_node in enumerate(children):
             child_node_state = children_states[idx]
-            cost_to_node = costs_to_node[idx]
-            if child_node_state in expanded: #and cost_to_node >= g_cost.get(child_node_state,0):
+            if child_node_state in explored: #and cost_to_node >= g_cost.get(child_node_state,0):
                 continue
-            test = g_cost.get(child_node_state, float("inf"))
-            if cost_to_node < test:
-                # this if statement is a shortcut that does a lot of things at the same time
-                g_cost[child_node_state] = cost_to_node
-                estimated_cost = cost_to_node + cost_function.getHeuristicCost(child_node)
-                heapq.heappush(agenda, (estimated_cost, child_node))
-                if viz:
-                    viz.add(child_node_state, estimated_cost)
+            ncost = costs_to_node[idx]
+            if child_node_state in enqueued:
+                qcost, h = enqueued[child_node_state]
+                if qcost <= ncost:
+                    continue
+            else:
+                h = cost_function.getHeuristicCost(child_node)
+                #print(current_node_state, child_node_state, ncost+h, ncost, h)
+            enqueued[child_node_state] = ncost, h
+            estimated_cost = ncost+h
+            # this if statement is a shortcut that does a lot of things at the same time
+            push(queue, (estimated_cost, next(c), child_node, ncost))
+            if viz:
+                viz.add(child_node_state, estimated_cost)
         if viz:
             viz.addcount()
 
@@ -123,4 +138,4 @@ def aStarSearch(start_node, end_node, cost_function, viz=None):
     warnings.warn('no solution found')
     #if viz:
     #    viz.draw()
-    return (([],[]), expanded)
+    return (([],[]), explored)
