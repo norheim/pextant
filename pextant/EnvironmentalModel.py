@@ -9,6 +9,8 @@ from pextant.mesh.abstractmesh import GeoMesh, EnvironmentalModel, \
     SearchKernel, coordinate_transform, Dataset, NpDataset
 from pextant.mesh.abstractcomponents import MeshCollection
 from pextant.mesh.concretecomponents import MeshElement
+from pathlib2 import Path
+from itertools import count
 
 class GDALDataset(Dataset):
     '''
@@ -17,6 +19,7 @@ class GDALDataset(Dataset):
     def __init__(self, dataset, row_size, col_size, resolution):
         super(GDALDataset, self).__init__(dataset, row_size, col_size, resolution)
         self.raster = dataset
+        self.map_array = None
 
     # override interpolator since the data set is just a shell
     def _grid_interpolator_initializer(self):
@@ -33,8 +36,9 @@ class GDALDataset(Dataset):
 
         band = self.raster.GetRasterBand(1)
         map_array = band.ReadAsArray(x_offset, y_offset, x_size, y_size, buf_x, buf_y).astype(np.float)
+        self.map_array = map_array
         dataset_clean = ma.masked_array(map_array, np.isnan(map_array)).filled(-99999)
-        dataset_clean = NpDataset(ma.masked_array(dataset_clean, dataset_clean < -1e4), desired_res)
+        dataset_clean = NpDataset(ma.masked_array(dataset_clean, dataset_clean < -2e3), desired_res)
         return dataset_clean
 
 class GridMesh(GeoMesh):
@@ -95,6 +99,8 @@ class GDALMesh(GridMesh):
     """
 
     def __init__(self, file_path):
+        if isinstance(file_path, Path):
+            file_path = str(file_path.absolute())
         self.file_path = file_path
         gdal.UseExceptions()
         dataset = gdal.Open(file_path)
@@ -156,7 +162,7 @@ class GridMeshModel(EnvironmentalModel):
         return MeshCollection(self, passable_neighbours.transpose(), coordsxy.transpose())
 
     def setSlopes(self):
-        [gx, gy] = np.gradient(self.data, self.resolution, self.resolution)
+        [gy, gx] = np.gradient(self.data, self.resolution, self.resolution)
         self.slopes = np.degrees(
             np.arctan(np.sqrt(np.add(np.square(gx), np.square(gy)))))  # Combining for now for less RAM usage
 
@@ -217,7 +223,7 @@ class GridMeshModel(EnvironmentalModel):
         return self.cached_neighbours
 
     def _cache_neighbours(self):
-        print('cashing neighbours')
+        #print('precomputing neighbours')
         rows, cols = np.mgrid[0:self.y_size, 0:self.x_size]
         gridpoints = np.array([rows.flatten(), cols.flatten()]).transpose()
 
@@ -250,6 +256,33 @@ def loadElevationMap(fullPath, maxSlope=35, nw_corner=None, se_corner=None, desi
     dem = GDALMesh(fullPath)
     return dem.loadSubSection(geoenvelope, maxSlope=maxSlope, desired_res=desiredRes)
 
+def load_legacy(filename):
+    m = Path(filename)
+    name = m.stem
+    d = {}
+    c = count()
+    r = True
+
+    def num(s):
+        try:
+            return int(s)
+        except ValueError:
+            return float(s)
+
+    with m.open() as f:
+        while r:
+            c.next()
+            r = re.search("([^\d\W]+)\s+(-*\d+\.*\d*)", f.readline())
+            if r:
+                d[r.groups()[0]] = num(r.groups()[1])
+    l = c.next() - 1
+    data = np.loadtxt(str(m.resolve()), skiprows=l)
+    dataset = NpDataset(data, resolution=d["cellsize"])
+    if "UTMzone" in d:
+        gp = GeoPoint(UTM("UTMzone"), d["xllcorner"], d["yllcorner"])
+    else:
+        gp = GeoPoint(UTM(1), d["xllcorner"], d["yllcorner"])
+    return GridMesh(gp, dataset)
 
 if __name__ == '__main__':
     from pextant.lib.utils import gridpoints_list

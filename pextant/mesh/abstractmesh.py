@@ -126,6 +126,8 @@ class NpDataset(np.ndarray):
     def __repr__(self):
         return self.data_container.__repr__()
 
+    def __str__(self):
+        return self.data_container.__str__()
 
 class NearestInterpolatorDataset(InterpolatingDataset):
     def __init__(self, *arg, **kwargs):
@@ -162,6 +164,13 @@ class EnvironmentalModel(GeoMesh):
         #TODO: make max slope a once only argument (right now it gets passed along several times)
         self.maxSlopeObstacle(self.maxSlope)
 
+    def obstacle_mask(self, maxslope = None):
+        if maxslope == None:
+            obstacles = self.obstacles
+        else:
+            obstacles = self.slopes > maxslope
+        return np.ma.masked_array(np.ones_like(self.data),
+                                                  np.logical_not(obstacles))
     def convert_coordinates(self, geo_coordinates): pass
 
     def setSlopes(self): pass

@@ -4,6 +4,8 @@ from SEXTANTsolver import sextantSearch, SEXTANTSolver, sextantSearchList
 from astar import aStarSearchNode, aStarNodeCollection, aStarCostFunction, aStarSearch
 from pextant.EnvironmentalModel import EnvironmentalModel, GridMeshModel
 from pextant.lib.geoshapely import GeoPoint, GeoPolygon, LONG_LAT
+from pextant.solvers.nxastar import GG, astar_path
+from time import time
 
 class MeshSearchElement(aStarSearchNode):
     def __init__(self, mesh_element, parent=None, cost_from_parent=0):
@@ -219,19 +221,30 @@ class ExplorerCost(aStarCostFunction):
 
 
 class astarSolver(SEXTANTSolver):
-    def __init__(self, env_model, explorer_model, viz=None, optimize_on='Energy', cached=False, heuristic_accelerate=1):
+    def __init__(self, env_model, explorer_model, viz=None, optimize_on='Energy', cached=False, inhouse=True,
+                 heuristic_accelerate=1):
         self.explorer_model = explorer_model
         self.optimize_on = optimize_on
         self.cache = env_model.cached
+        self.inhouse = inhouse
         self.G = None
         cost_function = ExplorerCost(explorer_model, env_model, optimize_on, env_model.cached, heuristic_accelerate)
         super(astarSolver, self).__init__(env_model, cost_function, viz)
+        if not inhouse:
+            self.G = GG(self)
 
     def accelerate(self, weight=10):
         self.cost_function = ExplorerCost(self.explorer_model, self.env_model, self.optimize_on,
                                           self.cache, heuristic_accelerate=weight)
 
     def solve(self, startpoint, endpoint):
+        if self.inhouse:
+            solver = self.solveinhouse
+        else:
+            solver = self.solvenx
+        return solver(startpoint, endpoint)
+
+    def solveinhouse(self, startpoint, endpoint):
         env_model = self.env_model
         if env_model.elt_hasdata(startpoint) and env_model.elt_hasdata(endpoint):
             node1, node2 = MeshSearchElement(env_model.getMeshElement(startpoint)), \
@@ -263,28 +276,39 @@ class astarSolver(SEXTANTSolver):
     def solvenx(self, startpoint, endpoint):
         env_model = self.env_model
         cost_function = self.cost_function
+        start = env_model.getMeshElement(startpoint).mesh_coordinate
+        target = env_model.getMeshElement(endpoint).mesh_coordinate
         if env_model.elt_hasdata(startpoint) and env_model.elt_hasdata(endpoint):
             if self.G == None:
-                self.G = generateGraph(env_model, self.weight)
+                self.G = GG(self)
             self.cost_function.setEndNode(MeshSearchElement(env_model.getMeshElement(endpoint)))
-            raw = nx.astar_path(self.G, startpoint, endpoint, lambda a, b: self.cost_function._getHeuristicCost(*a))
-            coordinates = GeoPolygon(self.env_model.COL_ROW, *np.array(raw).transpose()[::-1])
-            search = sextantSearch(raw, [], coordinates, [])
-            self.searches.append(search)
-            return search
+            try:
+                raw = astar_path(self.G, start, target, lambda a, b: self.cost_function._getHeuristicCost(*a))
+                coordinates = GeoPolygon(self.env_model.COL_ROW, *np.array(raw).transpose()[::-1])
+                search = sextantSearch(raw, [], coordinates, [])
+                self.searches.append(search)
+                return search
+            except nx.NetworkXNoPath:
+                return False
         else:
             return False
 
 def generateGraph(em, weightfx):
+    t1 = time()
     G = nx.DiGraph()
     rows, cols = range(em.y_size), range(em.x_size)
     G.add_nodes_from((i, j) for i in rows for j in cols)
     for i in rows:
+        dt = time() - t1
+        #if dt > 60:
+            #print(i)
         #if i%10 == 0:
         #    print(i)
         for j in cols:
             n = np.array((i,j))+em.searchKernel.getKernel()[em.cached_neighbours[i,j]]
             G.add_weighted_edges_from(((i,j), tuple(k), weightfx((i,j),tuple(k))) for k in n)
+    t2 = time()
+    print(t2-t1)
     return G
 
 if __name__ == '__main__':

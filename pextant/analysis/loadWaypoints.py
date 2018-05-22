@@ -7,6 +7,7 @@ import numpy as np
 import re
 import os
 pd.options.display.max_rows = 5
+from pathlib2 import Path
 
 def loadPointsOld(filename):
     parsed_json = json.loads(jsonInput)
@@ -48,6 +49,8 @@ def sextant_loader(filepath):
 class JSONloader:
     def __init__(self, sequence, raw, filename=None):
         self.extension = '_plan.json'
+        if isinstance(filename, Path):
+            filename = str(filename.absolute())
         self.filename = filename
         self.raw = raw
         self.sequence = sequence
@@ -58,9 +61,11 @@ class JSONloader:
 
     @classmethod
     def from_file(cls, filepath):
-        filename = os.path.basename(filepath).split('.')[0]
-        dirname = os.path.dirname(filepath)
-        fullfilename = os.path.join(dirname, filename)
+        if isinstance(filepath, Path):
+            filepath = str(filepath.absolute())
+        stem = os.path.basename(filepath).split('.')[0]
+        parent = os.path.dirname(filepath)
+        fullfilename = os.path.join(parent, stem)
         with open(filepath) as data_file:
             jsondata = json.load(data_file)
             return cls(jsondata['sequence'], jsondata, fullfilename)

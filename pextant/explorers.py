@@ -6,17 +6,20 @@ import pandas as pd
 logger = logging.getLogger()
 
 class TraversePath:
-    def __init__(self, geopolygon, z, em=None, derived=None):
+    def __init__(self, geopolygon, z, x,y,em=None, derived=None):
         self.geopolygon = geopolygon
         self.z = z
+        self.x = x
+        self.y = y
         self.em = em
         self.derived = derived
 
     @classmethod
-    def frommap(cls, geopolygon, em, derived=None):
-        coords = geopolygon.to(em.ROW_COL)
+    def frommap(cls, geopolygon, em, sampling=1, derived=None):
+        coords = geopolygon.to(em.ROW_COL).T[::sampling].T
+        y, x = coords
         z = em.dataset.get_datapoint(coords.transpose())
-        return cls(geopolygon, z, em, derived)
+        return cls(geopolygon, z, x, y, em, derived)
 
     @classmethod
     def fromnodes(cls, nodes):
@@ -32,10 +35,12 @@ class TraversePath:
             ref = self.em.COL_ROW
 
         if ref is not None:
-            x, y = self.geopolygon.to(ref)
-            return np.array((x, y, self.z))
+            return np.array((self.x, self.y, self.z))
         else:
             return [], [], []
+
+    def dr(self):
+        pass
 
 
 class Explorer(object):
@@ -136,16 +141,37 @@ class Astronaut(Explorer):  # Astronaut extends Explorer
         total_cost = slope_cost + level_cost
         return total_cost, v
 
-    def path_energy_expenditure(self, path, g=9.81):
+    def path_dl_slopes(self, path):
         x, y, z = path.xyz()
         res = path.em.resolution
-        xy = res*np.column_stack((x,y))
+        xy = res * np.column_stack((x, y))
         dxy = np.diff(xy, axis=0)
         dl = np.sqrt(np.sum(np.square(dxy), axis=1))
         dz = np.diff(z)
+        dr = np.sqrt(dl**2+dz**2)
         slopes = np.arctan2(dz, dl)
+        return dl, slopes, dr
+
+    def path_time(self, path):
+        dl, slopes, _ = self.path_dl_slopes(path)
+        return self.time(dl, slopes)
+
+    def path_energy_expenditure(self, path, g=9.81):
+        dl, slopes, _  = self.path_dl_slopes(path)
         return self.energy_expenditure(dl, slopes, g)
 
+class FixedAstronaut(Astronaut):
+    def energy_expenditure(self, path_lengths, slopes_radians, g):
+        """
+        Metabolic Rate Equations for a Suited Astronaut
+        From Santee, 2001
+        """
+        path_lengths = path_lengths/np.cos(slopes_radians)
+        v = self.velocity(np.degrees(slopes_radians))
+        slope_cost = self.slope_energy_cost(path_lengths, slopes_radians, g)
+        level_cost = self.level_energy_cost(path_lengths, slopes_radians, v)
+        total_cost = slope_cost + level_cost
+        return total_cost, v
 
 class Rover(Explorer):  # Rover also extends explorer
     def __init__(self, mass, parameters=None, constant_speed=15, additional_energy=1500):

@@ -36,17 +36,26 @@ class sextantSearchList(object):
     def raw(self):
         result = []
         for search in self.list:
+            if search == False:
+                return None
             result += search.raw
         return np.array(result)
 
     def coordinates(self):
         result = []
         for search in self.list:
+            if type(search) == bool:
+                return None
             result += search.coordinates.to(LONG_LAT).transpose().tolist()
         return GeoPolygon(LONG_LAT, *np.array(result).transpose())
 
     def itemssrchd(self):
-        return np.array([search.expanded_items for search in self.list])
+        result = []
+        for search in self.list:
+            if type(search) == bool:
+                return None
+            result += search.expanded_items
+        return np.array(result)
 
     def tojson(self, save=False):
         return [elt.tojson() for elt in self.list]
