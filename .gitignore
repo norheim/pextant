@@ -2,10 +2,14 @@
 pextant/lines.html
 .*
 !/.gitignore
-*.ipynb
 *.csv
 data/
 static/
 *.ply
 _build_html
+pextant/webapp/*
+analysis/*
+pextant/analysis/*
+pextant/solvers/*
+pextant/lib/*
 *.xlsx
