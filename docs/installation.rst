@@ -21,6 +21,21 @@ Quick instructions:
 Make sure to have the environment activated in your terminal befor running >>> python xxxx.py in the console/terminal. 
 If you use pycharm make sure to changes your interpreter settings:
 
+
+Quick instructions:
+================================
+
+Alternatively, you can run the following install commands
+
+.. code-block:: python
+
+	# these packages are necessary for finding and showing a path
+	conda install jupyter numpy gdal pyproj shapely pandas bokeh pykml --channel conda-forge
+	
+	# these packages are necessary for creating and displaying meshes (for mesh-based path planning)
+	trimesh vtk --channel conda-forge --channel menpo
+
+
 Good to know about Conda Enviroment Manager
 ================================
 
