@@ -33,7 +33,7 @@ Alternatively, you can run the following install commands
 	conda install jupyter numpy gdal pyproj shapely pandas bokeh pykml --channel conda-forge
 	
 	# these packages are necessary for creating and displaying meshes (for mesh-based path planning)
-	trimesh vtk --channel conda-forge --channel menpo
+	conda install trimesh vtk --channel conda-forge --channel menpo
 
 
 Good to know about Conda Enviroment Manager
