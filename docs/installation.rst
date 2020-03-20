@@ -30,7 +30,7 @@ Alternatively, you can run the following install commands
 .. code-block:: python
 
 	# these packages are necessary for finding and showing a path
-	conda install jupyter numpy gdal pyproj shapely pandas bokeh pykml cmake --channel conda-forge
+	conda install jupyter numpy gdal pyproj shapely pandas bokeh pykml cmake scikit-image --channel conda-forge
 	
 	# these packages are necessary for creating and displaying meshes (for mesh-based path planning)
 	conda install trimesh vtk --channel conda-forge --channel menpo
