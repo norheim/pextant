@@ -7,7 +7,7 @@ import numpy as np
 import re
 import os
 pd.options.display.max_rows = 5
-from pathlib2 import Path
+from pathlib import Path
 
 def loadPointsOld(filename):
     parsed_json = json.loads(jsonInput)

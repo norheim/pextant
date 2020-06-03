@@ -1,7 +1,7 @@
 import numpy as np
 import networkx as nx
-from SEXTANTsolver import sextantSearch, SEXTANTSolver, sextantSearchList
-from astar import aStarSearchNode, aStarNodeCollection, aStarCostFunction, aStarSearch
+from .SEXTANTsolver import sextantSearch, SEXTANTSolver, sextantSearchList
+from .astar import aStarSearchNode, aStarNodeCollection, aStarCostFunction, aStarSearch
 from pextant.EnvironmentalModel import EnvironmentalModel, GridMeshModel
 from pextant.lib.geoshapely import GeoPoint, GeoPolygon, LONG_LAT
 from pextant.solvers.nxastar import GG, astar_path

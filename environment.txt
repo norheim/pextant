@@ -1,5 +1,6 @@
 This is a list of all higher level libraries installed
-conda install numpy gdal pyproj pandas shapely scipy sckit-image matplotlib jupyter nb_conda
+conda install numpy gdal pyproj pandas shapely scipy scikit-image matplotlib 
+    jupyter bokeh pykml vtk trimesh matplotlib-scalebar
 pip install flask flask-socketio eventlet pynmea2 pyserial
 conda:
 - jupyter
@@ -31,3 +32,4 @@ pip:
 - folium
 - cython (for gdist)
 - trimesh
+- tvb-gdist

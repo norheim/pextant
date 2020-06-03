@@ -9,7 +9,7 @@ from pextant.mesh.abstractmesh import GeoMesh, EnvironmentalModel, \
     SearchKernel, coordinate_transform, Dataset, NpDataset
 from pextant.mesh.abstractcomponents import MeshCollection
 from pextant.mesh.concretecomponents import MeshElement
-from pathlib2 import Path
+from pathlib import Path
 from itertools import count
 
 class GDALDataset(Dataset):
@@ -69,8 +69,8 @@ class GridMesh(GeoMesh):
         intersection_box_geo = GeoPolygon(self.nw_geo_point.utm_reference, inter_easting, inter_northing)  # could change to UTM_AUTO later
         inter_x, inter_y = intersection_box_geo.to(self.COL_ROW)
 
-        x_offset, max_x = inter_x
-        max_y, y_offset = inter_y
+        x_offset, max_x = map(int, inter_x)
+        max_y, y_offset = map(int, inter_y)
         # TODO: need to explain the +1, comes from hack. Also, doesnt work when selecting full screen
         x_size = max_x - x_offset + 1
         y_size = max_y - y_offset + 1
@@ -271,11 +271,11 @@ def load_legacy(filename):
 
     with m.open() as f:
         while r:
-            c.next()
-            r = re.search("([^\d\W]+)\s+(-*\d+\.*\d*)", f.readline())
+            next(c)
+            r = re.search(r"([^\d\W]+)\s+(-*\d+\.*\d*)", f.readline())
             if r:
                 d[r.groups()[0]] = num(r.groups()[1])
-    l = c.next() - 1
+    l = next(c) - 1
     data = np.loadtxt(str(m.resolve()), skiprows=l)
     dataset = NpDataset(data, resolution=d["cellsize"])
     if "UTMzone" in d:
@@ -286,7 +286,7 @@ def load_legacy(filename):
 
 if __name__ == '__main__':
     from pextant.lib.utils import gridpoints_list
-    ames_em = GDALMesh('../data/maps/Ames/Ames.tif').loadSubSection(maxSlope=25)
+    ames_em = GDALMesh('../data/maps/Ames/Ames.tif').loadSubSection()
     #cProfile.run('ames_em.cache_neighbours()')
     s = ames_em.cache_neighbours()
     positions = gridpoints_list(ames_em)
@@ -295,5 +295,5 @@ if __name__ == '__main__':
         n1 = ames_em._getNeighbours(position).mesh_coordinates
         n2 = (position + kernel[s[position[0], position[1]]]).transpose()
         if not np.array_equal(n1, n2):
-            print 'Houston we have a problem'
-    print "Houston we don't have a problem'"
+            print('Houston we have a problem')
+    print("Houston we don't have a problem'")

@@ -1,4 +1,4 @@
-from geoshapely import GeoPolygon, GeoPoint, UTM, LAT_LONG, Cartesian
+from .geoshapely import GeoPolygon, GeoPoint, UTM, LAT_LONG, Cartesian
 import numpy as np
 from skimage.draw import circle
 

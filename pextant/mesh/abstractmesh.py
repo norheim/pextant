@@ -120,7 +120,8 @@ class NpDataset(np.ndarray):
     def __array_finalize__(self, obj):
         # see InfoArray.__array_finalize__ for comments
         self.resolution =  getattr(obj, "resolution", None)
-        self.y_size, self.x_size = self.shape
+        if self.shape:
+            self.y_size, self.x_size = self.shape
         self.data_container = self.view(np.ndarray)
 
     def __repr__(self):
@@ -237,11 +238,11 @@ class EnvironmentalModel(GeoMesh):
 
 class SearchKernel(object):
     def __init__(self, kernelrange = 3, type="square"):
-        searchvector = range(-(kernelrange / 2), kernelrange / 2 + 1)
+        searchvector = range(-(kernelrange // 2), kernelrange // 2 + 1)
         col_off = matlib.repmat(searchvector, len(searchvector), 1)
         row_off = np.transpose(col_off)
-        col_off_clean = np.delete(col_off.flatten(), (kernelrange**2 - 1)/2)
-        row_off_clean = np.delete(row_off.flatten(), (kernelrange**2 - 1) / 2)
+        col_off_clean = np.delete(col_off.flatten(), (kernelrange**2 - 1) //2)
+        row_off_clean = np.delete(row_off.flatten(), (kernelrange**2 - 1) // 2)
         self.length = kernelrange**2
         self.col_off = col_off_clean
         self.row_off = row_off_clean
@@ -257,7 +258,7 @@ class SearchKernel(object):
         return self.kernel
 
     def get_circular_kernel(self):
-        kernel = np.array(circle(0, 0, int((self.kernelrange-1)/2+1))).transpose()
+        kernel = np.array(circle(0, 0, int((self.kernelrange-1)//2+1))).transpose()
         center_removed = np.delete(kernel, np.where(np.logical_and(kernel[:, 0] == 0, kernel[:, 1] == 0))[0][0], 0)
         return center_removed
 

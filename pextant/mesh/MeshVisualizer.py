@@ -28,7 +28,7 @@ class TriExpandViz(object):
         self.counter += 1
 
         if self.counter % self.counter_interval == 0:
-            print self.counter
+            print(self.counter)
 
         if self.counter % self.counter_interval == 0:
             self.draw()
@@ -68,7 +68,7 @@ class ExpandViz(object):
         self.counter += 1
 
         if self.counter % 1000 == 0:
-            print self.counter
+            print(self.counter)
 
         if self.counter % self.counter_interval == 0:
             self.draw()

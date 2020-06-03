@@ -106,6 +106,6 @@ if __name__ == '__main__':
     out = ames_em._getNeighbours(2625)
     otherelt = ames_em._getMeshElement(10)
     #print(out.__getitem__(2).distanceToElt(ames_em._getMeshElement(10)))
-    print out
+    print(out)
     print(out.mesh_coordinates)
 
