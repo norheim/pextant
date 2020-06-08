@@ -60,7 +60,7 @@ def crossdomain(origin=None, methods=None, headers=None,
     return decorator
 
 def main(argv):
-    print 'STARTING SEXTANT'
+    print('STARTING SEXTANT')
     geotiff_full_path = ""
     try:
         geotiff_full_path = argv[0]
@@ -71,7 +71,7 @@ def main(argv):
     if not geotiff_full_path or geotiff_full_path == 'sextant:app':
         geotiff_full_path = GEOTIFF_FULL_PATH
 
-    print geotiff_full_path
+    print(geotiff_full_path)
     
     gdal_mesh = GDALMesh(geotiff_full_path)
     explorer = Astronaut(80)
@@ -80,7 +80,7 @@ def main(argv):
     @app.route('/test', methods=['GET', 'POST'])
     @crossdomain(origin='*')
     def test():
-        print str(request)
+        print(str(request))
         return json.dumps({'test':'test'})
         
     @app.route('/setwaypoints', methods=['GET', 'POST'])
@@ -93,14 +93,14 @@ def main(argv):
             
             xp_json = request_data['xp_json']
             json_loader = JSONloader(xp_json['sequence'])
-            print 'loaded xp json'
+            print('loaded xp json')
             waypoints = json_loader.get_waypoints()
-            print 'gdal mesh is  built from %s' % str(geotiff_full_path)
+            print('gdal mesh is  built from %s' % str(geotiff_full_path))
             environmental_model = gdal_mesh.loadSubSection(waypoints.geoEnvelope(), cached=True)
             solver = astarSolver(environmental_model, explorer, optimize_on='Energy')
             print('loaded fine')
             return json.dumps({'loaded': True})
-        except Exception, e:
+        except Exception as e:
             traceback.print_exc()
             response = {'error': str(e),
                         'status_code': 400}
